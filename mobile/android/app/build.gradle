@@ -7,8 +7,8 @@ android {
         applicationId "cl.vitroflow.planta"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 19
-        versionName "1.18"
+        versionCode 20
+        versionName "1.19"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         // Solo arquitecturas ARM (celulares reales): las libs x86/x86_64 solo
         // sirven para emuladores y pesan ~11 MB dentro del APK.

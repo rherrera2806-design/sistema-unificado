@@ -79,8 +79,15 @@ function renderLogin() {
                 </div>
                 <button class="btn btn-primary btn-block" id="lgBtn" onclick="App.doLogin()">Ingresar</button>
             </div>
+            <div id="lgVersion" style="text-align:center;font-size:11px;color:#94a3b8;margin-top:14px">VitroFlow Planta</div>
         </div>`;
     $('#lgPass').addEventListener('keydown', (e) => { if (e.key === 'Enter') doLogin(); });
+    // Versión visible en el login: con una captura de pantalla se sabe exactamente
+    // qué versión corre en el celular (clave para depurar a distancia)
+    fetch('version.json', { cache: 'no-store' })
+        .then(r => r.json())
+        .then(v => { const el = $('#lgVersion'); if (el && v) el.textContent = `VitroFlow Planta · v${v.versionName} (${v.versionCode})`; })
+        .catch(() => { });
 }
 
 async function doLogin() {
@@ -1196,18 +1203,11 @@ async function reprogramarAhora() {
 
 // ============================ ARRANQUE ============================
 
-// Teclado del celular: el campo enfocado debe quedar SIEMPRE visible, sin
-// taparse con el header ni que los campos se vayan "hacia arriba" (bug clásico
-// del LOGIN). IMPORTANTE: en Android 15+ (edge-to-edge) el teclado se
-// SUPERPONE y ya no redimensiona la ventana — por eso NO se confía en
-// window.innerHeight y se usa visualViewport (= lo que realmente se ve).
-// Reglas:
-//  - mover SOLO lo necesario (nunca scrollIntoView 'center', que sobrescrollea
-//    y expulsa los campos de pantalla)
-//  - cada movimiento LIMITADO a 1/4 de la vista visible (nada de "vuelos")
-//  - re-verificar hasta 3 veces (el teclado anima y la vista se mueve después)
-//  - padding inferior = altura del teclado: SIEMPRE hay espacio para desplazar
-//    el campo sobre el teclado
+// Teclado del celular: el campo enfocado debe quedar SIEMPRE visible.
+// REGLA DE ORO: si el campo YA se ve completo, NO MOVER NADA (el bug clásico
+// del login —los campos volando hacia arriba— era sobrereaccionar y hacer
+// scroll innecesario). Solo se actúa si el campo está REALMENTE oculto por el
+// teclado superpuesto (Android 15+ / Samsung), con delta plausible y limitado.
 // ⚠️ MANTENER ESTE BLOQUE en toda actualización de la app (mobile/QA-CHECKLIST.md).
 (function () {
     const MARGEN = 12;
@@ -1217,7 +1217,7 @@ async function reprogramarAhora() {
     const aplicarAlturaTeclado = () => {
         const v = vv();
         if (!v) return;
-        const kb = Math.max(0, Math.round(window.innerHeight - v.height - v.offsetTop));
+        const kb = Math.max(0, Math.min(Math.round(window.innerHeight - v.height - v.offsetTop), Math.round(window.innerHeight * 0.6)));
         document.documentElement.style.setProperty('--kb', kb + 'px');
     };
     const mantenerVisible = () => {
@@ -1225,28 +1225,35 @@ async function reprogramarAhora() {
         if (!esCampo(t)) return;
         try {
             const v = vv();
-            if (!v || v.height < 120) return;   // teclado a medio abrir: no tocar nada
-            for (let i = 0; i < 3; i++) {
-                const r = t.getBoundingClientRect();
-                const visTop = v.offsetTop + MARGEN;
-                const visBottom = v.offsetTop + v.height - MARGEN;
+            const r = t.getBoundingClientRect();
+            if (!v || v.height < 200) return;               // teclado a medio abrir: no tocar
+            const visTop = v.offsetTop + MARGEN;
+            const visBottom = v.offsetTop + v.height - MARGEN;
+            // 1) ¿El campo ya se ve completo? → NO MOVER NADA
+            if (r.top >= visTop && r.bottom <= visBottom) return;
+            // 2) Teclado SUPERPUESTO (la vista visual es más chica que el layout):
+            //    corregir con el área visible. Si el layout ya viene recortado
+            //    (resize clásico), basta el scroll mínimo del navegador.
+            const kbSuperpuesto = (window.innerHeight - v.height - v.offsetTop) > 120;
+            if (kbSuperpuesto) {
                 let delta = 0;
-                if (r.bottom > visBottom) delta = r.bottom - visBottom;   // tapado por el teclado
-                else if (r.top < visTop) delta = r.top - visTop;          // perdido hacia arriba
-                if (delta === 0) return;                                  // ya está visible
-                const limite = Math.max(80, v.height / 4);                // nunca un "vuelo"
-                delta = Math.max(-limite, Math.min(limite, delta));
-                window.scrollBy(0, delta);
+                if (r.bottom > visBottom) delta = r.bottom - visBottom;
+                else if (r.top < visTop) delta = r.top - visTop;
+                // Delta implausible = métrica en transición → NO mover (evita el
+                // "vuelo" de los campos hacia arriba)
+                if (delta !== 0 && Math.abs(delta) <= 220) window.scrollBy(0, delta);
+                return;
             }
+            // 3) Sin teclado superpuesto: scroll mínimo nativo (nunca 'center')
+            t.scrollIntoView({ block: 'nearest' });
         } catch (_) { }
     };
-    const alCambiarVista = () => { aplicarAlturaTeclado(); setTimeout(mantenerVisible, 30); setTimeout(mantenerVisible, 250); };
+    const alCambiarVista = () => { aplicarAlturaTeclado(); setTimeout(mantenerVisible, 80); setTimeout(mantenerVisible, 300); };
     document.addEventListener('focusin', (e) => {
         if (esCampo(e.target)) {
             aplicarAlturaTeclado();
-            setTimeout(mantenerVisible, 60);
-            setTimeout(mantenerVisible, 250);
-            setTimeout(mantenerVisible, 500);
+            setTimeout(mantenerVisible, 100);
+            setTimeout(mantenerVisible, 350);
         }
     });
     if (window.visualViewport) {

@@ -1,7 +1,7 @@
 {
-    "notas":  "Login a prueba de teclado: funciona con teclado superpuesto (Android 15/Samsung), movimientos limitados y verificados. Los campos ya no se van hacia arriba.",
+    "notas":  "Login: los campos ya no se mueven solos al abrir el teclado (solo se corrige si quedan realmente tapados). El login muestra la version de la app.",
     "apk":  "/planta/VitroFlow-Planta.apk",
-    "versionCode":  19,
-    "versionName":  "1.18",
-    "fecha":  "2026-10-24"
+    "versionCode":  20,
+    "versionName":  "1.19",
+    "fecha":  "2026-10-26"
 }
