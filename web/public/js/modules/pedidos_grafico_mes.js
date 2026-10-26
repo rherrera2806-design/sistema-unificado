@@ -34,12 +34,17 @@ App.registerModule('pedidos_grafico_mes', {
         if (this.mes === null) { this.mes = hoy.getMonth(); this.anio = hoy.getFullYear(); }
 
         try {
-            // Ventana única: 12 meses (del mes -11 hasta el mes actual). El
-            // backend filtra por rango real; la navegación entre meses es
-            // instantánea porque todo queda en memoria.
-            const inicio = this._ymd(this.anio, this.mes - 11, 1);
-            const ultimoDia = new Date(this.anio, this.mes + 1, 0).getDate();
-            const fin = this._ymd(this.anio, this.mes, ultimoDia);
+            // Ventana SIEMPRE anclada a los últimos 12 meses desde el mes actual
+            // (aunque se navegue a un mes antiguo, los datos cargados cubren la
+            // misma ventana que permite la navegación). Con 1 día de MARGEN a
+            // cada lado: el servidor guarda fecha_subida en hora UTC y corta los
+            // rangos a medianoche UTC, así que los pedidos ingresados entre las
+            // 21:00 y 24:00 hrs (que en UTC ya son del día siguiente) se caían
+            // del mes consultado. La agrupación por día/mes es local (Chile).
+            const hoy = new Date();
+            const inicio = this._ymd(hoy.getFullYear(), hoy.getMonth() - 11, 0);   // día 0 = último día del mes anterior
+            const ultimoDia = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0).getDate();
+            const fin = this._ymd(hoy.getFullYear(), hoy.getMonth(), ultimoDia + 1);
             const headers = typeof getAuthHeaders === 'function' ? getAuthHeaders() : { 'Content-Type': 'application/json' };
             const res = await fetch(`/api/pedidos?inicio=${inicio}&fin=${fin}`, { headers });
             if (!res.ok) {
@@ -155,7 +160,10 @@ App.registerModule('pedidos_grafico_mes', {
     },
     _mesAnterior() {
         const m = this.mes - 1, a = this.mes === 0 ? this.anio - 1 : this.anio;
-        const inicio = new Date(this.anio, this.mes - 11, 1);
+        // Inicio de la ventana REAL de datos (hoy−11): fuera de ella no hay
+        // datos para comparar y el KPI lo dice honestamente
+        const hoy = new Date();
+        const inicio = new Date(hoy.getFullYear(), hoy.getMonth() - 11, 1);
         const ant = new Date(a, m, 1);
         return ant >= inicio ? { anio: a, mes: (m + 12) % 12 } : null;
     },
@@ -208,7 +216,12 @@ App.registerModule('pedidos_grafico_mes', {
 
     // ---------------- Comparativo de 12 meses ----------------
     _pintarComparativo() {
-        const inicio = new Date(this.anio, this.mes - 11, 1);
+        // Ventana REAL de datos: los 12 meses cargados (hoy−11 … hoy), con el mes
+        // seleccionado resaltado. Antes se recalculaba respecto del mes
+        // seleccionado y al navegar hacia atrás mostraba meses sin datos como 0
+        // (parecía que hubiera habido cero pedidos y no era cierto).
+        const hoy = new Date();
+        const inicio = new Date(hoy.getFullYear(), hoy.getMonth() - 11, 1);
         const meses = [];
         for (let i = 0; i < 12; i++) {
             const d = new Date(inicio.getFullYear(), inicio.getMonth() + i, 1);
