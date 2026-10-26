@@ -2,6 +2,9 @@ const { query } = require('../config/database');
 const { transaction } = require('../config/dbPool');
 // Require normal: produccionOrdenes.js no requiere taller.js, no hay ciclo
 const { sincronizarEstadoOrden } = require('./produccionOrdenes');
+// Avance implícito: cierra como terminados los pasos anteriores intactos cuando
+// un paso posterior ya se trabaja (no se pule un vidrio sin cortarlo)
+const { cerrarPasosAtrasados } = require('./avanceImplicito');
 
 /**
  * Calcula m2 y kilos proporcionales a una cantidad.
@@ -164,7 +167,23 @@ async function iniciarPaso(pasoId, maquinaId, operarioEmail, operarioNombre, tur
     updates.push(`locked_at = NOW()`);
     params.push(pasoId);
 
-    const upd = await query(`UPDATE cola_produccion_pasos SET ${updates.join(', ')} WHERE id = $${idx} RETURNING orden_produccion_id`, params);
+    const upd = await query(`UPDATE cola_produccion_pasos SET ${updates.join(', ')} WHERE id = $${idx} RETURNING orden_produccion_id, orden_secuencia`, params);
+
+    // AVANCE IMPLÍCITO: si pasos anteriores siguen intactos pero este ya se
+    // trabaja, es que ocurrieron físicamente (no se pule sin cortar) → se
+    // cierran solos, con trazabilidad
+    if (upd.rows.length > 0) {
+        try {
+            await cerrarPasosAtrasados({
+                ordenId: upd.rows[0].orden_produccion_id,
+                hastaSecuencia: upd.rows[0].orden_secuencia,
+                usuarioEmail: operarioEmail,
+                usuarioNombre: operarioNombre,
+                motivo: `inicio de paso ${upd.rows[0].orden_secuencia}`,
+                turno
+            });
+        } catch (_) { }
+    }
 
     // El estado de la orden se deriva del avance de sus pasos
     if (upd.rows.length > 0) {
@@ -277,6 +296,19 @@ async function finalizarPaso(pasoId, operarioEmail, operarioNombre, cantidadReal
         restoPasoId = nuevo.rows[0].id;
     }
 
+    // AVANCE IMPLÍCITO: los pasos anteriores intactos se cierran solos — si este
+    // paso ya se terminó, los anteriores ocurrieron físicamente (no se pule sin
+    // cortar). El "resto" de esta misma estación NO se toca (queda pendiente real)
+    try {
+        await cerrarPasosAtrasados({
+            ordenId: p.orden_produccion_id,
+            hastaSecuencia: p.orden_secuencia,
+            usuarioEmail: operarioEmail,
+            usuarioNombre: operarioNombre,
+            motivo: `cierre de paso ${p.orden_secuencia}`
+        });
+    } catch (_) { }
+
     // El estado de la orden se deriva del avance de sus pasos
     try { await sincronizarEstadoOrden(p.orden_produccion_id); } catch (_) { }
 
@@ -375,6 +407,7 @@ async function registroManual({ filas, userEmail, userName, estacionId, maquinaI
 
 async function registrarMerma({ paso_id, causa, cantidad, observacion, userEmail }) {
     let ordenAfectadaId = null;
+    let pasoSecuenciaMerma = null;
     const resultado = await transaction(async ({ query: txQuery }) => {
         const pasoResult = await txQuery(
             `SELECT p.*, o.cliente, o.codigo_producto, o.descripcion, o.ancho, o.alto, o.cantidad, o.familia_id, o.kilos, o.espesor_mm, o.pedido_sap_id, o.grupo, o.metros_cuadrados, o.costo_materia_prima, o.nota, o.pintado, o.perforaciones, o.tipo_venta, o.posicion, o.orden_compra, o.tipo_entrega, o.item_numero, o.codigo_padre, o.mecanizado_operaciones
@@ -386,6 +419,7 @@ async function registrarMerma({ paso_id, causa, cantidad, observacion, userEmail
         if (pasoResult.rows.length === 0) return null;
         const p = pasoResult.rows[0];
         ordenAfectadaId = p.orden_produccion_id;
+        pasoSecuenciaMerma = p.orden_secuencia;
 
         const cantidadOriginal = Number(p.cantidad) || 1;
         const cantidadMermada = Number(cantidad) || 1;
@@ -458,6 +492,17 @@ async function registrarMerma({ paso_id, causa, cantidad, observacion, userEmail
     // Sincroniza el estado de la orden con el avance de sus pasos. Se hace fuera
     // de la transacción para no mezclar conexiones (la sincronización usa el pool).
     if (resultado && ordenAfectadaId) {
+        // AVANCE IMPLÍCITO: si la merma se registró, los pasos anteriores
+        // intactos también ocurrieron físicamente → se cierran solos
+        try {
+            await cerrarPasosAtrasados({
+                ordenId: ordenAfectadaId,
+                hastaSecuencia: pasoSecuenciaMerma,
+                usuarioEmail: userEmail,
+                usuarioNombre: userEmail,
+                motivo: 'registro de merma'
+            });
+        } catch (_) { }
         try { await sincronizarEstadoOrden(ordenAfectadaId); } catch (_) { }
     }
     return resultado;

@@ -14,6 +14,15 @@ const { autoAsignarPendientes } = require('./planificacionAuto');
  * Solo se liberan las que están PROGRAMADO (asignadas a fecha pero aún no iniciadas).
  */
 async function reprogramarPendientes({ dias = 21, inicio } = {}) {
+    // AVANCE IMPLÍCITO (previo): se cierran los pasos intactos que quedaron
+    // "atrás" del avance real (si un paso posterior ya se trabajó, los anteriores
+    // ocurrieron físicamente). Así el trabajo fantasma no se re-programa ni
+    // consume capacidad. Ver avanceImplicito.js.
+    let avanceCerrado = 0;
+    try {
+        const ac = await require('./avanceImplicito').cerrarPasosAtrasados({ motivo: 'reprogramación' });
+        avanceCerrado = ac.cerrados;
+    } catch (_) { }
     // Fecha mínima en hora local (toISOString usa UTC y a la noche cambiaba el día)
     const calendario = require('./calendario');
     // Fecha mínima en hora local. REGLA: reprogramar NUNCA parte de HOY
@@ -149,7 +158,8 @@ async function reprogramarPendientes({ dias = 21, inicio } = {}) {
         asignados: resultado.asignados,
         noAsignados: resultado.noAsignados,
         total_procesados: resultado.total_procesados,
-        mensaje: `Se liberaron ${ordenesLiberadas} órdenes, se actualizaron ${rutasActualizadas} rutas desde la receta, se fecharon ${pasosFechados} pasos sueltos y se re-asignaron ${resultado.asignados.length} de ${resultado.total_procesados} pendientes`
+        avance_implicito: avanceCerrado,
+        mensaje: `Se liberaron ${ordenesLiberadas} órdenes, se actualizaron ${rutasActualizadas} rutas desde la receta, se fecharon ${pasosFechados} pasos sueltos y se re-asignaron ${resultado.asignados.length} de ${resultado.total_procesados} pendientes` + (avanceCerrado ? ` · ${avanceCerrado} pasos cerrados automáticamente por avance implícito` : '')
     };
 }
 
@@ -218,6 +228,17 @@ async function reprogramarPorAvance({ fechaMinima, soloSinFecha } = {}) {
     // está en curso): por defecto lo pendiente parte del SIGUIENTE día hábil.
     // El planificador puede elegir otra fecha de inicio (selector "Desde").
     const desde = fechaMinima || await calendario.siguienteDiaHabil(hoy);
+
+    // AVANCE IMPLÍCITO (previo): los pasos intactos que quedaron "atrás" del
+    // avance real se cierran solos (si Pulido avanzó, el Corte ocurrió). Sin
+    // esto, el motor re-programaba "trabajo fantasma" al futuro: robaba
+    // capacidad de la estación, invertía el orden real (Corte después de
+    // Pulido) y distorsionaba la fecha pactada. Ver avanceImplicito.js.
+    let avanceCerrado = 0;
+    try {
+        const ac = await require('./avanceImplicito').cerrarPasosAtrasados({ motivo: 'reprogramación por avance' });
+        avanceCerrado = ac.cerrados;
+    } catch (_) { }
 
     // ===== SINCRONIZAR RUTAS CON LA RECETA ACTUAL (antes era exclusivo del
     // "Reprogramar" tradicional; ahora lo hace también Por Avance) =====
@@ -512,7 +533,10 @@ async function reprogramarPorAvance({ fechaMinima, soloSinFecha } = {}) {
         pasos_fechados: pasosFechados,
         pasos_en_curso_respetados: pasosEnCurso,
         rutas_actualizadas: rutasActualizadas,
-        alertas,
-        mensaje: `${cola.length} órdenes re-programadas respetando el avance (${pasosFechados} pasos fechados, ${pasosEnCurso} en curso mantenidos hoy${rutasActualizadas ? ', ' + rutasActualizadas + ' rutas sincronizadas con la receta' : ''})`
+        avance_implicito: avanceCerrado,
+        alertas: avanceCerrado > 0
+            ? [{ tipo: 'avance_implicito', mensaje: `${avanceCerrado} pasos sin registrar se cerraron automáticamente porque su avance ya pasó por estaciones posteriores` }, ...alertas]
+            : alertas,
+        mensaje: `${cola.length} órdenes re-programadas respetando el avance (${pasosFechados} pasos fechados, ${pasosEnCurso} en curso mantenidos hoy${rutasActualizadas ? ', ' + rutasActualizadas + ' rutas sincronizadas con la receta' : ''}${avanceCerrado ? ', ' + avanceCerrado + ' pasos cerrados por avance implícito' : ''})`
     };
 }
