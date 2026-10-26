@@ -288,6 +288,15 @@ router.get('/api/pedidos/reporte', canView, async (req, res, next) => {
         const vis = filtroVisibilidad(req.user);
         const visWhere = vis.where ? vis.where.replace('$2', '$3') : '';
         const visParams = vis.params || [];
+        // BUSCADOR DE CLIENTE (opcional): coincidencia parcial sin distinguir
+        // mayúsculas — todo el reporte (KPIs, gráficos y rankings) queda filtrado
+        let cliWhere = '';
+        const cliParams = [];
+        if (typeof req.query.cliente === 'string' && req.query.cliente.trim() !== '') {
+            const cliIdx = 3 + visParams.length;   // posiciones 1/2 = rango, 3.. = visibilidad
+            cliWhere = ` AND p.cliente ILIKE '%' || $${cliIdx} || '%'`;
+            cliParams.push(req.query.cliente.trim().slice(0, 200));
+        }
         const result = await query(`
             SELECT
                 EXTRACT(MONTH FROM p.fecha_subida)::int as mes,
@@ -300,16 +309,16 @@ router.get('/api/pedidos/reporte', canView, async (req, res, next) => {
                 COALESCE(NULLIF(p.tipo_ov,''), 'Normal') as tipo_ov
             FROM pedidos p
             LEFT JOIN usuarios u ON u.email = p.vendedor
-            WHERE p.fecha_subida >= $1::date AND p.fecha_subida < $2::date${visWhere}
+            WHERE p.fecha_subida >= $1::date AND p.fecha_subida < $2::date${visWhere}${cliWhere}
             GROUP BY EXTRACT(MONTH FROM p.fecha_subida), u.nombre, p.vendedor, p.cliente, p.tipo_ov
             ORDER BY mes
-        `, [desde, hasta, ...visParams]);
+        `, [desde, hasta, ...visParams, ...cliParams]);
 
         const motivoResult = await query(`
             SELECT COALESCE(NULLIF(motivo_rechazo,''), 'Sin motivo') as motivo, COUNT(*)::int as total
-            FROM pedidos WHERE fecha_subida >= $1::date AND fecha_subida < $2::date${visWhere} AND estado = 'rechazado' AND motivo_rechazo IS NOT NULL AND motivo_rechazo != ''
+            FROM pedidos WHERE fecha_subida >= $1::date AND fecha_subida < $2::date${visWhere}${cliWhere.replace('p.cliente', 'cliente')} AND estado = 'rechazado' AND motivo_rechazo IS NOT NULL AND motivo_rechazo != ''
             GROUP BY motivo_rechazo ORDER BY total DESC LIMIT 8
-        `, [desde, hasta, ...visParams]);
+        `, [desde, hasta, ...visParams, ...cliParams]);
 
         const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
         const porMes = {};

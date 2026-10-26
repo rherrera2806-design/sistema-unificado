@@ -8,6 +8,9 @@
 App.registerModule('pedidos_reporte', {
     reportData: null,
     anio: new Date().getFullYear(),
+    cliente: '',        // buscador: filtra TODO el reporte por cliente (parcial)
+    _cliTimer: null,
+    _sugerencias: [],
 
     _fmtNum(v) { return Number(v || 0).toLocaleString('es-CL'); },
     _fmtDec1(v) { return Number(v || 0).toLocaleString('es-CL', { minimumFractionDigits: 1, maximumFractionDigits: 1 }); },
@@ -79,6 +82,15 @@ App.registerModule('pedidos_reporte', {
                 .rq-b-amber{color:#b45309;background:#fdf8f1}
                 .rq-b-green{color:#15803d;background:#f0fdf4}
                 .rq-b-red{color:#dc2626;background:#fef2f2}
+                .rq-filtro{background:#fff;border:1px solid #e4e9f0;border-radius:12px;padding:12px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+                .rq-filtro input{flex:1;min-width:220px;padding:10px 14px;border:1px solid #e4e9f0;border-radius:10px;font-size:13px;color:#0f172a;outline:none;background:#fbfcfe}
+                .rq-filtro input:focus{border-color:#2563eb;background:#fff}
+                .rq-fbtn{padding:10px 18px;border-radius:10px;border:none;background:#2563eb;color:#fff;font-size:13px;font-weight:600;cursor:pointer}
+                .rq-fbtn:hover{background:#1d4ed8}
+                .rq-fbtn.ghost{background:#fff;color:#475569;border:1px solid #e4e9f0}
+                .rq-fbtn.ghost:hover{background:#f8fafc}
+                .rq-fhint{font-size:11px;color:#8494a8}
+                .rq-fhint strong{color:#0369a1}
                 @media(max-width:768px){
                     .rq-hero{padding:16px}
                     .rq-hero h2{font-size:13px}
@@ -101,6 +113,17 @@ App.registerModule('pedidos_reporte', {
                     <div><div class="lbl">Año</div><div class="val" id="prAnioLabel">${this.anio}</div></div>
                     <button class="rq-nav" onclick="App.modules.pedidos_reporte.cambiarAnio(1)" aria-label="Año siguiente">›</button>
                 </div>
+            </div>
+
+            <div class="rq-filtro">
+                <input id="prCliente" list="prClientesLista" placeholder="🔍 Buscar cliente… (ej: Malfred — se filtra mientras escribes)"
+                    value="${escText(this.cliente)}"
+                    oninput="App.modules.pedidos_reporte._onClienteInput()"
+                    onkeydown="if(event.key==='Enter')App.modules.pedidos_reporte.buscarCliente(); if(event.key==='Escape')App.modules.pedidos_reporte.limpiarCliente()">
+                <datalist id="prClientesLista"></datalist>
+                <button class="rq-fbtn" onclick="App.modules.pedidos_reporte.buscarCliente()">Filtrar</button>
+                <button class="rq-fbtn ghost" onclick="App.modules.pedidos_reporte.limpiarCliente()">Limpiar</button>
+                <span class="rq-fhint" id="prFiltroInfo"></span>
             </div>
 
             <div class="rq-kpis" id="prKpis"></div>
@@ -143,7 +166,9 @@ App.registerModule('pedidos_reporte', {
     async loadData() {
         try {
             const headers = typeof getAuthHeaders === 'function' ? getAuthHeaders() : { 'Content-Type': 'application/json' };
-            const res = await fetch(`/api/pedidos/reporte?anio=${this.anio}`, { headers });
+            const cli = (this.cliente || '').trim();
+            const url = `/api/pedidos/reporte?anio=${this.anio}` + (cli ? `&cliente=${encodeURIComponent(cli)}` : '');
+            const res = await fetch(url, { headers });
             if (!res.ok) {
                 const err = await res.json().catch(() => ({}));
                 // Error VISIBLE: antes se mostraban ceros en silencio y parecía "sin datos"
@@ -152,6 +177,13 @@ App.registerModule('pedidos_reporte', {
             } else {
                 this.reportData = await res.json();
             }
+            // Sugerencias del buscador: se mantienen las del reporte completo
+            // (un filtro activo devuelve pocos clientes y las sugerencias no
+            // deben encogerse mientras se escribe)
+            if (!cli && (this.reportData.clientes || []).length) {
+                this._sugerencias = this.reportData.clientes.map(c => c.nombre);
+            }
+            this._pintarFiltro();
             this.renderKpis();
             this.renderChartMes();
             this.renderChartEstado();
@@ -160,6 +192,44 @@ App.registerModule('pedidos_reporte', {
         } catch (e) {
             console.error('Error reporte pedidos:', e);
             App.showAlert('Error al cargar el reporte: ' + e.message, 'danger');
+        }
+    },
+
+    // ---------------- Buscador de cliente ----------------
+    _onClienteInput() {
+        // Filtra mientras se escribe (debounce): al escribir un nombre el
+        // reporte sale filtrado automáticamente, como pide el usuario
+        clearTimeout(this._cliTimer);
+        this._cliTimer = setTimeout(() => this.buscarCliente(), 500);
+    },
+    buscarCliente() {
+        clearTimeout(this._cliTimer);
+        const inp = document.getElementById('prCliente');
+        const nuevo = (inp && inp.value || '').trim();
+        if (nuevo === (this.cliente || '')) return;
+        this.cliente = nuevo;
+        this.loadData();
+    },
+    limpiarCliente() {
+        clearTimeout(this._cliTimer);
+        this.cliente = '';
+        const inp = document.getElementById('prCliente');
+        if (inp) inp.value = '';
+        this.loadData();
+    },
+    _pintarFiltro() {
+        const el = document.getElementById('prFiltroInfo');
+        if (!el) return;
+        const cli = (this.cliente || '').trim();
+        if (!cli) {
+            el.innerHTML = 'escribe un nombre para filtrar todo el reporte';
+        } else {
+            const total = (this.reportData && this.reportData.totalGeneral) || 0;
+            el.innerHTML = 'Filtrado por cliente: <strong>' + escText(cli) + '</strong> · ' + this._fmtNum(total) + ' pedido' + (total === 1 ? '' : 's') + ' · <a href="javascript:void(0)" onclick="App.modules.pedidos_reporte.limpiarCliente()" style="color:#2563eb;text-decoration:underline">quitar filtro</a>';
+        }
+        const dl = document.getElementById('prClientesLista');
+        if (dl) {
+            dl.innerHTML = this._sugerencias.map(n => '<option value="' + escText(n) + '"></option>').join('');
         }
     },
 
