@@ -13,6 +13,8 @@ App.registerModule('pedidos_grafico_mes', {
     _datos: [],          // pedidos de la ventana de 12 meses (fetch único)
     mes: null,
     anio: null,
+    cliente: '',         // buscador: filtra todo el gráfico por cliente (parcial)
+    _cliTimer: null,
     _MESES: ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'],
     _MESES_CORTOS: ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'],
     // Paleta de ETIQUETAS (coherente con las etiquetas físicas de planta)
@@ -69,9 +71,12 @@ App.registerModule('pedidos_grafico_mes', {
     },
 
     // Pedidos del mes seleccionado (sin rechazados: no hay etiqueta "rechazado")
+    // — con el filtro de cliente activo (coincidencia parcial, sin mayúsculas)
     _pedidosMes(anio, mes) {
+        const cli = (this.cliente || '').trim().toLowerCase();
         return this._datos.filter(p => {
             if (p.estado === 'rechazado') return false;
+            if (cli && !String(p.cliente || '').toLowerCase().includes(cli)) return false;
             const f = new Date(p.fecha_subida);
             return f.getFullYear() === anio && f.getMonth() === mes;
         });
@@ -89,6 +94,17 @@ App.registerModule('pedidos_grafico_mes', {
                     <div style="text-align:center"><div class="lbl">Mes</div><div class="val" id="pgmMesLabel"></div></div>
                     <button class="pgm-nav-btn" onclick="App.modules.pedidos_grafico_mes.cambiarMes(1)" aria-label="Mes siguiente">›</button>
                 </div>
+            </div>
+
+            <div class="pgm-filtro">
+                <input id="pgmCliente" list="pgmClientesLista" placeholder="🔍 Buscar cliente… (ej: Malfred — se filtra mientras escribes)"
+                    value="${escText(this.cliente)}"
+                    oninput="App.modules.pedidos_grafico_mes._onClienteInput()"
+                    onkeydown="if(event.key==='Enter')App.modules.pedidos_grafico_mes.buscarCliente(); if(event.key==='Escape')App.modules.pedidos_grafico_mes.limpiarCliente()">
+                <datalist id="pgmClientesLista"></datalist>
+                <button class="pgm-fbtn" onclick="App.modules.pedidos_grafico_mes.buscarCliente()">Filtrar</button>
+                <button class="pgm-fbtn ghost" onclick="App.modules.pedidos_grafico_mes.limpiarCliente()">Limpiar</button>
+                <span class="pgm-fhint" id="pgmFiltroInfo"></span>
             </div>
 
             <div class="pgm-kpis" id="pgmKpis"></div>
@@ -118,6 +134,7 @@ App.registerModule('pedidos_grafico_mes', {
         document.getElementById('pgmSubEt').textContent = label.toLowerCase();
 
         const pedidos = this._pedidosMes(this.anio, this.mes);
+        this._pintarFiltro();
         this._pintarKpis(pedidos);
         this._pintarLeyenda(pedidos);
         this._pintarStack(pedidos);
@@ -260,6 +277,59 @@ App.registerModule('pedidos_grafico_mes', {
             : '<div class="pgm-vacio">Sin pedidos en este mes</div>';
     },
 
+    // ---------------- Buscador de cliente ----------------
+    // Filtra TODO el gráfico (KPIs, barras por día, comparativo y distribución)
+    // con los datos en memoria: es instantáneo, sin ir al servidor
+    _onClienteInput() {
+        clearTimeout(this._cliTimer);
+        this._cliTimer = setTimeout(() => this.buscarCliente(), 350);
+    },
+    buscarCliente() {
+        clearTimeout(this._cliTimer);
+        const inp = document.getElementById('pgmCliente');
+        const nuevo = (inp && inp.value || '').trim();
+        const teniaFoco = !!inp && document.activeElement === inp;
+        const caret = inp && inp.selectionStart != null ? inp.selectionStart : nuevo.length;
+        if (nuevo === (this.cliente || '')) return;
+        this.cliente = nuevo;
+        this._pintar(document.getElementById('page-pedidos_grafico_mes'));
+        // Al re-pintar se recrea el input: devolver foco y cursor para poder
+        // seguir escribiendo sin saltos (mismo patrón que la búsqueda del Taller)
+        const inp2 = document.getElementById('pgmCliente');
+        if (inp2 && teniaFoco) {
+            inp2.focus();
+            try { inp2.setSelectionRange(caret, caret); } catch (_) { }
+        }
+    },
+    limpiarCliente() {
+        clearTimeout(this._cliTimer);
+        this.cliente = '';
+        const inp = document.getElementById('pgmCliente');
+        if (inp) inp.value = '';
+        this._pintar(document.getElementById('page-pedidos_grafico_mes'));
+    },
+    _pintarFiltro() {
+        const el = document.getElementById('pgmFiltroInfo');
+        if (!el) return;
+        const cli = (this.cliente || '').trim();
+        const total = this._pedidosMes(this.anio, this.mes).length;
+        el.innerHTML = cli
+            ? 'Filtrado por cliente: <strong>' + escText(cli) + '</strong> · ' + this._fmtNum(total) + ' pedido' + (total === 1 ? '' : 's') + ' en ' + this._MESES[this.mes] + ' · <a href="javascript:void(0)" onclick="App.modules.pedidos_grafico_mes.limpiarCliente()" style="color:#2563eb;text-decoration:underline">quitar filtro</a>'
+            : 'escribe un nombre para filtrar todo el gráfico';
+        // Sugerencias: clientes de la ventana completa (no se encogen al filtrar)
+        const dl = document.getElementById('pgmClientesLista');
+        if (dl) {
+            const conteo = {};
+            this._datos.forEach(p => {
+                if (p.estado === 'rechazado') return;
+                const n = String(p.cliente || '').trim();
+                if (n) conteo[n] = (conteo[n] || 0) + 1;
+            });
+            dl.innerHTML = Object.entries(conteo).sort((a, b) => b[1] - a[1]).slice(0, 15)
+                .map(([n]) => '<option value="' + escText(n) + '"></option>').join('');
+        }
+    },
+
     cambiarMes(dir) {
         const hoy = new Date();
         const limiteAdelante = hoy.getFullYear() * 12 + hoy.getMonth();
@@ -283,6 +353,15 @@ App.registerModule('pedidos_grafico_mes', {
             .pgm-nav .val{font-size:20px;font-weight:700;color:#fff;white-space:nowrap}
             .pgm-nav-btn{width:32px;height:32px;border-radius:8px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.1);color:#fff;cursor:pointer;font-size:13px}
             .pgm-nav-btn:hover{background:rgba(255,255,255,.2)}
+            .pgm-filtro{background:#fff;border:1px solid #e4e9f0;border-radius:12px;padding:12px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+            .pgm-filtro input{flex:1;min-width:220px;padding:10px 14px;border:1px solid #e4e9f0;border-radius:10px;font-size:13px;color:#0f172a;outline:none;background:#fbfcfe}
+            .pgm-filtro input:focus{border-color:#2563eb;background:#fff}
+            .pgm-fbtn{padding:10px 18px;border-radius:10px;border:none;background:#2563eb;color:#fff;font-size:13px;font-weight:600;cursor:pointer}
+            .pgm-fbtn:hover{background:#1d4ed8}
+            .pgm-fbtn.ghost{background:#fff;color:#475569;border:1px solid #e4e9f0}
+            .pgm-fbtn.ghost:hover{background:#f8fafc}
+            .pgm-fhint{font-size:11px;color:#8494a8}
+            .pgm-fhint strong{color:#0369a1}
             .pgm-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
             .pgm-kpi{background:#fff;border:1px solid #e4e9f0;border-radius:12px;padding:15px 18px}
             .pgm-kpi .k{font-size:10px;font-weight:600;letter-spacing:.7px;text-transform:uppercase;color:#8494a8}
