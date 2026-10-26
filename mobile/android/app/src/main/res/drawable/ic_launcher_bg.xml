@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Fondo del icono adaptativo: mismo degradado del diseño (Producción OK) -->
+    <gradient
+        android:angle="315"
+        android:startColor="#1e293b"
+        android:endColor="#2563eb"
+        android:type="linear" />
+</shape>

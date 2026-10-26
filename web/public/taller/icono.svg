@@ -1,5 +1,15 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="96" fill="#0f172a"/>
-  <rect x="48" y="48" width="416" height="416" rx="72" fill="#1e40af"/>
-  <text x="256" y="330" font-family="Segoe UI,Arial" font-size="220" font-weight="800" fill="#ffffff" text-anchor="middle">VF</text>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="512" y2="512">
+      <stop offset="0" stop-color="#1e293b"/><stop offset="1" stop-color="#2563eb"/>
+    </linearGradient>
+    <linearGradient id="glass" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f8fafc"/><stop offset="1" stop-color="#93c5fd"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <rect x="112" y="112" width="288" height="288" rx="69" fill="#0b1220" opacity=".35"/>
+  <rect x="112" y="112" width="288" height="288" rx="69" stroke="url(#glass)" stroke-width="19"/>
+  <path d="M176 261 L235 320 L341 192" stroke="#7dd3fc" stroke-width="35" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M144 155 L197 155" stroke="#ffffff" stroke-opacity=".5" stroke-width="16" stroke-linecap="round"/>
 </svg>

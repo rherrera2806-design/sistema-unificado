@@ -1,7 +1,7 @@
 {
-    "notas":  "Login: los campos ya no se mueven solos al abrir el teclado (solo se corrige si quedan realmente tapados). El login muestra la version de la app.",
+    "notas":  "Icono nuevo de la app (Produccion OK: panel de vidrio con check) en Android y web. Login con la version visible y manejo de teclado corregido.",
     "apk":  "/planta/VitroFlow-Planta.apk",
-    "versionCode":  20,
-    "versionName":  "1.19",
+    "versionCode":  21,
+    "versionName":  "1.20",
     "fecha":  "2026-10-26"
 }

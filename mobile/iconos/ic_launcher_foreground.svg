@@ -1,0 +1,12 @@
+<svg viewBox="0 0 108 108" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="glassF" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f8fafc"/><stop offset="1" stop-color="#93c5fd"/>
+    </linearGradient>
+  </defs>
+  <!-- Zona segura del icono adaptativo: contenido dentro del circulo central -->
+  <rect x="17.3" y="17.3" width="73.4" height="73.4" rx="17.7" fill="#0b1220" opacity=".35"/>
+  <rect x="17.3" y="17.3" width="73.4" height="73.4" rx="17.7" stroke="url(#glassF)" stroke-width="4.8"/>
+  <path d="M33.6 55.4 L48.6 70.3 L75.8 37.7" stroke="#7dd3fc" stroke-width="8.8" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M25.4 28.2 L39 28.2" stroke="#ffffff" stroke-opacity=".5" stroke-width="4.1" stroke-linecap="round"/>
+</svg>
