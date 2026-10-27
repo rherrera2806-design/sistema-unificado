@@ -67,7 +67,7 @@ App.registerModule('usuarios', {
         { key: 'produccion', label: 'PRODUCCIÓN', subs: [
             { id: 'prod_ordenes', label: 'Producción' },
             { id: 'prod_planificacion', label: 'Planificación' },
-            { id: 'prod_reportes', label: 'Reporte Fechas' },
+            { id: 'prod_reportes', label: 'Prog. General' },
             { id: 'prod_prog_estacion', label: 'Programación Estación' },
             { id: 'prod_notas', label: 'Bitácora de Producción' },
             { id: 'prod_horarios', label: 'Horarios de Turno' },

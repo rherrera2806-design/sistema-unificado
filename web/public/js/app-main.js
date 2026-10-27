@@ -825,7 +825,7 @@ function renderSidebar() {
             { id: 'prod_notas', label: 'Bitácora de Producción', icon: SVG.clipboard },
             { id: 'prod_planificacion', label: 'Planificacion', icon: SVG.calendar },
             { id: 'prod_ordenes', label: 'Produccion', icon: SVG.box },
-            { id: 'prod_reportes', label: 'Reporte Fechas', icon: SVG.chart },
+            { id: 'prod_reportes', label: 'Prog. General', icon: SVG.chart },
             { id: 'prod_prog_estacion', label: 'Prog. por Estacion', icon: SVG.calendar },
             { id: 'taller', label: 'Taller', icon: SVG.home, external: '/taller/' },
             { id: 'dashboard_tv', label: 'Dashboard TV', icon: SVG.dashboard, external: '/dashboard/' },

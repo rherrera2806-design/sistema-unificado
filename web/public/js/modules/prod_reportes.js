@@ -16,9 +16,9 @@ App.registerModule('prod_reportes', {
                 @keyframes prFadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
                 .pr-card{transition:all .3s cubic-bezier(.4,0,.2,1)}
                 .pr-card:hover{box-shadow:0 6px 20px rgba(0,0,0,.06)!important;transform:translateY(-1px)}
-                .pr-table{width:100%;font-size:11px;border-collapse:collapse}
-                .pr-table th{padding:8px 10px;text-align:left;font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.5px;border-bottom:2px solid #e2e8f0;background:#f8fafc;position:sticky;top:0;z-index:1}
-                .pr-table td{padding:6px 10px;border-bottom:1px solid #f1f5f9;color:#334155}
+                .pr-table{width:100%;font-size:10.5px;border-collapse:collapse}
+                .pr-table th{padding:6px 7px;text-align:left;font-size:9px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.4px;border-bottom:2px solid #e2e8f0;background:#f8fafc;position:sticky;top:0;z-index:1;white-space:nowrap}
+                .pr-table td{padding:4px 7px;border-bottom:1px solid #f1f5f9;color:#334155}
                 .pr-table tbody tr{transition:background .15s}
                 .pr-table tbody tr:hover{background:#f8fafc!important}
                 .pr-date-header{background:linear-gradient(135deg,#0f172a,#1e3a5f);color:white;padding:10px 16px;font-weight:700;font-size:13px;display:flex;justify-content:space-between;align-items:center;border-radius:10px 10px 0 0;margin-top:16px}
@@ -51,10 +51,11 @@ App.registerModule('prod_reportes', {
 
             <div class="pr-hero">
                 <div>
-                    <h2>Informe de Fechas</h2>
+                    <h2>Prog. General</h2>
                     <p>Reporte de órdenes agrupadas por fecha de entrega</p>
                 </div>
                 <div class="pr-hero-actions">
+                    <button class="pr-hbtn" onclick="App.modules.prod_reportes.imprimir()" title="Imprimir el informe con los filtros activos">🖨 Imprimir</button>
                     <button class="pr-hbtn" onclick="App.modules.prod_reportes.exportarExcel()">⬇ Exportar Excel</button>
                 </div>
             </div>
@@ -221,10 +222,10 @@ App.registerModule('prod_reportes', {
                     <div class="m-table-wrap">
                     <table class="pr-table">
                         <thead><tr>
-                            <th>OV</th><th>Item</th><th>Pend.</th><th>Estado</th><th>Prioridad</th><th>Cliente</th><th>SAP Padre</th>
+                            <th>OV</th><th>Item</th><th>Pend.</th><th>Ruta</th><th>Avance por proceso</th><th>Estado</th><th>Prioridad</th><th>Cliente</th><th>SAP Padre</th>
                             <th>Descripción Padre</th><th>Espesor</th><th>Ancho</th><th>Alto</th>
                             <th style="text-align:right">M²</th>
-                            <th style="text-align:right">Kgs</th><th>Ruta</th><th>Avance por proceso</th><th>Tipo</th><th>Grupo</th>
+                            <th style="text-align:right">Kgs</th><th>Tipo</th><th>Grupo</th>
                         </tr></thead>
                         <tbody>`;
 
@@ -234,25 +235,25 @@ App.registerModule('prod_reportes', {
                 html += `<tr>
                     <td style="font-weight:600">${escText(o.ov || '')}</td>
                     <td>${escText(o.item || '')}</td>
-                    <td style="text-align:center">${escText(o.pend || '')}</td>
+                    <td style="text-align:center">${o.pend ? Number(o.pend).toLocaleString('es-CL') : ''}</td>
+                    <td style="font-size:10px;white-space:nowrap" title="${escAttr(o.ruta || '')}"><strong style="color:#7c3aed">${escText(o.proceso || o.ruta || '')}</strong></td>
+                    <td style="white-space:nowrap">${this._avanceBadges(o.avance)}</td>
                     <td><span class="pr-badge ${estadoClass}">${escText(o.estado || '')}</span></td>
                     <td>${this._prioBadge(o.prioridad)}</td>
                     <td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escAttr(o.cliente || '')}">${escText(o.cliente || '')}</td>
                     <td style="font-weight:600;white-space:nowrap">${escText(o.codigo_sap_padre || '')}</td>
                     <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escAttr(o.descripcion_padre || '')}">${escText(o.descripcion_padre || '')}</td>
-                    <td style="text-align:center">${o.espesor ? escText(o.espesor) + 'mm' : ''}</td>
-                    <td style="text-align:right">${escText(o.ancho || '')}</td>
-                    <td style="text-align:right">${escText(o.alto || '')}</td>
+                    <td style="text-align:center">${o.espesor ? Number(o.espesor).toLocaleString('es-CL',{maximumFractionDigits:2}) + ' mm' : ''}</td>
+                    <td style="text-align:right">${o.ancho ? Number(o.ancho).toLocaleString('es-CL') : ''}</td>
+                    <td style="text-align:right">${o.alto ? Number(o.alto).toLocaleString('es-CL') : ''}</td>
                     <td style="text-align:right;font-weight:600">${Number(o.m2).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1})}</td>
-                    <td style="text-align:right;font-weight:600">${Math.round(o.kgs)}</td>
-                    <td style="font-size:11px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escAttr(o.ruta || '')}">${escText(o.proceso || o.ruta || '')}</td>
-                    <td style="white-space:nowrap">${this._avanceBadges(o.avance)}</td>
+                    <td style="text-align:right;font-weight:600">${Number(o.kgs).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1})}</td>
                     <td>${escText(o.tipo || '')}</td>
                     <td><span style="background:#f0fdf4;color:#166534;padding:2px 8px;border-radius:5px;font-size:10px;font-weight:700;white-space:nowrap">${escText(o.grupo || '—')}</span></td>
                 </tr>`;
 
                 // Card movil (patron MODULE_RESPONSIVE_V1): campos principales de la fila
-                const dim = [o.espesor ? escText(o.espesor) + 'mm' : '', (o.ancho || o.alto) ? escText(o.ancho || '') + 'x' + escText(o.alto || '') : ''].filter(Boolean).join(' · ');
+                const dim = [o.espesor ? Number(o.espesor).toLocaleString('es-CL',{maximumFractionDigits:2}) + ' mm' : '', (o.ancho || o.alto) ? Number(o.ancho || 0).toLocaleString('es-CL') + 'x' + Number(o.alto || 0).toLocaleString('es-CL') : ''].filter(Boolean).join(' · ');
                 cardsHtml += `<div style="background:white;border:1px solid #e2e8f0;border-radius:10px;padding:12px 14px;margin-bottom:10px">
                     <div style="display:flex;justify-content:space-between;align-items:start;gap:8px;margin-bottom:6px">
                         <div style="min-width:0">
@@ -264,7 +265,7 @@ App.registerModule('prod_reportes', {
                     <div style="font-size:11px;color:#64748b;margin-bottom:6px">${escText(o.descripcion_padre || '-')}</div>
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:11px;margin-bottom:6px">
                         <div><span style="color:#94a3b8">Dim:</span> <span style="color:#475569">${dim || '-'}</span></div>
-                        <div><span style="color:#94a3b8">M²:</span> <strong style="color:#0f172a">${Number(o.m2).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1})}</strong> <span style="color:#94a3b8">Kgs:</span> <strong style="color:#0f172a">${Math.round(o.kgs)}</strong></div>
+                        <div><span style="color:#94a3b8">M²:</span> <strong style="color:#0f172a">${Number(o.m2).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1})}</strong> <span style="color:#94a3b8">Kgs:</span> <strong style="color:#0f172a">${Number(o.kgs).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1})}</strong></div>
                         <div style="grid-column:1/-1"><span style="color:#94a3b8">Ruta:</span> <span style="color:#7c3aed;font-size:10px" title="${escAttr(o.ruta || '')}">${escText(o.proceso || o.ruta || '-')}</span></div>
                         <div style="grid-column:1/-1"><span style="color:#94a3b8">Avance:</span> <span style="display:inline-flex;flex-wrap:wrap;gap:4px;margin-left:4px">${this._avanceBadges(o.avance)}</span></div>
                     </div>
@@ -281,7 +282,7 @@ App.registerModule('prod_reportes', {
                     <div>Items: <span>${fecha.totales.items}</span></div>
                     <div>Unid: <span>${Math.round(fecha.totales.unidades || 0).toLocaleString('es-CL')}</span></div>
                     <div>M²: <span>${Number(fecha.totales.m2).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1})}</span></div>
-                    <div>Kgs: <span>${Math.round(fecha.totales.kgs).toLocaleString('es-CL')}</span></div>
+                    <div>Kgs: <span>${Number(fecha.totales.kgs).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1})}</span></div>
                 </div>`;
         }
         el.innerHTML = html;
@@ -326,20 +327,135 @@ App.registerModule('prod_reportes', {
         }));
     },
 
+    // ── Impresión del informe ─────────────────────────────────────────────
+    // Imprime EXACTAMENTE lo que se ve: respeta los filtros activos (los datos
+    // ya vienen filtrados del servidor) y el encabezado indica cuáles estaban
+    // aplicados. Mismo orden de columnas y formatos que la pantalla.
+    imprimir() {
+        if (!this.datos || !this.datos.fechas || !this.datos.fechas.length) {
+            App.showAlert('No hay datos para imprimir con los filtros actuales', 'danger');
+            return;
+        }
+        let frame = document.getElementById('prPrintFrame');
+        if (!frame) {
+            frame = document.createElement('iframe');
+            frame.id = 'prPrintFrame';
+            frame.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden';
+            document.body.appendChild(frame);
+        }
+        frame.onload = () => {
+            try { frame.contentWindow.focus(); frame.contentWindow.print(); }
+            catch (e) { App.showAlert('No se pudo abrir la impresión: ' + e.message, 'danger'); }
+        };
+        frame.srcdoc = this._htmlImpresion();
+    },
+
+    _htmlImpresion() {
+        const d = this.datos;
+        const hoy = new Date();
+        const p2 = (x) => String(x).padStart(2, '0');
+        const impreso = `${p2(hoy.getDate())}-${p2(hoy.getMonth() + 1)}-${hoy.getFullYear()} ${p2(hoy.getHours())}:${p2(hoy.getMinutes())}`;
+        const f = this.filtros || {};
+        const filtrosTxt = [
+            'Período: ' + (this.formatFecha(f.fecha_inicio) || '—') + ' al ' + (this.formatFecha(f.fecha_fin) || '—'),
+            f.familia && f.familia !== 'todas' ? 'Familia: ' + f.familia : null,
+            f.grupo && f.grupo !== 'todos' ? 'Grupo: ' + f.grupo : null,
+            f.estado && f.estado !== 'todos' ? 'Estado: ' + f.estado : null
+        ].filter(Boolean).join(' · ');
+        const num = (v, dec) => Number(v || 0).toLocaleString('es-CL', { minimumFractionDigits: dec, maximumFractionDigits: dec });
+
+        const fechas = d.fechas || [];
+        let tItems = 0, tUnd = 0, tM2 = 0, tKg = 0;
+        for (const fc of fechas) {
+            tItems += fc.totales.items;
+            tUnd += fc.totales.unidades || 0;
+            tM2 += fc.totales.m2;
+            tKg += fc.totales.kgs;
+        }
+
+        let cuerpo = '';
+        for (const fc of fechas) {
+            cuerpo += `<h3 class="dia">${this.formatFecha(fc.fecha)}<span>${num(fc.totales.items, 0)} items · ${num(fc.totales.unidades || 0, 0)} und · ${num(fc.totales.m2, 1)} m² · ${num(fc.totales.kgs, 1)} kg</span></h3>`;
+            cuerpo += '<table><thead><tr>'
+                + '<th>OV</th><th>Item</th><th>Pend</th><th>Ruta</th><th>Avance por proceso</th><th>Estado</th><th>Prioridad</th><th>Cliente</th><th>SAP Padre</th><th>Descripción Padre</th><th>Espesor</th><th>Ancho</th><th>Alto</th><th>M²</th><th>Kgs</th><th>Tipo</th><th>Grupo</th>'
+                + '</tr></thead><tbody>';
+            for (const o of this._agrupar(fc.ordenes)) {
+                const avance = (o.avance || []).map(a => a.letra + ' ' + (a.cant > 0 ? num(a.cant, 0) : '—')).join(' · ');
+                cuerpo += `<tr>
+                    <td class="c"><strong>${escText(o.ov || '')}</strong></td>
+                    <td class="c">${escText(o.item || '')}</td>
+                    <td class="n">${o.pend ? num(o.pend, 0) : ''}</td>
+                    <td class="c">${escText(o.proceso || o.ruta || '')}</td>
+                    <td>${escText(avance)}</td>
+                    <td class="c">${escText(o.estado || '')}</td>
+                    <td class="c">${escText(({ 1: 'Normal', 2: 'Express', 3: 'Urgencia', 4: 'Reposición' })[o.prioridad] || '—')}</td>
+                    <td>${escText(o.cliente || '')}</td>
+                    <td class="c">${escText(o.codigo_sap_padre || '')}</td>
+                    <td>${escText(o.descripcion_padre || '')}</td>
+                    <td class="n">${o.espesor ? num(o.espesor, 2) + ' mm' : ''}</td>
+                    <td class="n">${o.ancho ? num(o.ancho, 0) : ''}</td>
+                    <td class="n">${o.alto ? num(o.alto, 0) : ''}</td>
+                    <td class="n">${num(o.m2, 1)}</td>
+                    <td class="n">${num(o.kgs, 1)}</td>
+                    <td>${escText(o.tipo || '')}</td>
+                    <td>${escText(o.grupo || '')}</td>
+                </tr>`;
+            }
+            cuerpo += '</tbody></table>';
+        }
+
+        return '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Prog. General</title><style>'
+            + '@page{size:A4 landscape;margin:9mm}'
+            + '*{box-sizing:border-box}'
+            + 'body{font-family:Arial,Helvetica,sans-serif;color:#111;font-size:9px;margin:0}'
+            + 'header{border-bottom:2px solid #111;padding-bottom:6px;margin-bottom:8px}'
+            + '.t1{font-size:8px;letter-spacing:2px;color:#555}'
+            + '.t2{font-size:16px;font-weight:800;margin:2px 0 3px}'
+            + '.meta{font-size:9px;color:#333}'
+            + '.kpis{display:flex;gap:16px;margin:6px 0 10px;font-size:9px}'
+            + '.kpi b{font-size:12px}'
+            + 'h3.dia{font-size:10px;margin:10px 0 4px;padding:3px 6px;background:#eee;border-left:3px solid #111;display:flex;justify-content:space-between}'
+            + 'h3.dia span{font-weight:400;color:#444;font-size:8.5px;align-self:center}'
+            + 'table{width:100%;border-collapse:collapse}'
+            + 'th{background:#e8e8e8;border:1px solid #999;padding:2px 4px;font-size:7px;text-transform:uppercase;text-align:left}'
+            + 'td{border:1px solid #bbb;padding:2px 4px;font-size:8px}'
+            + 'td.n{text-align:right;font-variant-numeric:tabular-nums}'
+            + 'td.c{text-align:center}'
+            + 'tbody tr:nth-child(even){background:#fafafa}'
+            + 'footer{margin-top:10px;padding-top:5px;border-top:1px solid #999;font-size:8px;color:#555;display:flex;justify-content:space-between}'
+            + '</style></head><body>'
+            + `<header>
+                <div class="t1">VITROFLOW · PRODUCCIÓN</div>
+                <div class="t2">Prog. General</div>
+                <div class="meta">${escText(filtrosTxt)}</div>
+               </header>`
+            + `<div class="kpis">
+                <div class="kpi">Fechas: <b>${num(fechas.length, 0)}</b></div>
+                <div class="kpi">Items: <b>${num(tItems, 0)}</b></div>
+                <div class="kpi">Unidades: <b>${num(tUnd, 0)}</b></div>
+                <div class="kpi">M²: <b>${num(tM2, 1)}</b></div>
+                <div class="kpi">Kgs: <b>${num(tKg, 1)}</b></div>
+               </div>`
+            + cuerpo
+            + `<footer><span>VitroFlow · Prog. General</span><span>Impreso ${impreso}</span></footer>`
+            + '</body></html>';
+    },
+
     exportarExcel() {
         if (!this.datos || !this.datos.fechas.length) return App.showAlert('No hay datos para exportar', 'warning');
-        let csv = 'FECHA;OV;Item;Pend;Estado;Prioridad;Cliente;SAP Padre;Descripción Padre;Ancho;Alto;Unidades;M2;Kgs;Ruta;Avance;Tipo;Grupo\n';
+        let csv = 'FECHA;OV;Item;Pend;Ruta;Avance;Estado;Prioridad;Cliente;SAP Padre;Descripción Padre;Ancho;Alto;Unidades;M2;Kgs;Tipo;Grupo\n';
         for (const f of this.datos.fechas) {
             for (const o of this._agrupar(f.ordenes)) {
                 csv += [
-                    f.fecha, o.ov, o.item, o.pend, o.estado, o.prioridad,
+                    f.fecha, o.ov, o.item, o.pend,
+                    `"${(o.proceso || o.ruta || '').replace(/"/g, '""')}"`,
+                    `"${(o.avance || []).map(a => a.letra + ':' + (a.cant || 0)).join('|')}"`,
+                    o.estado, o.prioridad,
                     `"${(o.cliente || '').replace(/"/g, '""')}"`,
                     `"${(o.codigo_sap_padre || '').replace(/"/g, '""')}"`,
                     `"${(o.descripcion_padre || '').replace(/"/g, '""')}"`,
                     o.ancho, o.alto, o.unidades || o.pend,
-                    Number(o.m2).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1}), Math.round(o.kgs),
-                    `"${(o.proceso || o.ruta || '').replace(/"/g, '""')}"`,
-                    `"${(o.avance || []).map(a => a.letra + ':' + (a.cant || 0)).join('|')}"`,
+                    Number(o.m2).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1}), Number(o.kgs).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1}),
                     o.tipo, o.grupo
                 ].join(';') + '\n';
             }
@@ -347,7 +463,7 @@ App.registerModule('prod_reportes', {
         const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
-        a.href = url; a.download = 'reporte_fechas.csv'; a.click();
+        a.href = url; a.download = 'prog_general.csv'; a.click();
         URL.revokeObjectURL(url);
         App.showAlert('Reporte exportado', 'success');
     }
