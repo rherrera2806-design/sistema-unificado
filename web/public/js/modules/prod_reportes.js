@@ -222,10 +222,10 @@ App.registerModule('prod_reportes', {
                     <div class="m-table-wrap">
                     <table class="pr-table">
                         <thead><tr>
-                            <th>OV</th><th>Item</th><th>Pend.</th><th>Ruta</th><th>Avance por proceso</th><th>Estado</th><th>Prioridad</th><th>Cliente</th><th>SAP Padre</th>
+                            <th>OV</th><th>Item</th><th>Pend.</th><th>Ruta</th><th>Avance por proceso</th><th>Prioridad</th><th>SAP Padre</th>
                             <th>Descripción Padre</th><th>Espesor</th><th>Ancho</th><th>Alto</th>
                             <th style="text-align:right">M²</th>
-                            <th style="text-align:right">Kgs</th><th>Tipo</th><th>Grupo</th>
+                            <th style="text-align:right">Kgs</th><th>Cliente</th><th>Tipo</th><th>Estado</th><th>Grupo</th>
                         </tr></thead>
                         <tbody>`;
 
@@ -238,9 +238,7 @@ App.registerModule('prod_reportes', {
                     <td style="text-align:center">${o.pend ? Number(o.pend).toLocaleString('es-CL') : ''}</td>
                     <td style="font-size:10px;white-space:nowrap" title="${escAttr(o.ruta || '')}"><strong style="color:#7c3aed">${escText(o.proceso || o.ruta || '')}</strong></td>
                     <td style="white-space:nowrap">${this._avanceBadges(o.avance)}</td>
-                    <td><span class="pr-badge ${estadoClass}">${escText(o.estado || '')}</span></td>
                     <td>${this._prioBadge(o.prioridad)}</td>
-                    <td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escAttr(o.cliente || '')}">${escText(o.cliente || '')}</td>
                     <td style="font-weight:600;white-space:nowrap">${escText(o.codigo_sap_padre || '')}</td>
                     <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escAttr(o.descripcion_padre || '')}">${escText(o.descripcion_padre || '')}</td>
                     <td style="text-align:center">${o.espesor ? Number(o.espesor).toLocaleString('es-CL',{maximumFractionDigits:2}) + ' mm' : ''}</td>
@@ -248,7 +246,9 @@ App.registerModule('prod_reportes', {
                     <td style="text-align:right">${o.alto ? Number(o.alto).toLocaleString('es-CL') : ''}</td>
                     <td style="text-align:right;font-weight:600">${Number(o.m2).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1})}</td>
                     <td style="text-align:right;font-weight:600">${Number(o.kgs).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1})}</td>
+                    <td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escAttr(o.cliente || '')}">${escText(o.cliente || '')}</td>
                     <td>${escText(o.tipo || '')}</td>
+                    <td><span class="pr-badge ${estadoClass}">${escText(o.estado || '')}</span></td>
                     <td><span style="background:#f0fdf4;color:#166534;padding:2px 8px;border-radius:5px;font-size:10px;font-weight:700;white-space:nowrap">${escText(o.grupo || '—')}</span></td>
                 </tr>`;
 
@@ -377,7 +377,7 @@ App.registerModule('prod_reportes', {
         for (const fc of fechas) {
             cuerpo += `<h3 class="dia">${this.formatFecha(fc.fecha)}<span>${num(fc.totales.items, 0)} items · ${num(fc.totales.unidades || 0, 0)} und · ${num(fc.totales.m2, 1)} m² · ${num(fc.totales.kgs, 1)} kg</span></h3>`;
             cuerpo += '<table><thead><tr>'
-                + '<th>OV</th><th>Item</th><th>Pend</th><th>Ruta</th><th>Avance por proceso</th><th>Estado</th><th>Prioridad</th><th>Cliente</th><th>SAP Padre</th><th>Descripción Padre</th><th>Espesor</th><th>Ancho</th><th>Alto</th><th>M²</th><th>Kgs</th><th>Tipo</th><th>Grupo</th>'
+                + '<th>OV</th><th>Item</th><th>Pend</th><th>Ruta</th><th>Avance por proceso</th><th>Prioridad</th><th>SAP Padre</th><th>Descripción Padre</th><th>Espesor</th><th>Ancho</th><th>Alto</th><th>M²</th><th>Kgs</th><th>Cliente</th><th>Tipo</th><th>Estado</th><th>Grupo</th>'
                 + '</tr></thead><tbody>';
             for (const o of this._agrupar(fc.ordenes)) {
                 const avance = (o.avance || []).map(a => a.letra + ' ' + (a.cant > 0 ? num(a.cant, 0) : '—')).join(' · ');
@@ -387,9 +387,7 @@ App.registerModule('prod_reportes', {
                     <td class="n">${o.pend ? num(o.pend, 0) : ''}</td>
                     <td class="c">${escText(o.proceso || o.ruta || '')}</td>
                     <td>${escText(avance)}</td>
-                    <td class="c">${escText(o.estado || '')}</td>
                     <td class="c">${escText(({ 1: 'Normal', 2: 'Express', 3: 'Urgencia', 4: 'Reposición' })[o.prioridad] || '—')}</td>
-                    <td>${escText(o.cliente || '')}</td>
                     <td class="c">${escText(o.codigo_sap_padre || '')}</td>
                     <td>${escText(o.descripcion_padre || '')}</td>
                     <td class="n">${o.espesor ? num(o.espesor, 2) + ' mm' : ''}</td>
@@ -397,7 +395,9 @@ App.registerModule('prod_reportes', {
                     <td class="n">${o.alto ? num(o.alto, 0) : ''}</td>
                     <td class="n">${num(o.m2, 1)}</td>
                     <td class="n">${num(o.kgs, 1)}</td>
+                    <td>${escText(o.cliente || '')}</td>
                     <td>${escText(o.tipo || '')}</td>
+                    <td class="c">${escText(o.estado || '')}</td>
                     <td>${escText(o.grupo || '')}</td>
                 </tr>`;
             }
@@ -443,20 +443,20 @@ App.registerModule('prod_reportes', {
 
     exportarExcel() {
         if (!this.datos || !this.datos.fechas.length) return App.showAlert('No hay datos para exportar', 'warning');
-        let csv = 'FECHA;OV;Item;Pend;Ruta;Avance;Estado;Prioridad;Cliente;SAP Padre;Descripción Padre;Ancho;Alto;Unidades;M2;Kgs;Tipo;Grupo\n';
+        let csv = 'FECHA;OV;Item;Pend;Ruta;Avance;Prioridad;SAP Padre;Descripción Padre;Ancho;Alto;Unidades;M2;Kgs;Cliente;Tipo;Estado;Grupo\n';
         for (const f of this.datos.fechas) {
             for (const o of this._agrupar(f.ordenes)) {
                 csv += [
                     f.fecha, o.ov, o.item, o.pend,
                     `"${(o.proceso || o.ruta || '').replace(/"/g, '""')}"`,
                     `"${(o.avance || []).map(a => a.letra + ':' + (a.cant || 0)).join('|')}"`,
-                    o.estado, o.prioridad,
-                    `"${(o.cliente || '').replace(/"/g, '""')}"`,
+                    o.prioridad,
                     `"${(o.codigo_sap_padre || '').replace(/"/g, '""')}"`,
                     `"${(o.descripcion_padre || '').replace(/"/g, '""')}"`,
                     o.ancho, o.alto, o.unidades || o.pend,
                     Number(o.m2).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1}), Number(o.kgs).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1}),
-                    o.tipo, o.grupo
+                    `"${(o.cliente || '').replace(/"/g, '""')}"`,
+                    o.tipo, o.estado, o.grupo
                 ].join(';') + '\n';
             }
         }
