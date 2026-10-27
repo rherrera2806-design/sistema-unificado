@@ -168,6 +168,16 @@ const getReporteFechas = async ({ familia, fecha_inicio, fecha_fin, grupo, estad
         porFecha[fecha].totales.unidades += Number(r.pend) || 0;
     }
 
+    // ORDEN DEL PROGRAMA (misma regla que Prog. por Estación y el Programa de
+    // Máquinas) dentro de cada fecha: Prioridad (Reposición → Express →
+    // Urgencia → Normal) → Espesor ascendente → Pedido → Item
+    const ordenPrograma = (a, b) =>
+        ((({ 4: 0, 2: 1, 3: 2 }[Number(a.prioridad)] ?? 3) - ({ 4: 0, 2: 1, 3: 2 }[Number(b.prioridad)] ?? 3))
+        || ((Number(a.espesor) || 0) - (Number(b.espesor) || 0))
+        || String(a.ov || '').localeCompare(String(b.ov || ''), 'es', { numeric: true })
+        || ((Number(a.item) || 0) - (Number(b.item) || 0)));
+    for (const f of Object.values(porFecha)) f.ordenes.sort(ordenPrograma);
+
     const fechas = Object.values(porFecha).sort((a, b) => a.fecha.localeCompare(b.fecha));
 
     const famRes = await query("SELECT DISTINCT f.nombre_familia FROM familias_producto f WHERE f.activa = TRUE ORDER BY f.nombre_familia");

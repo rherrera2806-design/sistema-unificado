@@ -231,7 +231,7 @@ App.registerModule('prod_reportes', {
                     <td style="text-align:right">${escText(o.alto || '')}</td>
                     <td style="text-align:right;font-weight:600">${Number(o.m2).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1})}</td>
                     <td style="text-align:right;font-weight:600">${Math.round(o.kgs)}</td>
-                    <td style="font-size:11px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escAttr(o.ruta || '')}">${escText(o.ruta || '')}</td>
+                    <td style="font-size:11px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escAttr(o.ruta || '')}">${escText(o.proceso || o.ruta || '')}</td>
                     <td>${escText(o.tipo || '')}</td>
                     <td><span style="background:#f1f5f9;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:600">${escText(o.grupo || '')}</span></td>
                 </tr>`;
@@ -250,7 +250,7 @@ App.registerModule('prod_reportes', {
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:11px;margin-bottom:6px">
                         <div><span style="color:#94a3b8">Dim:</span> <span style="color:#475569">${dim || '-'}</span></div>
                         <div><span style="color:#94a3b8">M²:</span> <strong style="color:#0f172a">${Number(o.m2).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1})}</strong> <span style="color:#94a3b8">Kgs:</span> <strong style="color:#0f172a">${Math.round(o.kgs)}</strong></div>
-                        <div style="grid-column:1/-1"><span style="color:#94a3b8">Ruta:</span> <span style="color:#7c3aed;font-size:10px">${escText(o.ruta || '-')}</span></div>
+                        <div style="grid-column:1/-1"><span style="color:#94a3b8">Ruta:</span> <span style="color:#7c3aed;font-size:10px" title="${escAttr(o.ruta || '')}">${escText(o.proceso || o.ruta || '-')}</span></div>
                     </div>
                     <div style="display:flex;flex-wrap:wrap;gap:4px">
                         <span style="background:#f1f5f9;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:600">${escText(o.tipo || '-')}</span>
@@ -322,7 +322,7 @@ App.registerModule('prod_reportes', {
                     `"${(o.descripcion_padre || '').replace(/"/g, '""')}"`,
                     o.ancho, o.alto, o.unidades || o.pend,
                     Number(o.m2).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1}), Math.round(o.kgs),
-                    `"${(o.ruta || '').replace(/"/g, '""')}"`,
+                    `"${(o.proceso || o.ruta || '').replace(/"/g, '""')}"`,
                     o.tipo, o.grupo
                 ].join(';') + '\n';
             }
