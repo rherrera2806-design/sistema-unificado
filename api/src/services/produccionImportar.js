@@ -118,6 +118,9 @@ const mergearFilas = (rows) => {
             merged[key] = {
                 codigo, pedido, item,
                 cliente: String(row['cliente'] || row['Cliente'] || row['CLIENTE'] || row['CardName'] || '').trim().toUpperCase(),
+                // vendedor: columna opcional de la planilla SAP (también se
+                // rescata desde Pedidos en el backfill si viene vacía)
+                vendedor: String(row['vendedor'] || row['Vendedor'] || row['VENDEDOR'] || row['Vend'] || row['VEND'] || '').trim(),
                 descripcion: String(row['descripcion'] || row['Descripcion'] || row['ItemName'] || '').trim(),
                 ancho, alto,
                 cantidad: Number(row['cantidad'] || row['Cantidad'] || row['CANTIDAD'] || row['cant'] || row['Cant'] || row['CANT'] || 1),
@@ -144,6 +147,10 @@ const mergearFilas = (rows) => {
             mergeOrder.push(key);
         } else {
             merged[key].cantidad += Number(row['cantidad'] || row['Cantidad'] || row['CANTIDAD'] || 1);
+            // Filas fusionadas: si la primera no traía vendedor pero ésta sí, completar
+            if (!merged[key].vendedor) {
+                merged[key].vendedor = String(row['vendedor'] || row['Vendedor'] || row['VENDEDOR'] || row['Vend'] || row['VEND'] || '').trim();
+            }
         }
     }
 

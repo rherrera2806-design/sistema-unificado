@@ -65,15 +65,14 @@ const sincronizarEstadoOrden = async (ordenId) => {
 };
 
 const getOrdenes = async () => {
-    // El vendedor NO vive en produccion_ordenes: se rescata desde el módulo
-    // Pedidos, que registra quién subió cada OV. Llave de unión:
-    // produccion_ordenes.pedido_sap_id = pedidos.numero_pedido (ambas UNIQUE,
-    // así el LEFT JOIN no puede duplicar filas). Las órdenes manuales o
-    // antiguas (sin OV en Pedidos) quedan con vendedor NULL → "—" en la UI.
+    // vendedor_nombre: usa PRIMERO la columna guardada en la orden (se carga
+    // desde el Excel de SAP, se edita a mano y viene del backfill de Pedidos)
+    // y solo si está vacía cae al rescate en vivo desde Pedidos
+    // (produccion_ordenes.pedido_sap_id = pedidos.numero_pedido). El LEFT JOIN
+    // no puede duplicar filas: numero_pedido y usuarios.email son UNIQUE.
     const result = await query(`
         SELECT o.*,
-            ped.vendedor as vendedor_email,
-            COALESCE(u.nombre, ped.vendedor) as vendedor_nombre,
+            COALESCE(NULLIF(TRIM(o.vendedor), ''), COALESCE(u.nombre, ped.vendedor)) as vendedor_nombre,
             (SELECT COUNT(*) FROM (SELECT DISTINCT p.orden_secuencia, p.estacion_id FROM cola_produccion_pasos p WHERE p.orden_produccion_id = o.id) t) as total_pasos,
             (SELECT COUNT(*) FROM (SELECT p.orden_secuencia, p.estacion_id
              FROM cola_produccion_pasos p WHERE p.orden_produccion_id = o.id
@@ -243,7 +242,7 @@ const buscarRecetasBom = async (codigo) => {
 };
 
 const crearOrden = async (body) => {
-    const { pedido_sap_id, cliente, codigo_producto, ancho, alto, perforaciones, perforado, destaje, sacado, pintado, tipo_venta, item_numero, cantidad, fecha_creacion, tipo_entrega, orden_compra, posicion, nota } = body;
+    const { pedido_sap_id, cliente, vendedor, codigo_producto, ancho, alto, perforaciones, perforado, destaje, sacado, pintado, tipo_venta, item_numero, cantidad, fecha_creacion, tipo_entrega, orden_compra, posicion, nota } = body;
 
     const cant = Number(cantidad) || 1;
     const m2 = ((Number(ancho) * Number(alto)) / 1000000) * cant;
@@ -296,10 +295,10 @@ const crearOrden = async (body) => {
         if (recetas.length > 0) {
             for (const comp of recetas) {
                 const result = await q(
-                    `INSERT INTO produccion_ordenes (pedido_sap_id, cliente, codigo_producto, descripcion, ancho, alto, metros_cuadrados,
+                    `INSERT INTO produccion_ordenes (pedido_sap_id, cliente, vendedor, codigo_producto, descripcion, ancho, alto, metros_cuadrados,
                      es_compuesto, tipo_venta, item_numero, cantidad, familia_id, codigo_padre, nota, posicion, orden_compra, tipo_entrega, created_at, mecanizado_operaciones)
-                     VALUES ($1,$2,$3,$4,$5,$6,$7,TRUE,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18) RETURNING id`,
-                    [pedido_sap_id, cliente || null, comp.codigo_mp || codigo, comp.mp_nombre || '', ancho, alto, m2,
+                     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,TRUE,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19) RETURNING id`,
+                    [pedido_sap_id, cliente || null, String(vendedor || '').trim().slice(0, 200), comp.codigo_mp || codigo, comp.mp_nombre || '', ancho, alto, m2,
                      tipo_venta || 'Normal', item_numero || 1, cant, familia?.id || null, codigo,
                      nota || null, posicion || null, orden_compra || null, tipo_entrega || 'Despacho', fecha_creacion || new Date().toISOString(), mecanizadoOperaciones]
                 );
@@ -309,10 +308,10 @@ const crearOrden = async (body) => {
             }
         } else {
             const result = await q(
-                `INSERT INTO produccion_ordenes (pedido_sap_id, cliente, codigo_producto, descripcion, ancho, alto, metros_cuadrados,
+                `INSERT INTO produccion_ordenes (pedido_sap_id, cliente, vendedor, codigo_producto, descripcion, ancho, alto, metros_cuadrados,
                  tipo_venta, item_numero, cantidad, familia_id, nota, posicion, orden_compra, tipo_entrega, created_at, mecanizado_operaciones)
-                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17) RETURNING *`,
-                [pedido_sap_id, cliente || null, codigo, null, ancho, alto, m2,
+                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18) RETURNING *`,
+                [pedido_sap_id, cliente || null, String(vendedor || '').trim().slice(0, 200), codigo, null, ancho, alto, m2,
                  tipo_venta || 'Normal', item_numero || 1, cant, familia?.id || null,
                  nota || null, posicion || null, orden_compra || null, tipo_entrega || 'Despacho', fecha_creacion || new Date().toISOString(), mecanizadoOperaciones]
             );
@@ -344,6 +343,10 @@ const editarOrden = async (id, body) => {
     if (body.cantidad !== undefined) { fields.push(`cantidad = $${idx++}`); values.push(Number(body.cantidad) || 1); }
     if (body.metros_cuadrados !== undefined) { fields.push(`metros_cuadrados = $${idx++}`); values.push(Number(body.metros_cuadrados)); }
     if (body.nivel_prioridad !== undefined) { fields.push(`nivel_prioridad = $${idx++}`); values.push(Math.min(4, Math.max(1, Number(body.nivel_prioridad) || 1))); }
+    // vendedor: texto libre (se usa el mismo desplegable del catálogo de
+    // vendedores). Se guarda tal cual, sin validar contra el catálogo, para
+    // permitir nombres de la planilla SAP que aún no estén dados de alta.
+    if (body.vendedor !== undefined) { fields.push(`vendedor = $${idx++}`); values.push(String(body.vendedor).trim().slice(0, 200)); }
     if (fields.length === 0) throw new Error('Sin campos para actualizar');
 
     values.push(id);

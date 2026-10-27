@@ -395,6 +395,7 @@ async function faseTablas({ q }) {
     // ── Producción: dependen de produccion_ordenes ───────────────────────────
     await q(`CREATE TABLE IF NOT EXISTS produccion_ordenes (
         id SERIAL PRIMARY KEY, pedido_sap_id VARCHAR(30), cliente TEXT,
+        vendedor VARCHAR(200) DEFAULT '',
         codigo_producto VARCHAR(30) NOT NULL, descripcion TEXT,
         ancho INTEGER NOT NULL, alto INTEGER NOT NULL,
         metros_cuadrados DECIMAL(10,4), es_compuesto BOOLEAN DEFAULT FALSE,
@@ -843,6 +844,27 @@ async function faseColumnas({ q, safe }) {
     // dejaba NULL. El "re-agregar" con DEFAULT 1 era no-op si la columna ya
     // existía, por eso se fija el DEFAULT explícitamente.
     await safe(`ALTER TABLE produccion_ordenes ALTER COLUMN item_numero SET DEFAULT 1`, 'produccion_ordenes.item_numero default');
+
+    // ── vendedor en órdenes de producción ────────────────────────────────────
+    // Se crea SOLO la primera vez (migración única) y en ese mismo arranque se
+    // hace el backfill desde el módulo Pedidos: pedidos.numero_pedido =
+    // produccion_ordenes.pedido_sap_id (ambas UNIQUE, el UPDATE no puede
+    // duplicar). Se usa COALESCE(u.nombre, p.vendedor) igual que la UI de
+    // Pedidos. Los UPDATE posteriores solo llenan vacíos: una edición manual
+    // de vendedor nunca se sobreescribe.
+    await safe(`DO $$ BEGIN
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='produccion_ordenes' AND column_name='vendedor') THEN
+                ALTER TABLE produccion_ordenes ADD COLUMN vendedor VARCHAR(200) DEFAULT '';
+                UPDATE produccion_ordenes o SET vendedor = COALESCE(u.nombre, p.vendedor, '')
+                FROM pedidos p LEFT JOIN usuarios u ON u.email = p.vendedor
+                WHERE p.numero_pedido = o.pedido_sap_id AND COALESCE(o.vendedor, '') = '';
+            END IF;
+        END $$`, 'produccion_ordenes.vendedor (+backfill desde Pedidos)');
+    // Refuerzo idempotente en arranques posteriores: solo completa vacíos (p.
+    // ej. órdenes importadas de SAP cuya OV ya existía en Pedidos).
+    await safe(`UPDATE produccion_ordenes o SET vendedor = COALESCE(u.nombre, p.vendedor, '')
+                FROM pedidos p LEFT JOIN usuarios u ON u.email = p.vendedor
+                WHERE p.numero_pedido = o.pedido_sap_id AND COALESCE(o.vendedor, '') = ''`, 'produccion_ordenes.vendedor backfill vacíos');
 
     // ── estaciones_maestras ──────────────────────────────────────────────────
     await safe(`ALTER TABLE estaciones_maestras ADD COLUMN IF NOT EXISTS cap_max DECIMAL(10,2) DEFAULT 100`, 'estaciones_maestras.cap_max');

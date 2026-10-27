@@ -97,6 +97,7 @@ App.registerModule('produccion', {
                 <select id="prodFilterGrupo" onchange="App.modules.produccion.filter()"><option value="todos">Todos los grupos</option></select>
                 <select id="prodFilterFamilia" onchange="App.modules.produccion.filter()"><option value="todas">Todas las familias</option></select>
                 <select id="prodFilterEstacion" onchange="App.modules.produccion.filter()"><option value="todas">Todas las estaciones</option></select>
+                <select id="prodFilterVendedor" onchange="App.modules.produccion.filter()"><option value="todos">Todos los vendedores</option><option value="__SIN__">⚠ Sin vendedor</option></select>
                 <input type="date" id="prodFilterFecha" onchange="App.modules.produccion.filter()" title="Filtrar por fecha programada">
                 <span class="po-flimpiar" onclick="App.modules.produccion.limpiarFiltros()">Limpiar filtros</span>
             </div>
@@ -132,6 +133,9 @@ App.registerModule('produccion', {
             <div class="po-dim" id="poDim" onclick="App.modules.produccion.cerrarDrawer()"></div>
             <div class="po-drawer" id="poDrawer"></div>
 
+            <!-- Lista de vendedores (catálogo) para Nueva Orden y edición del detalle -->
+            <datalist id="prodVendedoresList"></datalist>
+
             <!-- Modal importar -->
             <div class="po-overlay" id="prodImportModal">
                 <div class="po-modal" onclick="event.stopPropagation()">
@@ -147,7 +151,7 @@ App.registerModule('produccion', {
                         <div class="po-info">
                             <strong>Columnas de la plantilla:</strong><br>
                             <strong>Obligatoria:</strong> codigo<br>
-                            <strong>Opcionales:</strong> pedido, item, cliente, descripcion, cantidad, ancho, alto, kilos, precio, familia, perforaciones, mecanizado, destaje, sacado, radio, pulido, ventana, pintado, pintado car, tipo de venta, fecha_creacion, nota, posicion, orden de compra, tipo de entrega<br>
+                            <strong>Opcionales:</strong> pedido, item, cliente, vendedor, descripcion, cantidad, ancho, alto, kilos, precio, familia, perforaciones, mecanizado, destaje, sacado, radio, pulido, ventana, pintado, pintado car, tipo de venta, fecha_creacion, nota, posicion, orden de compra, tipo de entrega<br>
                             <em>Las flags (perforaciones, mecanizado, destaje, sacado, radio, pulido, ventana, pintado, pintado car) van con 0 o 1. Si falta ancho/alto se toman del BOM del código. Filas iguales (pedido+item+codigo) se fusionan sumando cantidad.</em>
                             <div style="margin-top:10px"><button class="po-btn ghost sm" onclick="window.open('/api/produccion/importar/template')">⬇ Descargar Plantilla</button></div>
                         </div>
@@ -169,6 +173,7 @@ App.registerModule('produccion', {
                             <div class="po-field"><label>Pedido *</label><input id="newOrdPedido" placeholder="Ej: 100500"></div>
                             <div class="po-field"><label>Item</label><input id="newOrdItem" type="number" value="1" min="1"></div>
                             <div class="po-field"><label>Cliente</label><input id="newOrdCliente" placeholder="NOMBRE DEL CLIENTE" oninput="this.value=this.value.toUpperCase()"></div>
+                            <div class="po-field"><label>Vendedor</label><input id="newOrdVendedor" placeholder="Nombre del vendedor" list="prodVendedoresList" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='';this.style.boxShadow=''"></div>
                             <div class="po-field"><label>Código producto *</label><input id="newOrdCodigo" placeholder="Ej: 1240, 730"></div>
                             <div class="po-field"><label>Ancho (mm) *</label><input id="newOrdAncho" type="number" value="0"></div>
                             <div class="po-field"><label>Alto (mm) *</label><input id="newOrdAlto" type="number" value="0"></div>
@@ -237,6 +242,51 @@ App.registerModule('produccion', {
         this._setupPrioridadEvents();
     },
 
+    // ---------------- Vendedor (catálogo + edición en línea) ----------------
+    // El catálogo vive en la tabla vendedores (Configuración → Vendedores, y
+    // también en Instalaciones). Si el nombre escrito no está en el catálogo se
+    // guarda igual: la planilla SAP puede traer vendedores aún no dados de alta.
+    _pintarVendedoresList() {
+        const dl = document.getElementById('prodVendedoresList');
+        if (dl) dl.innerHTML = (this.vendedores || []).map(v => '<option value="' + escText(v.nombre || v) + '">').join('');
+    },
+    editVendedor(id) {
+        const o = this.ordenes.find(x => x.id === id);
+        if (!o) return;
+        const cont = document.getElementById('poVend_' + id);
+        if (!cont) return;
+        const actual = o.vendedor_nombre || '';
+        cont.innerHTML = '<input id="poVendInput_' + id + '" list="prodVendedoresList" value="' + escText(actual) + '" '
+            + 'style="width:100%;font-size:12px;padding:4px 6px;border:1px solid #3b82f6;border-radius:6px;outline:none" '
+            + 'onkeydown="if(event.key===\'Enter\'){App.modules.produccion.guardarVendedor(' + id + ')}if(event.key===\'Escape\'){App.modules.produccion.verDetalle(' + id + ')}" '
+            + 'onblur="App.modules.produccion.guardarVendedor(' + id + ')">';
+        const inp = document.getElementById('poVendInput_' + id);
+        inp.focus();
+        inp.select();
+    },
+    async guardarVendedor(id) {
+        const inp = document.getElementById('poVendInput_' + id);
+        if (!inp || this._guardandoVend === id) return;
+        const valor = inp.value.trim();
+        const o = this.ordenes.find(x => x.id === id);
+        if (!o || valor === (o.vendedor_nombre || '')) { if (this._drawerId === id) await this.verDetalle(id); return; }
+        this._guardandoVend = id;
+        try {
+            const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
+            const res = await fetch(`/api/produccion/ordenes/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', 'X-User-Permisos': (user.permisos || []).join(','), 'X-User-Email': user.email || '' },
+                body: JSON.stringify({ vendedor: valor })
+            });
+            if (res.ok) {
+                App.toast(valor ? 'Vendedor actualizado: ' + valor : 'Vendedor quitado');
+                await this.load();
+                if (this._drawerId === id) await this.verDetalle(id);
+            } else { const d = await res.json(); App.showAlert(d.error || 'Error al guardar vendedor', 'danger'); }
+        } catch (e) { App.showAlert('Error: ' + e.message, 'danger'); }
+        this._guardandoVend = null;
+    },
+
     // ---------------- Helpers de formato (es-CL / dd-mm-yyyy) ----------------
     _fmt(v, dec) {
         const n = Number(v || 0);
@@ -262,15 +312,19 @@ App.registerModule('produccion', {
         try {
             const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
             const headers = { 'X-User-Permisos': (user.permisos || []).join(','), 'X-User-Email': user.email || '' };
-            const [ordenesRes, maquinasRes, recetasRes] = await Promise.all([
+            const [ordenesRes, maquinasRes, recetasRes, vendedoresRes] = await Promise.all([
                 fetch('/api/produccion/ordenes', { headers }),
                 fetch('/api/produccion/maquinas', { headers }),
-                fetch('/api/produccion/recetas', { headers })
+                fetch('/api/produccion/recetas', { headers }),
+                fetch('/api/produccion/vendedores', { headers }).catch(() => null)
             ]);
             if (!ordenesRes.ok) throw new Error('HTTP ' + ordenesRes.status);
             this.ordenes = await ordenesRes.json();
             this.maquinas = await maquinasRes.json();
             this.recetas = await recetasRes.json();
+            // Catálogo de vendedores (desplegable en Nueva Orden y en el detalle)
+            try { this.vendedores = vendedoresRes ? await vendedoresRes.json() : []; } catch (e) { this.vendedores = []; }
+            this._pintarVendedoresList();
             this.renderStats();
             this.populateFilters();
             this.filter();
@@ -284,7 +338,7 @@ App.registerModule('produccion', {
 
     limpiarFiltros() {
         const s = document.getElementById('prodFilterSearch'); if (s) s.value = '';
-        ['prodFilterEstado', 'prodFilterGrupo', 'prodFilterFamilia', 'prodFilterEstacion'].forEach(id => {
+        ['prodFilterEstado', 'prodFilterGrupo', 'prodFilterFamilia', 'prodFilterEstacion', 'prodFilterVendedor'].forEach(id => {
             const el = document.getElementById(id); if (el) el.selectedIndex = 0;
         });
         const f = document.getElementById('prodFilterFecha'); if (f) f.value = '';
@@ -304,6 +358,7 @@ App.registerModule('produccion', {
         const grupos = [...new Set(this.ordenes.map(o => o.grupo).filter(Boolean))].sort();
         const familias = [...new Set(this.ordenes.map(o => o.familia_nombre).filter(Boolean))].sort();
         const estaciones = [...new Set(this.ordenes.flatMap(o => o.estaciones || []).filter(Boolean))].sort();
+        const vendedores = [...new Set(this.ordenes.map(o => o.vendedor_nombre).filter(Boolean))].sort();
         const fill = (id, opciones, textoTodos, valTodos) => {
             const sel = document.getElementById(id);
             if (!sel) return;
@@ -313,6 +368,16 @@ App.registerModule('produccion', {
         fill('prodFilterGrupo', grupos, 'Todos los grupos', 'todos');
         fill('prodFilterFamilia', familias, 'Todas las familias', 'todas');
         fill('prodFilterEstacion', estaciones, 'Todas las estaciones', 'todas');
+        // "⚠ Sin vendedor" se conserva tras reconstruir (fill() borra las opciones)
+        const selV = document.getElementById('prodFilterVendedor');
+        if (selV) {
+            const curV = selV.value;
+            selV.innerHTML = '<option value="todos">Todos los vendedores</option>'
+                + '<option value="__SIN__">⚠ Sin vendedor</option>'
+                + vendedores.map(o => `<option value="${escAttr(o)}">${escText(o)}</option>`).join('');
+            if (curV) selV.value = curV;
+            if (!selV.value) selV.value = 'todos';
+        }
     },
 
     renderStats() {
@@ -336,13 +401,13 @@ App.registerModule('produccion', {
         const grupo = document.getElementById('prodFilterGrupo')?.value || 'todos';
         const familia = document.getElementById('prodFilterFamilia')?.value || 'todas';
         const estacion = document.getElementById('prodFilterEstacion')?.value || 'todas';
+        const vendedor = document.getElementById('prodFilterVendedor')?.value || 'todos';
         let filtered = this.ordenes;
         if (search) filtered = filtered.filter(o =>
             (o.codigo_producto || '').toLowerCase().includes(search)
             || (o.pedido_sap_id || '').toLowerCase().includes(search)
             || (o.cliente || '').toLowerCase().includes(search)
             || (o.vendedor_nombre || '').toLowerCase().includes(search)
-            || (o.vendedor_email || '').toLowerCase().includes(search)
             || (o.nombre_codigo_padre || '').toLowerCase().includes(search)
             || (o.nombre_mp || '').toLowerCase().includes(search));
         if (estado !== 'todos') filtered = filtered.filter(o => o.estado_programacion === estado);
@@ -350,6 +415,8 @@ App.registerModule('produccion', {
         if (grupo !== 'todos') filtered = filtered.filter(o => o.grupo === grupo);
         if (familia !== 'todas') filtered = filtered.filter(o => o.familia_nombre === familia);
         if (estacion !== 'todas') filtered = filtered.filter(o => (o.estaciones || []).includes(estacion));
+        if (vendedor === '__SIN__') filtered = filtered.filter(o => !o.vendedor_nombre);
+        else if (vendedor !== 'todos') filtered = filtered.filter(o => o.vendedor_nombre === vendedor);
         this._filtradas = filtered;
         this.renderTable(filtered);
         if (this._vista === 'tablero') this.renderBoard(filtered);
@@ -548,7 +615,7 @@ App.registerModule('produccion', {
                         <div class="po-kv"><div class="k">Código</div><div class="v">${escText(o.codigo_producto)} ${o.es_compuesto ? '<span class="po-bom">BOM</span>' : '<span class="po-sinbom">SIN BOM</span>'}</div></div>
                         <div class="po-kv" style="grid-column:1/-1"><div class="k">Código SAP / Descripción</div><div class="v">${o.codigo_padre ? escText(o.codigo_padre) + ' · ' : ''}${escText(o.descripcion || o.nombre_mp || '—')}</div></div>
                         <div class="po-kv"><div class="k">Dimensiones</div><div class="v">${this._fmt(o.ancho, 0)} × ${this._fmt(o.alto, 0)} mm</div></div>
-                        <div class="po-kv"><div class="k">Vendedor</div><div class="v">${escText(o.vendedor_nombre || '—')}</div></div>
+                        <div class="po-kv"><div class="k">Vendedor <span style="font-weight:400;color:#94a3b8;font-size:10px">(click para editar)</span></div><div class="v" id="poVend_${o.id}" style="cursor:pointer${o.vendedor_nombre ? '' : ';color:#d97706'}" title="Click para editar el vendedor" onclick="App.modules.produccion.editVendedor(${o.id})">${o.vendedor_nombre ? escText(o.vendedor_nombre) : '—  Asignar vendedor'}</div></div>
                         <div class="po-kv"><div class="k">Cantidad</div><div class="v">${this._fmt(o.cantidad || 1, 0)} und</div></div>
                         <div class="po-kv"><div class="k">Superficie</div><div class="v">${this._fmt(o.metros_cuadrados, 2)} m²</div></div>
                         <div class="po-kv"><div class="k">Peso</div><div class="v">${this._fmt(o.kilos, 1)} kg</div></div>
@@ -836,6 +903,7 @@ App.registerModule('produccion', {
         document.getElementById('newOrdPedido').value = '';
         document.getElementById('newOrdItem').value = '1';
         document.getElementById('newOrdCliente').value = '';
+        document.getElementById('newOrdVendedor').value = '';
         document.getElementById('newOrdCodigo').value = '';
         document.getElementById('newOrdAncho').value = '0';
         document.getElementById('newOrdAlto').value = '0';
@@ -856,6 +924,7 @@ App.registerModule('produccion', {
         const pedido = document.getElementById('newOrdPedido').value.trim();
         const item = Number(document.getElementById('newOrdItem').value) || 1;
         const cliente = document.getElementById('newOrdCliente').value.trim().toUpperCase();
+        const vendedor = document.getElementById('newOrdVendedor').value.trim();
         const codigo = document.getElementById('newOrdCodigo').value.trim();
         const ancho = Number(document.getElementById('newOrdAncho').value) || 0;
         const alto = Number(document.getElementById('newOrdAlto').value) || 0;
@@ -877,7 +946,7 @@ App.registerModule('produccion', {
             const headers = { 'Content-Type': 'application/json', 'X-User-Permisos': (user.permisos || []).join(','), 'X-User-Email': user.email || '' };
             const res = await fetch('/api/produccion/ordenes', {
                 method: 'POST', headers,
-                body: JSON.stringify({ pedido_sap_id: pedido, item_numero: item, cliente, codigo_producto: codigo, ancho, alto, perforaciones, pintado, tipo_venta, cantidad, fecha_creacion, tipo_entrega, orden_compra, posicion, nota })
+                body: JSON.stringify({ pedido_sap_id: pedido, item_numero: item, cliente, vendedor, codigo_producto: codigo, ancho, alto, perforaciones, pintado, tipo_venta, cantidad, fecha_creacion, tipo_entrega, orden_compra, posicion, nota })
             });
             const data = await res.json();
             if (res.ok) {
