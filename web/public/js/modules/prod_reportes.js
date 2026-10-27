@@ -1,6 +1,6 @@
 App.registerModule('prod_reportes', {
     datos: null,
-    filtros: { familia: 'todas', fecha_inicio: '', fecha_fin: '', grupo: 'todos', estado: 'todos' },
+    filtros: { familia: 'todas', fecha_inicio: '', fecha_fin: '', grupo: 'todos', estado: 'todos', pedido: '', cliente: '', espesor: '' },
 
     async render() {
         const el = document.getElementById('page-prod_reportes');
@@ -93,6 +93,26 @@ App.registerModule('prod_reportes', {
                         <label style="display:block;font-size:11px;font-weight:600;color:#64748b;margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px">Hasta</label>
                         <input type="date" id="prFilterHasta" onchange="App.modules.prod_reportes.aplicarFiltros()" style="width:100%;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;outline:none">
                     </div>
+                    <div style="flex:1;min-width:140px">
+                        <label style="display:block;font-size:11px;font-weight:600;color:#64748b;margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px">Buscar pedido</label>
+                        <input id="prFilterPedido" placeholder="N° de OV… (filtra al escribir)" value="${escText(this.filtros.pedido || '')}"
+                            oninput="App.modules.prod_reportes._onBusqueda('pedido', this.value)"
+                            onkeydown="if(event.key==='Escape'){this.value='';App.modules.prod_reportes._onBusqueda('pedido','')}"
+                            style="width:100%;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;outline:none">
+                    </div>
+                    <div style="flex:1;min-width:160px">
+                        <label style="display:block;font-size:11px;font-weight:600;color:#64748b;margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px">Buscar cliente</label>
+                        <input id="prFilterCliente" placeholder="Nombre del cliente… (filtra al escribir)" value="${escText(this.filtros.cliente || '')}"
+                            oninput="App.modules.prod_reportes._onBusqueda('cliente', this.value)"
+                            onkeydown="if(event.key==='Escape'){this.value='';App.modules.prod_reportes._onBusqueda('cliente','')}"
+                            style="width:100%;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;outline:none">
+                    </div>
+                    <div style="flex:1;min-width:120px">
+                        <label style="display:block;font-size:11px;font-weight:600;color:#64748b;margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px">Espesor</label>
+                        <select id="prFilterEspesor" onchange="App.modules.prod_reportes._onBusqueda('espesor', this.value)" style="width:100%;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;outline:none;background:white">
+                            <option value="">Todos los espesores</option>
+                        </select>
+                    </div>
                     <div>
                         <button class="btn btn-outline btn-sm" title="Limpiar filtros" onclick="App.modules.prod_reportes.limpiarFiltros()">Limpiar</button>
                     </div>
@@ -154,6 +174,14 @@ App.registerModule('prod_reportes', {
             selGrp.innerHTML = '<option value="todos">Todos los grupos</option>' +
                 this.datos.grupos.map(g => `<option value="${escAttr(g)}" ${g === val ? 'selected' : ''}>${escText(g)}</option>`).join('');
         }
+        // Espesores disponibles (de los datos cargados): filtro local instantáneo
+        const selEsp = document.getElementById('prFilterEspesor');
+        if (selEsp) {
+            const val = this.filtros.espesor || '';
+            const espesores = [...new Set((this.datos.fechas || []).flatMap(f => (f.ordenes || []).map(o => Number(o.espesor) || 0)).filter(e => e > 0))].sort((a, b) => a - b);
+            selEsp.innerHTML = '<option value="">Todos los espesores</option>' +
+                espesores.map(e => `<option value="${e}" ${String(e) === String(val) ? 'selected' : ''}>${Number(e).toLocaleString('es-CL',{maximumFractionDigits:2})} mm</option>`).join('');
+        }
     },
 
     // Badge de prioridad (numerada, idioma de etiquetas)
@@ -180,7 +208,7 @@ App.registerModule('prod_reportes', {
     renderResumen() {
         const el = document.getElementById('prResumen');
         if (!el || !this.datos) return;
-        const fechas = this.datos.fechas || [];
+        const fechas = this._datosFiltrados().fechas || [];
         let totalItems = 0, totalM2 = 0, totalKgs = 0, totalUnd = 0;
         for (const f of fechas) {
             totalItems += f.totales.items;
@@ -200,7 +228,7 @@ App.registerModule('prod_reportes', {
     renderTabla() {
         const el = document.getElementById('prReporte');
         if (!el || !this.datos) return;
-        const fechas = this.datos.fechas || [];
+        const fechas = this._datosFiltrados().fechas || [];
         if (fechas.length === 0) {
             el.innerHTML = `
                 <div style="background:white;border-radius:14px;padding:40px;text-align:center;border:1px solid #e2e8f0">
@@ -306,7 +334,7 @@ App.registerModule('prod_reportes', {
     },
 
     limpiarFiltros() {
-        this.filtros = { familia: 'todas', fecha_inicio: this._hoyLocal(), fecha_fin: '', grupo: 'todos', estado: 'todos' };
+        this.filtros = { familia: 'todas', fecha_inicio: this._hoyLocal(), fecha_fin: '', grupo: 'todos', estado: 'todos', pedido: '', cliente: '', espesor: '' };
         const fin = new Date(); fin.setDate(fin.getDate() + 14);
         this.filtros.fecha_fin = fin.toISOString().split('T')[0];
         this.render();
@@ -333,7 +361,8 @@ App.registerModule('prod_reportes', {
     // ya vienen filtrados del servidor) y el encabezado indica cuáles estaban
     // aplicados. Mismo orden de columnas y formatos que la pantalla.
     imprimir() {
-        if (!this.datos || !this.datos.fechas || !this.datos.fechas.length) {
+        const dImp = this._datosFiltrados();
+        if (!dImp || !dImp.fechas || !dImp.fechas.length) {
             App.showAlert('No hay datos para imprimir con los filtros actuales', 'danger');
             return;
         }
@@ -352,7 +381,7 @@ App.registerModule('prod_reportes', {
     },
 
     _htmlImpresion() {
-        const d = this.datos;
+        const d = this._datosFiltrados();
         const hoy = new Date();
         const p2 = (x) => String(x).padStart(2, '0');
         const impreso = `${p2(hoy.getDate())}-${p2(hoy.getMonth() + 1)}-${hoy.getFullYear()} ${p2(hoy.getHours())}:${p2(hoy.getMinutes())}`;
@@ -361,7 +390,10 @@ App.registerModule('prod_reportes', {
             'Período: ' + (this.formatFecha(f.fecha_inicio) || '—') + ' al ' + (this.formatFecha(f.fecha_fin) || '—'),
             f.familia && f.familia !== 'todas' ? 'Familia: ' + f.familia : null,
             f.grupo && f.grupo !== 'todos' ? 'Grupo: ' + f.grupo : null,
-            f.estado && f.estado !== 'todos' ? 'Estado: ' + f.estado : null
+            f.estado && f.estado !== 'todos' ? 'Estado: ' + f.estado : null,
+            f.pedido ? 'Pedido: ' + f.pedido : null,
+            f.cliente ? 'Cliente: ' + f.cliente : null,
+            f.espesor ? 'Espesor: ' + f.espesor + ' mm' : null
         ].filter(Boolean).join(' · ');
         const num = (v, dec) => Number(v || 0).toLocaleString('es-CL', { minimumFractionDigits: dec, maximumFractionDigits: dec });
 
@@ -442,10 +474,51 @@ App.registerModule('prod_reportes', {
             + '</body></html>';
     },
 
+    // ---------------- Filtros locales (pedido / cliente / espesor) ----------------
+    // Se aplican AL ESCRIBIR sobre los datos ya cargados (instantáneo, sin ir
+    // al servidor) y valen para pantalla, impresión y CSV
+    _onBusqueda(campo, valor) {
+        clearTimeout(this._busqTimer);
+        this.filtros[campo] = valor;
+        this._busqTimer = setTimeout(() => this._aplicarLocal(), campo === 'espesor' ? 0 : 350);
+    },
+    _aplicarLocal() {
+        this.renderResumen();
+        this.renderTabla();
+    },
+    // Vista de los datos con los filtros locales aplicados y los totales
+    // recalculados por fecha (KPIs, tabla, impresión y CSV usan esta vista)
+    _datosFiltrados() {
+        const f = this.filtros || {};
+        const qPed = String(f.pedido || '').trim().toLowerCase();
+        const qCli = String(f.cliente || '').trim().toLowerCase();
+        const qEsp = Number(f.espesor) || 0;
+        if (!qPed && !qCli && !qEsp) return this.datos;
+        const fechas = [];
+        for (const fc of ((this.datos && this.datos.fechas) || [])) {
+            const ordenes = (fc.ordenes || []).filter(o => {
+                if (qPed && !String(o.ov || '').toLowerCase().includes(qPed)) return false;
+                if (qCli && !String(o.cliente || '').toLowerCase().includes(qCli)) return false;
+                if (qEsp && (Number(o.espesor) || 0) !== qEsp) return false;
+                return true;
+            });
+            if (!ordenes.length) continue;
+            const totales = ordenes.reduce((t, o) => ({
+                items: t.items + 1,
+                unidades: t.unidades + (Number(o.pend) || 0),
+                m2: t.m2 + (Number(o.m2) || 0),
+                kgs: t.kgs + (Number(o.kgs) || 0)
+            }), { items: 0, unidades: 0, m2: 0, kgs: 0 });
+            fechas.push({ ...fc, ordenes, totales });
+        }
+        return { ...(this.datos || {}), fechas };
+    },
+
     exportarExcel() {
-        if (!this.datos || !this.datos.fechas.length) return App.showAlert('No hay datos para exportar', 'warning');
+        const d = this._datosFiltrados();
+        if (!d || !d.fechas.length) return App.showAlert('No hay datos para exportar', 'warning');
         let csv = 'FECHA;OV;Item;Pend;Ruta;Avance;Prioridad;SAP Padre;Descripción Padre;Ancho;Alto;Unidades;M2;Kgs;Cliente;Tipo;Estado;Grupo\n';
-        for (const f of this.datos.fechas) {
+        for (const f of d.fechas) {
             for (const o of this._agrupar(f.ordenes)) {
                 csv += [
                     f.fecha, o.ov, o.item, o.pend,
