@@ -70,7 +70,13 @@ App.registerModule('prod_reportes', {
                 </div>
             </div>
 
-            <div style="background:white;border-radius:14px;padding:20px;border:1px solid #e2e8f0;box-shadow:0 1px 3px rgba(0,0,0,.04);margin-bottom:20px;animation:prFadeUp .5s ease both">
+            <div style="background:white;border-radius:14px;padding:14px 20px;border:1px solid #e2e8f0;box-shadow:0 1px 3px rgba(0,0,0,.04);margin-bottom:20px;animation:prFadeUp .5s ease both">
+                <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+                    <div class="pr-fgrp" style="margin:0">Filtros y búsqueda</div>
+                    <span id="prFiltrosResumen" style="font-size:10px;color:#64748b"></span>
+                    <button id="prFiltrosToggle" onclick="App.modules.prod_reportes.toggleFiltros()" style="margin-left:auto;padding:5px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;background:white;color:#475569;white-space:nowrap">▾ Ocultar</button>
+                </div>
+                <div id="prFiltrosBody" style="margin-top:10px">
                 <div class="pr-fgrp">Filtros</div>
                 <div class="m-filters">
                     <div style="flex:1;min-width:140px">
@@ -131,6 +137,7 @@ App.registerModule('prod_reportes', {
                         <button class="btn btn-outline btn-sm" title="Limpiar todos los filtros" onclick="App.modules.prod_reportes.limpiarFiltros()">Limpiar todo</button>
                     </div>
                 </div>
+                </div>
             </div>
 
             <div id="prResumen" class="pr-kpis"></div>
@@ -141,6 +148,14 @@ App.registerModule('prod_reportes', {
         document.getElementById('prFilterHasta').value = this.filtros.fecha_fin;
 
         await this.cargarDatos();
+        // Respeta el estado expandido/contraído de los filtros entre renders
+        const bodyF = document.getElementById('prFiltrosBody');
+        const btnF = document.getElementById('prFiltrosToggle');
+        if (bodyF && !this._filtrosAbiertos) {
+            bodyF.style.display = 'none';
+            if (btnF) btnF.textContent = '▸ Mostrar';
+        }
+        this._pintarResumenFiltros();
     },
 
     async cargarDatos() {
@@ -344,6 +359,7 @@ App.registerModule('prod_reportes', {
         this.filtros.estado = document.getElementById('prFilterEstado')?.value || 'todos';
         this.filtros.fecha_inicio = document.getElementById('prFilterDesde')?.value || '';
         this.filtros.fecha_fin = document.getElementById('prFilterHasta')?.value || '';
+        this._pintarResumenFiltros();
         this.cargarDatos();
     },
 
@@ -501,7 +517,40 @@ App.registerModule('prod_reportes', {
         if (inp) { inp.value = ''; inp.focus(); }
         this._onBusqueda(campo, '');
     },
+    // ── Filtros expandibles ──────────────────────────────────────────────
+    // El panel (filtros + búsquedas) se contrae para darle espacio al informe;
+    // al contraerlo queda un resumen de lo activo y el botón para reabrirlo
+    _filtrosAbiertos: true,
+    toggleFiltros() {
+        this._filtrosAbiertos = !this._filtrosAbiertos;
+        const body = document.getElementById('prFiltrosBody');
+        const btn = document.getElementById('prFiltrosToggle');
+        if (body) body.style.display = this._filtrosAbiertos ? '' : 'none';
+        if (btn) btn.textContent = this._filtrosAbiertos ? '▾ Ocultar' : '▸ Mostrar';
+        this._pintarResumenFiltros();
+    },
+    _pintarResumenFiltros() {
+        const el = document.getElementById('prFiltrosResumen');
+        if (!el) return;
+        if (this._filtrosAbiertos) { el.textContent = ''; return; }
+        const f = this.filtros || {};
+        const selTxt = (id, porDefecto) => {
+            const s = document.getElementById(id);
+            return (s && s.selectedIndex >= 0 && s.value !== porDefecto) ? s.options[s.selectedIndex].text : null;
+        };
+        const partes = [
+            selTxt('prFilterFamilia', 'todas'),
+            selTxt('prFilterGrupo', 'todos'),
+            selTxt('prFilterEstado', 'todos'),
+            selTxt('prFilterEspesor', ''),
+            f.pedido ? 'Pedido: ' + f.pedido : null,
+            f.cliente ? 'Cliente: ' + f.cliente : null,
+            (f.fecha_inicio || f.fecha_fin) ? (f.fecha_inicio || '…') + ' → ' + (f.fecha_fin || '…') : null
+        ].filter(Boolean);
+        el.textContent = partes.length ? partes.join(' · ') : 'sin filtros activos';
+    },
     _aplicarLocal() {
+        this._pintarResumenFiltros();
         this.renderResumen();
         this.renderTabla();
     },
