@@ -164,3 +164,46 @@ describe('Permisos leídos desde la BD (no desde el snapshot de la sesión)', ()
         expect(req.user.area).toBe('ventas');
     });
 });
+
+/**
+ * Dashboard TV (/dashboard/) es un permiso SEPARADO del Taller: quien solo
+ * tiene 'dashboard_tv' puede ver la pantalla en vivo de planta sin contar con
+ * el Taller completo (y quien no lo tiene no debe poder verla).
+ *
+ * Se ejerce el middleware REAL montado en la ruta /api/taller/dashboard (y no
+ * una copia de la lista de permisos) para que el test falle si alguien vuelve
+ * a sacar 'dashboard_tv' de esa ruta.
+ */
+function middlewareDeDashboardTV() {
+    const tallerRouter = requireCjs('../routes/taller');
+    const capa = (tallerRouter.stack || []).find(l => l.route && l.route.path === '/api/taller/dashboard');
+    if (!capa) throw new Error('No se encontró la ruta /api/taller/dashboard');
+    return capa.route.stack[0].handle;
+}
+
+describe('Dashboard TV: permiso separado (dashboard_tv)', () => {
+    it('concede /api/taller/dashboard a quien solo tiene dashboard_tv', async () => {
+        const req = reqConSesion({ id: 21, email: 'tv@x.cl', rol: 'usuario', permisos: [] });
+        bdDevuelve({
+            id: 21, nombre: 'Pantalla de Planta', email: 'tv@x.cl', rol: 'usuario', area: 'produccion',
+            permisos: ['dashboard_tv'], activo: true,
+        });
+
+        const r = await ejecutar(middlewareDeDashboardTV(), req);
+
+        expect(r.nextCalled).toBe(true);
+    });
+
+    it('niega /api/taller/dashboard a quien no tiene taller ni dashboard_tv', async () => {
+        const req = reqConSesion({ id: 22, email: 'operario@x.cl', rol: 'usuario', permisos: [] });
+        bdDevuelve({
+            id: 22, nombre: 'Operario', email: 'operario@x.cl', rol: 'usuario', area: 'produccion',
+            permisos: ['prod_ordenes'], activo: true,
+        });
+
+        const r = await ejecutar(middlewareDeDashboardTV(), req);
+
+        expect(r.nextCalled).toBe(false);
+        expect(r.res.statusCode).toBe(403);
+    });
+});
