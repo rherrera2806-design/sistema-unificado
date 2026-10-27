@@ -30,6 +30,7 @@ const getReporteFechas = async ({ familia, fecha_inicio, fecha_fin, grupo, estad
 
     const result = await query(`
         SELECT
+            o.id as orden_id,
             o.pedido_sap_id as ov,
             o.item_numero as item,
             -- PENDIENTE REAL de fabricar: cantidad del pedido menos lo terminado
@@ -103,6 +104,42 @@ const getReporteFechas = async ({ familia, fecha_inicio, fecha_fin, grupo, estad
         r.ruta_abreviada = pares.join('-');
     }
 
+    // ===== LETRAS DE ESTACIÓN (campo 'letra' de estaciones_maestras) =====
+    // El código de proceso y el avance usan las MISMAS letras que ve el usuario
+    // en su Excel de corte (C, P, D, R, T, F, S, A, M...). Sin letra configurada
+    // cae al mapa estándar y luego a las 2 primeras letras del nombre.
+    const estRes = await query('SELECT nombre_estacion, letra FROM estaciones_maestras');
+    const letraPorNombre = {};
+    for (const e of estRes.rows) {
+        const k = String(e.nombre_estacion || '').trim().toLowerCase();
+        if (k) letraPorNombre[k] = String(e.letra || '').trim().toUpperCase() || '';
+    }
+    const letraDe = (nom) => {
+        const k = String(nom || '').trim().toLowerCase();
+        return letraPorNombre[k] || LETRA_ESTACION[k] || String(nom || '').trim().slice(0, 2).toUpperCase();
+    };
+
+    // ===== AVANCE POR PROCESO (letra) =====
+    // Unidades registradas en cada estación de la ruta: la vista rápida de "en
+    // qué proceso está el pedido". Se consulta una sola vez para todas las órdenes.
+    const idsOrdenes = [...new Set(rows.map(r => r.orden_id).filter(Boolean))];
+    const pasosMap = {};
+    if (idsOrdenes.length) {
+        const pasosRes = await query(`
+            SELECT cp.orden_produccion_id as orden_id, em.nombre_estacion as estacion,
+                   cp.orden_secuencia, cp.estado,
+                   COALESCE(cp.cantidad_real, 0) as cantidad_real
+            FROM cola_produccion_pasos cp
+            JOIN estaciones_maestras em ON em.id = cp.estacion_id
+            WHERE cp.orden_produccion_id = ANY($1)
+            ORDER BY cp.orden_secuencia, cp.id
+        `, [idsOrdenes]);
+        for (const p of pasosRes.rows) {
+            if (!pasosMap[p.orden_id]) pasosMap[p.orden_id] = [];
+            pasosMap[p.orden_id].push(p);
+        }
+    }
+
     // ===== MACRO POR CÓDIGO PADRE (reglas del negocio 1 y 5) =====
     // Las órdenes compuestas (BOM) crean UNA FILA POR CADA materia prima, todas
     // con el mismo m²/cantidad del pedido: el reporte se mide por CÓDIGO PADRE.
@@ -115,13 +152,21 @@ const getReporteFechas = async ({ familia, fecha_inicio, fecha_fin, grupo, estad
     const macro = new Map();
     for (const r of rows) {
         const key = `${r.ov}|${r.item}|${r.codigo_sap_padre || ''}`;
-        if (!macro.has(key)) macro.set(key, { ...r, espesor: 0, kilos: 0, pend: 0, m2: 0 });
+        if (!macro.has(key)) macro.set(key, { ...r, espesor: 0, kilos: 0, pend: 0, m2: 0, _ids: [] });
         const g = macro.get(key);
+        if (r.orden_id) g._ids.push(r.orden_id);
         const veces = Number(r.cant_receta) || 1;
         g.espesor += (Number(r.espesor) || 0) * veces;
         g.kilos += (Number(r.kilos) || 0) * veces;
         g.pend = Math.max(g.pend, Number(r.pend) || 0);
         g.m2 = Math.max(g.m2, Number(r.m2) || 0);
+    }
+    // Avance por proceso (letra) de cada fila macro: junta los pasos de todas
+    // las MP del padre — los hijos repiten las MISMAS unidades del pedido, así
+    // que se toma el máximo entre ellos (no se suman)
+    for (const g of macro.values()) {
+        g.avance = _buildAvance(g._ids, pasosMap, letraDe);
+        delete g._ids;
     }
     const rowsMacro = [...macro.values()];
 
@@ -158,9 +203,10 @@ const getReporteFechas = async ({ familia, fecha_inicio, fecha_fin, grupo, estad
             tipo: r.tipo || '',
             grupo: r.grupo || '',
             familia: r.familia || '',
-            proceso: _buildProceso(r),
+            proceso: _buildProceso(r, letraDe),
+            avance: r.avance || [],
             ruta: r.ruta_completa || '',
-            tiene: _buildTiene(r)
+            tiene: _buildTiene(r, letraDe)
         });
         porFecha[fecha].totales.m2 += Number(r.m2) || 0;
         porFecha[fecha].totales.kgs += Number(r.kilos) || 0;
@@ -203,22 +249,58 @@ const _letraEstacion = (nom) => {
     const k = String(nom || '').trim().toLowerCase();
     return LETRA_ESTACION[k] || String(nom || '').trim().slice(0, 2).toUpperCase();
 };
-function _buildProceso(r) {
+function _buildProceso(r, letraDe = _letraEstacion) {
     const partes = [];
     for (const nom of String(r.ruta_completa || '').split(' → ')) {
         if (!nom.trim()) continue;
-        const letra = _letraEstacion(nom);
+        const letra = letraDe(nom);
         if (!partes.length || partes[partes.length - 1] !== letra) partes.push(letra);
     }
     return partes.join('-');
 }
-function _buildTiene(r) {
+function _buildTiene(r, letraDe = _letraEstacion) {
     const tiene = {};
     for (const nom of String(r.ruta_completa || '').split(' → ')) {
         if (!nom.trim()) continue;
-        tiene[_letraEstacion(nom)] = true;
+        tiene[letraDe(nom)] = true;
     }
     return tiene;
+}
+// AVANCE POR PROCESO (letra): unidades registradas en cada estación de la ruta
+// con su estado — la vista rápida de "en qué proceso está el pedido".
+//   estado: 'ok' (estación terminada) · 'curso' (en proceso o con parte hecha
+//   y resto pendiente) · 'pend' (sin registrar nada)
+function _buildAvance(ordenIds, pasosMap, letraDe = _letraEstacion) {
+    const porLetra = {};
+    for (const id of (ordenIds || [])) {
+        // Los hijos de un compuesto repiten las MISMAS unidades del pedido:
+        // por estación se toma el MÁXIMO entre hijos (no se suman). Los restos
+        // parciales de una misma estación en un mismo hijo SÍ se suman.
+        const porEst = {};
+        for (const p of ((pasosMap && pasosMap[id]) || [])) {
+            const letra = letraDe(p.estacion);
+            if (!letra) continue;
+            const e = porEst[letra] || (porEst[letra] = { letra, estacion: p.estacion, cant: 0, pendientes: 0, curso: false, orden: Number(p.orden_secuencia) || 0 });
+            e.cant += Number(p.cantidad_real) || 0;
+            if (p.estado === 'EN_PROCESO' || p.estado === 'PAUSADO') e.curso = true;
+            else if (p.estado !== 'TERMINADO' && p.estado !== 'MERMADO') e.pendientes += 1;
+        }
+        for (const [letra, e] of Object.entries(porEst)) {
+            const prev = porLetra[letra];
+            if (!prev || e.cant > prev.cant) porLetra[letra] = e;
+        }
+    }
+    // El ORDEN de las letras es el de la RUTA (orden_secuencia de los pasos):
+    // la R (Radio) no puede ir antes de la P (Pulido) si en la ruta viene
+    // después — nunca orden alfabético
+    return Object.values(porLetra)
+        .sort((a, b) => (a.orden - b.orden) || String(a.letra).localeCompare(String(b.letra)))
+        .map(e => ({
+            letra: e.letra,
+            estacion: e.estacion,
+            cant: e.cant,
+            estado: (e.pendientes === 0 && !e.curso) ? 'ok' : ((e.cant > 0 || e.curso) ? 'curso' : 'pend')
+        }));
 }
 
 // ===== Lista de corte: órdenes ingresadas y programadas para corte =====
@@ -279,4 +361,4 @@ const getExportarCorte = async () => {
     return result.rows;
 };
 
-module.exports = { getReporteFechas, getExportarCorte, _buildProceso };
+module.exports = { getReporteFechas, getExportarCorte, _buildProceso, _buildAvance };

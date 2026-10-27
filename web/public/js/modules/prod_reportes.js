@@ -162,6 +162,20 @@ App.registerModule('prod_reportes', {
         return '<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;background:' + m[1] + ';color:' + m[2] + ';white-space:nowrap">● ' + m[0] + '</span>';
     },
 
+    // Avance por proceso (letra de estación): unidades fabricadas en cada
+    // estación de la ruta, EN EL ORDEN DE LA RUTA (la R va después de la P).
+    // Verde = terminado · Ámbar = en curso · Gris = pendiente
+    _avanceBadges(avance) {
+        if (!avance || !avance.length) return '<span style="color:#cbd5e1">—</span>';
+        return avance.map(a => {
+            const bg = a.estado === 'ok' ? '#f0fdf4' : a.estado === 'curso' ? '#fffbeb' : '#f1f5f9';
+            const fg = a.estado === 'ok' ? '#15803d' : a.estado === 'curso' ? '#b45309' : '#94a3b8';
+            const val = a.cant > 0 ? Number(a.cant).toLocaleString('es-CL') : '—';
+            const estTxt = a.estado === 'ok' ? 'terminado' : a.estado === 'curso' ? 'en curso' : 'pendiente';
+            return `<span title="${escAttr((a.estacion || '') + ' · ' + estTxt)}" style="display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:5px;font-size:10px;font-weight:700;background:${bg};color:${fg};white-space:nowrap">${escText(a.letra)} ${val}</span>`;
+        }).join(' ');
+    },
+
     renderResumen() {
         const el = document.getElementById('prResumen');
         if (!el || !this.datos) return;
@@ -210,7 +224,7 @@ App.registerModule('prod_reportes', {
                             <th>OV</th><th>Item</th><th>Pend.</th><th>Estado</th><th>Prioridad</th><th>Cliente</th><th>SAP Padre</th>
                             <th>Descripción Padre</th><th>Espesor</th><th>Ancho</th><th>Alto</th>
                             <th style="text-align:right">M²</th>
-                            <th style="text-align:right">Kgs</th><th>Ruta</th><th>Tipo</th><th>Grupo</th>
+                            <th style="text-align:right">Kgs</th><th>Ruta</th><th>Avance por proceso</th><th>Tipo</th><th>Grupo</th>
                         </tr></thead>
                         <tbody>`;
 
@@ -232,6 +246,7 @@ App.registerModule('prod_reportes', {
                     <td style="text-align:right;font-weight:600">${Number(o.m2).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1})}</td>
                     <td style="text-align:right;font-weight:600">${Math.round(o.kgs)}</td>
                     <td style="font-size:11px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escAttr(o.ruta || '')}">${escText(o.proceso || o.ruta || '')}</td>
+                    <td style="white-space:nowrap">${this._avanceBadges(o.avance)}</td>
                     <td>${escText(o.tipo || '')}</td>
                     <td><span style="background:#f1f5f9;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:600">${escText(o.grupo || '')}</span></td>
                 </tr>`;
@@ -251,6 +266,7 @@ App.registerModule('prod_reportes', {
                         <div><span style="color:#94a3b8">Dim:</span> <span style="color:#475569">${dim || '-'}</span></div>
                         <div><span style="color:#94a3b8">M²:</span> <strong style="color:#0f172a">${Number(o.m2).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1})}</strong> <span style="color:#94a3b8">Kgs:</span> <strong style="color:#0f172a">${Math.round(o.kgs)}</strong></div>
                         <div style="grid-column:1/-1"><span style="color:#94a3b8">Ruta:</span> <span style="color:#7c3aed;font-size:10px" title="${escAttr(o.ruta || '')}">${escText(o.proceso || o.ruta || '-')}</span></div>
+                        <div style="grid-column:1/-1"><span style="color:#94a3b8">Avance:</span> <span style="display:inline-flex;flex-wrap:wrap;gap:4px;margin-left:4px">${this._avanceBadges(o.avance)}</span></div>
                     </div>
                     <div style="display:flex;flex-wrap:wrap;gap:4px">
                         <span style="background:#f1f5f9;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:600">${escText(o.tipo || '-')}</span>
@@ -312,7 +328,7 @@ App.registerModule('prod_reportes', {
 
     exportarExcel() {
         if (!this.datos || !this.datos.fechas.length) return App.showAlert('No hay datos para exportar', 'warning');
-        let csv = 'FECHA;OV;Item;Pend;Estado;Prioridad;Cliente;SAP Padre;Descripción Padre;Ancho;Alto;Unidades;M2;Kgs;Ruta;Tipo;Grupo\n';
+        let csv = 'FECHA;OV;Item;Pend;Estado;Prioridad;Cliente;SAP Padre;Descripción Padre;Ancho;Alto;Unidades;M2;Kgs;Ruta;Avance;Tipo;Grupo\n';
         for (const f of this.datos.fechas) {
             for (const o of this._agrupar(f.ordenes)) {
                 csv += [
@@ -323,6 +339,7 @@ App.registerModule('prod_reportes', {
                     o.ancho, o.alto, o.unidades || o.pend,
                     Number(o.m2).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1}), Math.round(o.kgs),
                     `"${(o.proceso || o.ruta || '').replace(/"/g, '""')}"`,
+                    `"${(o.avance || []).map(a => a.letra + ':' + (a.cant || 0)).join('|')}"`,
                     o.tipo, o.grupo
                 ].join(';') + '\n';
             }
