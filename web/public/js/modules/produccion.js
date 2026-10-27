@@ -89,7 +89,7 @@ App.registerModule('produccion', {
             <div class="po-toolbar">
                 <div class="po-search">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8494a8" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                    <input type="text" id="prodFilterSearch" placeholder="Buscar pedido, código o cliente..." oninput="App.modules.produccion.filter()">
+                    <input type="text" id="prodFilterSearch" placeholder="Buscar pedido, código, cliente o vendedor..." oninput="App.modules.produccion.filter()">
                 </div>
                 <select id="prodFilterEstado" onchange="App.modules.produccion.filter()">
                     <option value="todos">Todos los estados</option><option value="PENDIENTE">Pendientes</option><option value="PROGRAMADO">Programadas</option><option value="EN_PROCESO">En Proceso</option><option value="TERMINADO">Terminadas</option><option value="MERMADO">Mermadas</option><option value="CERRADO">Cerradas</option>
@@ -115,10 +115,10 @@ App.registerModule('produccion', {
                 <div class="po-table-wrap">
                     <table class="po-table">
                         <thead><tr>
-                            <th>Pedido · Item</th><th>Cliente</th><th>Código SAP</th><th>Descripción</th><th>Código / MP</th><th>Dimensiones</th>
+                            <th>Pedido · Item</th><th>Cliente</th><th>Vendedor</th><th>Código SAP</th><th>Descripción</th><th>Código / MP</th><th>Dimensiones</th>
                             <th class="num">Cant.</th><th>Prioridad</th><th>Estado</th><th class="th-acc">Acciones</th>
                         </tr></thead>
-                        <tbody id="prodTable"><tr><td colspan="10" class="po-loading">Cargando órdenes...</td></tr></tbody>
+                        <tbody id="prodTable"><tr><td colspan="11" class="po-loading">Cargando órdenes...</td></tr></tbody>
                     </table>
                 </div>
                 <div id="prodCardsMobile" class="po-cards-mobile"></div>
@@ -277,7 +277,7 @@ App.registerModule('produccion', {
         } catch (e) {
             console.error('Error loading produccion:', e);
             const tbody = document.getElementById('prodTable');
-            if (tbody) tbody.innerHTML = '<tr><td colspan="10" class="po-loading" style="color:#dc2626">Error al cargar: ' + escText(e.message || 'No se pudo cargar') + '</td></tr>';
+            if (tbody) tbody.innerHTML = '<tr><td colspan="11" class="po-loading" style="color:#dc2626">Error al cargar: ' + escText(e.message || 'No se pudo cargar') + '</td></tr>';
             App.showAlert('Error al cargar órdenes: ' + (e.message || ''), 'danger');
         }
     },
@@ -341,6 +341,8 @@ App.registerModule('produccion', {
             (o.codigo_producto || '').toLowerCase().includes(search)
             || (o.pedido_sap_id || '').toLowerCase().includes(search)
             || (o.cliente || '').toLowerCase().includes(search)
+            || (o.vendedor_nombre || '').toLowerCase().includes(search)
+            || (o.vendedor_email || '').toLowerCase().includes(search)
             || (o.nombre_codigo_padre || '').toLowerCase().includes(search)
             || (o.nombre_mp || '').toLowerCase().includes(search));
         if (estado !== 'todos') filtered = filtered.filter(o => o.estado_programacion === estado);
@@ -393,7 +395,7 @@ App.registerModule('produccion', {
         const cardsMobile = document.getElementById('prodCardsMobile');
         this.renderTotales(ordenes);
         if (!ordenes.length) {
-            tbody.innerHTML = '<tr><td colspan="10" class="po-loading">No hay órdenes con los filtros actuales</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="11" class="po-loading">No hay órdenes con los filtros actuales</td></tr>';
             if (cardsMobile) cardsMobile.innerHTML = '<div class="po-loading">No hay órdenes con los filtros actuales</div>';
             return;
         }
@@ -402,6 +404,7 @@ App.registerModule('produccion', {
             return '<tr onclick="App.modules.produccion.verDetalle(' + o.id + ')">'
                 + '<td><strong>' + escText(o.pedido_sap_id || '-') + '</strong><div class="sub2">Item ' + escText(o.item_numero || '-') + (o.orden_compra ? ' · OC ' + escText(o.orden_compra) : '') + '</div></td>'
                 + '<td>' + escText((o.cliente || '-').toUpperCase()) + '</td>'
+                + '<td>' + escText(o.vendedor_nombre || '—') + '</td>'
                 + '<td><strong>' + escText(o.codigo_padre || o.codigo_producto || '-') + '</strong></td>'
                 + '<td class="c-desc">' + escText(o.nombre_codigo_padre || o.descripcion || '—') + '</td>'
                 + '<td><strong>' + escText(o.codigo_producto) + '</strong> '
@@ -428,7 +431,7 @@ App.registerModule('produccion', {
                 const progreso = o.total_pasos > 0 ? ' · ' + o.pasos_terminados + '/' + o.total_pasos + ' pasos' : '';
                 return '<div class="po-mcard">'
                     + '<div class="t1"><strong>' + escText(o.pedido_sap_id || '-') + ' · It ' + escText(o.item_numero || '-') + '</strong>' + this._estadoBadge(o.estado_programacion) + '</div>'
-                    + '<div class="sub2">' + escText((o.cliente || '-').toUpperCase()) + ' · SAP ' + escText(o.codigo_padre || o.codigo_producto || '-') + (o.orden_compra ? ' · OC ' + escText(o.orden_compra) : '') + '</div>'
+                    + '<div class="sub2">' + escText((o.cliente || '-').toUpperCase()) + (o.vendedor_nombre ? ' · Vend. ' + escText(o.vendedor_nombre) : '') + ' · SAP ' + escText(o.codigo_padre || o.codigo_producto || '-') + (o.orden_compra ? ' · OC ' + escText(o.orden_compra) : '') + '</div>'
                     + '<div class="sub2">' + escText(o.nombre_codigo_padre || o.descripcion || '') + '</div>'
                     + '<div class="sub2">' + escText(o.codigo_producto) + ' · ' + escText(o.nombre_mp || '') + '</div>'
                     + '<div class="t2">' + this._prioBadge(o.nivel_prioridad, o.id, true)
@@ -545,6 +548,7 @@ App.registerModule('produccion', {
                         <div class="po-kv"><div class="k">Código</div><div class="v">${escText(o.codigo_producto)} ${o.es_compuesto ? '<span class="po-bom">BOM</span>' : '<span class="po-sinbom">SIN BOM</span>'}</div></div>
                         <div class="po-kv" style="grid-column:1/-1"><div class="k">Código SAP / Descripción</div><div class="v">${o.codigo_padre ? escText(o.codigo_padre) + ' · ' : ''}${escText(o.descripcion || o.nombre_mp || '—')}</div></div>
                         <div class="po-kv"><div class="k">Dimensiones</div><div class="v">${this._fmt(o.ancho, 0)} × ${this._fmt(o.alto, 0)} mm</div></div>
+                        <div class="po-kv"><div class="k">Vendedor</div><div class="v">${escText(o.vendedor_nombre || '—')}</div></div>
                         <div class="po-kv"><div class="k">Cantidad</div><div class="v">${this._fmt(o.cantidad || 1, 0)} und</div></div>
                         <div class="po-kv"><div class="k">Superficie</div><div class="v">${this._fmt(o.metros_cuadrados, 2)} m²</div></div>
                         <div class="po-kv"><div class="k">Peso</div><div class="v">${this._fmt(o.kilos, 1)} kg</div></div>

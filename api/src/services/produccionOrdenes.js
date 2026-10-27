@@ -65,8 +65,15 @@ const sincronizarEstadoOrden = async (ordenId) => {
 };
 
 const getOrdenes = async () => {
+    // El vendedor NO vive en produccion_ordenes: se rescata desde el módulo
+    // Pedidos, que registra quién subió cada OV. Llave de unión:
+    // produccion_ordenes.pedido_sap_id = pedidos.numero_pedido (ambas UNIQUE,
+    // así el LEFT JOIN no puede duplicar filas). Las órdenes manuales o
+    // antiguas (sin OV en Pedidos) quedan con vendedor NULL → "—" en la UI.
     const result = await query(`
         SELECT o.*,
+            ped.vendedor as vendedor_email,
+            COALESCE(u.nombre, ped.vendedor) as vendedor_nombre,
             (SELECT COUNT(*) FROM (SELECT DISTINCT p.orden_secuencia, p.estacion_id FROM cola_produccion_pasos p WHERE p.orden_produccion_id = o.id) t) as total_pasos,
             (SELECT COUNT(*) FROM (SELECT p.orden_secuencia, p.estacion_id
              FROM cola_produccion_pasos p WHERE p.orden_produccion_id = o.id
@@ -101,7 +108,10 @@ const getOrdenes = async () => {
                 WHERE cp.orden_produccion_id = o.id
                 ORDER BY cp.orden_secuencia
             ) as estaciones
-        FROM produccion_ordenes o ORDER BY o.created_at DESC
+        FROM produccion_ordenes o
+        LEFT JOIN pedidos ped ON ped.numero_pedido = o.pedido_sap_id
+        LEFT JOIN usuarios u ON u.email = ped.vendedor
+        ORDER BY o.created_at DESC
     `);
     for (const row of result.rows) {
         // Sin estaciones repetidas por pasos partidos (registros parciales)
