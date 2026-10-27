@@ -63,6 +63,16 @@ App.modules.planificacion = {
     },
 
     // ---------------- Render principal ----------------
+    // ¿Puede editar el plan (Auto-Asignar, Reprogramar, Capacidad)?
+    // Admin por rol/permiso, o los permisos reales del arbol de Usuarios
+    // (prod_planificacion.*); 'produccion' se mantiene por compatibilidad.
+    _puedeEditar(user) {
+        const p = user.permisos || [];
+        return user.rol === 'admin' || p.includes('usuarios') ||
+            p.includes('prod_planificacion.editar') || p.includes('prod_planificacion.agregar') ||
+            p.includes('produccion');
+    },
+
     async render() {
         const hoy = new Date();
         if (!this.fechaGrupo) this.fechaGrupo = this.fmtDate(hoy);
@@ -70,9 +80,7 @@ App.modules.planificacion = {
         if (!this.estacInicio) this.estacInicio = this.fmtDate(hoy);
 
         const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
-        // Admin por ROL o por permiso: un admin sin 'usuarios' en el array
-        // (p.ej. tras editarlo desde la UI) perdia Auto asignar y Reprogramar.
-        const puedeEditar = user.rol === 'admin' || (user.permisos || []).includes('usuarios') || (user.permisos || []).includes('produccion');
+        const puedeEditar = this._puedeEditar(user);
         const page = document.getElementById('page-planificacion');
         if (!page) return;
 
@@ -425,7 +433,7 @@ App.modules.planificacion = {
     // ---------------- Capacidad por grupo ----------------
     showCapacidadGrupo() {
         const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
-        if (user.rol !== 'admin' && !(user.permisos || []).includes('usuarios') && !(user.permisos || []).includes('produccion')) {
+        if (!this._puedeEditar(user)) {
             App.showAlert('Sin permiso para editar la capacidad', 'danger'); return;
         }
         const html = `
@@ -460,7 +468,7 @@ App.modules.planificacion = {
     // ---------------- Auto-Asignar ----------------
     showAutoAsignarGrupo() {
         const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
-        if (user.rol !== 'admin' && !(user.permisos || []).includes('usuarios') && !(user.permisos || []).includes('produccion')) {
+        if (!this._puedeEditar(user)) {
             App.showAlert('Sin permiso para auto-asignar', 'danger'); return;
         }
         const html = `

@@ -30,7 +30,9 @@ App.registerModule('produccion', {
         // Admin por ROL o por permiso: sin esto, un admin sin 'usuarios' en el
         // array (p.ej. tras editarlo desde la UI) perdia todos los botones.
         const esAdmin = user.rol === 'admin' || permisos.includes('usuarios');
-        const puedeImportar = esAdmin || permisos.includes('produccion');
+        // Alineado con el backend (MOD='prod_ordenes') y el arbol de Usuarios:
+        // las casillas del arbol otorgan prod_ordenes.*, no el legacy 'produccion'.
+        const puedeImportar = esAdmin || permisos.includes('prod_ordenes.agregar') || permisos.includes('produccion');
 
         el.innerHTML = this._estilos() + `
             <div class="po-hero">
