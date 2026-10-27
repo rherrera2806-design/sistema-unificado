@@ -39,9 +39,19 @@ App.registerModule('prod_reportes', {
                 .pr-hbtn:hover{background:rgba(255,255,255,.2)}
                 .pr-kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:14px}
                 .pr-kpi{background:#fff;border:1px solid #e4e9f0;border-radius:12px;padding:13px 16px}
-                .pr-kpi .k{font-size:10px;font-weight:600;letter-spacing:.7px;text-transform:uppercase;color:#8494a8}
-                .pr-kpi .v{font-size:20px;font-weight:700;margin-top:4px}
-                .pr-kpi .s{font-size:10px;color:#8494a8;margin-top:2px}
+                /* KPIs NEUTROS: el color solo cuando significa algo (regla del sistema) */
+                .pr-kpi .k{font-size:10px;font-weight:600;letter-spacing:.7px;text-transform:uppercase;color:#64748b}
+                .pr-kpi .v{font-size:24px;font-weight:700;margin-top:2px;color:#0f172a;font-variant-numeric:tabular-nums;letter-spacing:-.3px;line-height:1.15}
+                .pr-kpi .s{font-size:10px;color:#64748b;margin-top:3px}
+                /* Filtros agrupados por tipo: Filtros (selects/fechas) vs Búsqueda (lupa) */
+                .pr-fgrp{font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#64748b;margin-bottom:6px}
+                .pr-busq{position:relative;flex:1;min-width:180px}
+                .pr-busq input{width:100%;padding:10px 30px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;outline:none;background:#fff}
+                .pr-busq .ico{position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:12px;color:#64748b;pointer-events:none}
+                .pr-busq .clr{position:absolute;right:6px;top:50%;transform:translateY(-50%);border:none;background:#f1f5f9;color:#475569;border-radius:6px;width:20px;height:20px;font-size:11px;cursor:pointer;line-height:1}
+                .pr-busq .clr:hover{background:#e2e8f0}
+                /* Foco visible (accesibilidad): nunca outline:none sin reemplazo */
+                .m-filters select:focus,.m-filters input:focus,.pr-busq input:focus{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.16);outline:none}
                 .pr-totales{display:flex;gap:16px;padding:8px 16px;background:#f8fafc;border-radius:0 0 10px 10px;font-size:11px;font-weight:600;color:#475569;flex-wrap:wrap}
                 .pr-totales span{color:#0f172a}
                 /* Botones de cabecera del hero (patron MODULE_RESPONSIVE_V1) */
@@ -61,21 +71,22 @@ App.registerModule('prod_reportes', {
             </div>
 
             <div style="background:white;border-radius:14px;padding:20px;border:1px solid #e2e8f0;box-shadow:0 1px 3px rgba(0,0,0,.04);margin-bottom:20px;animation:prFadeUp .5s ease both">
+                <div class="pr-fgrp">Filtros</div>
                 <div class="m-filters">
                     <div style="flex:1;min-width:140px">
-                        <label style="display:block;font-size:11px;font-weight:600;color:#64748b;margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px">Familia</label>
+                        <label style="display:block;font-size:11px;font-weight:600;color:#64748b;margin-bottom:4px">Familia</label>
                         <select id="prFilterFamilia" onchange="App.modules.prod_reportes.aplicarFiltros()" style="width:100%;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;outline:none;background:white">
                             <option value="todas">Todas las familias</option>
                         </select>
                     </div>
                     <div style="flex:1;min-width:140px">
-                        <label style="display:block;font-size:11px;font-weight:600;color:#64748b;margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px">Grupo</label>
+                        <label style="display:block;font-size:11px;font-weight:600;color:#64748b;margin-bottom:4px">Grupo</label>
                         <select id="prFilterGrupo" onchange="App.modules.prod_reportes.aplicarFiltros()" style="width:100%;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;outline:none;background:white">
                             <option value="todos">Todos los grupos</option>
                         </select>
                     </div>
                     <div style="flex:1;min-width:140px">
-                        <label style="display:block;font-size:11px;font-weight:600;color:#64748b;margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px">Estado</label>
+                        <label style="display:block;font-size:11px;font-weight:600;color:#64748b;margin-bottom:4px">Estado</label>
                         <select id="prFilterEstado" onchange="App.modules.prod_reportes.aplicarFiltros()" style="width:100%;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;outline:none;background:white">
                             <option value="todos">Todos</option>
                             <option value="PENDIENTE">Pendientes</option>
@@ -86,35 +97,38 @@ App.registerModule('prod_reportes', {
                         </select>
                     </div>
                     <div style="flex:1;min-width:140px">
-                        <label style="display:block;font-size:11px;font-weight:600;color:#64748b;margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px">Desde</label>
+                        <label style="display:block;font-size:11px;font-weight:600;color:#64748b;margin-bottom:4px">Desde</label>
                         <input type="date" id="prFilterDesde" onchange="App.modules.prod_reportes.aplicarFiltros()" style="width:100%;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;outline:none">
                     </div>
                     <div style="flex:1;min-width:140px">
-                        <label style="display:block;font-size:11px;font-weight:600;color:#64748b;margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px">Hasta</label>
+                        <label style="display:block;font-size:11px;font-weight:600;color:#64748b;margin-bottom:4px">Hasta</label>
                         <input type="date" id="prFilterHasta" onchange="App.modules.prod_reportes.aplicarFiltros()" style="width:100%;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;outline:none">
                     </div>
-                    <div style="flex:1;min-width:140px">
-                        <label style="display:block;font-size:11px;font-weight:600;color:#64748b;margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px">Buscar pedido</label>
-                        <input id="prFilterPedido" placeholder="N° de OV… (filtra al escribir)" value="${escText(this.filtros.pedido || '')}"
-                            oninput="App.modules.prod_reportes._onBusqueda('pedido', this.value)"
-                            onkeydown="if(event.key==='Escape'){this.value='';App.modules.prod_reportes._onBusqueda('pedido','')}"
-                            style="width:100%;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;outline:none">
-                    </div>
-                    <div style="flex:1;min-width:160px">
-                        <label style="display:block;font-size:11px;font-weight:600;color:#64748b;margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px">Buscar cliente</label>
-                        <input id="prFilterCliente" placeholder="Nombre del cliente… (filtra al escribir)" value="${escText(this.filtros.cliente || '')}"
-                            oninput="App.modules.prod_reportes._onBusqueda('cliente', this.value)"
-                            onkeydown="if(event.key==='Escape'){this.value='';App.modules.prod_reportes._onBusqueda('cliente','')}"
-                            style="width:100%;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;outline:none">
-                    </div>
                     <div style="flex:1;min-width:120px">
-                        <label style="display:block;font-size:11px;font-weight:600;color:#64748b;margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px">Espesor</label>
+                        <label style="display:block;font-size:11px;font-weight:600;color:#64748b;margin-bottom:4px">Espesor</label>
                         <select id="prFilterEspesor" onchange="App.modules.prod_reportes._onBusqueda('espesor', this.value)" style="width:100%;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;outline:none;background:white">
                             <option value="">Todos los espesores</option>
                         </select>
                     </div>
+                </div>
+                <div class="pr-fgrp" style="margin-top:14px">Búsqueda</div>
+                <div class="m-filters">
+                    <div class="pr-busq">
+                        <span class="ico">🔍</span>
+                        <input id="prFilterPedido" placeholder="N° de pedido (OV)… filtra al escribir" value="${escText(this.filtros.pedido || '')}"
+                            oninput="App.modules.prod_reportes._onBusqueda('pedido', this.value)"
+                            onkeydown="if(event.key==='Escape')App.modules.prod_reportes._limpiarCampo('prFilterPedido','pedido')">
+                        <button class="clr" title="Limpiar búsqueda de pedido" onclick="App.modules.prod_reportes._limpiarCampo('prFilterPedido','pedido')">×</button>
+                    </div>
+                    <div class="pr-busq">
+                        <span class="ico">🔍</span>
+                        <input id="prFilterCliente" placeholder="Nombre del cliente… filtra al escribir" value="${escText(this.filtros.cliente || '')}"
+                            oninput="App.modules.prod_reportes._onBusqueda('cliente', this.value)"
+                            onkeydown="if(event.key==='Escape')App.modules.prod_reportes._limpiarCampo('prFilterCliente','cliente')">
+                        <button class="clr" title="Limpiar búsqueda de cliente" onclick="App.modules.prod_reportes._limpiarCampo('prFilterCliente','cliente')">×</button>
+                    </div>
                     <div>
-                        <button class="btn btn-outline btn-sm" title="Limpiar filtros" onclick="App.modules.prod_reportes.limpiarFiltros()">Limpiar</button>
+                        <button class="btn btn-outline btn-sm" title="Limpiar todos los filtros" onclick="App.modules.prod_reportes.limpiarFiltros()">Limpiar todo</button>
                     </div>
                 </div>
             </div>
@@ -198,7 +212,7 @@ App.registerModule('prod_reportes', {
         if (!avance || !avance.length) return '<span style="color:#cbd5e1">—</span>';
         return avance.map(a => {
             const bg = a.estado === 'ok' ? '#f0fdf4' : a.estado === 'curso' ? '#fffbeb' : '#f1f5f9';
-            const fg = a.estado === 'ok' ? '#15803d' : a.estado === 'curso' ? '#b45309' : '#94a3b8';
+            const fg = a.estado === 'ok' ? '#15803d' : a.estado === 'curso' ? '#b45309' : '#64748b';
             const val = a.cant > 0 ? Number(a.cant).toLocaleString('es-CL') : '—';
             const estTxt = a.estado === 'ok' ? 'terminado' : a.estado === 'curso' ? 'en curso' : 'pendiente';
             return `<span title="${escAttr((a.estacion || '') + ' · ' + estTxt)}" style="display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:5px;font-size:10px;font-weight:700;background:${bg};color:${fg};white-space:nowrap">${escText(a.letra)} ${val}</span>`;
@@ -217,11 +231,11 @@ App.registerModule('prod_reportes', {
             totalUnd += f.totales.unidades || 0;
         }
         el.innerHTML = `
-                <div class="pr-kpi"><div class="k">Fechas</div><div class="v" style="color:#0f172a">${fechas.length}</div><div class="s">con órdenes para entregar</div></div>
-                <div class="pr-kpi"><div class="k">Items</div><div class="v" style="color:#7c3aed">${Number(totalItems).toLocaleString('es-CL')}</div><div class="s">líneas de producción</div></div>
-                <div class="pr-kpi"><div class="k">Unidades</div><div class="v" style="color:#15803d">${Math.round(totalUnd).toLocaleString('es-CL')}</div><div class="s">a fabricar</div></div>
-                <div class="pr-kpi"><div class="k">M² total</div><div class="v" style="color:#2563eb">${Number(totalM2).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1})}</div><div class="s">superficie del período</div></div>
-                <div class="pr-kpi"><div class="k">Kgs total</div><div class="v" style="color:#b45309">${Number(totalKgs).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1})}</div><div class="s">peso del período</div></div>
+                <div class="pr-kpi"><div class="k">Fechas</div><div class="v">${fechas.length}</div><div class="s">con órdenes para entregar</div></div>
+                <div class="pr-kpi"><div class="k">Items</div><div class="v">${Number(totalItems).toLocaleString('es-CL')}</div><div class="s">líneas de producción</div></div>
+                <div class="pr-kpi"><div class="k">Unidades</div><div class="v">${Math.round(totalUnd).toLocaleString('es-CL')}</div><div class="s">a fabricar</div></div>
+                <div class="pr-kpi"><div class="k">M² total</div><div class="v">${Number(totalM2).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1})}</div><div class="s">superficie del período</div></div>
+                <div class="pr-kpi"><div class="k">Kgs total</div><div class="v">${Number(totalKgs).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1})}</div><div class="s">peso del período</div></div>
         `;
     },
 
@@ -233,7 +247,7 @@ App.registerModule('prod_reportes', {
             el.innerHTML = `
                 <div style="background:white;border-radius:14px;padding:40px;text-align:center;border:1px solid #e2e8f0">
                     <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.5" style="margin-bottom:12px"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-                    <div style="color:#94a3b8;font-size:15px;font-weight:600">Sin datos para los filtros seleccionados</div>
+                    <div style="color:#64748b;font-size:15px;font-weight:600">Sin datos para los filtros seleccionados</div>
                     <div style="color:#cbd5e1;font-size:11px;margin-top:4px">Intenta cambiar las fechas o los filtros</div>
                 </div>`;
             return;
@@ -293,10 +307,10 @@ App.registerModule('prod_reportes', {
                     </div>
                     <div style="font-size:11px;color:#64748b;margin-bottom:6px">${escText(o.descripcion_padre || '-')}</div>
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:11px;margin-bottom:6px">
-                        <div><span style="color:#94a3b8">Dim:</span> <span style="color:#475569">${dim || '-'}</span></div>
-                        <div><span style="color:#94a3b8">M²:</span> <strong style="color:#0f172a">${Number(o.m2).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1})}</strong> <span style="color:#94a3b8">Kgs:</span> <strong style="color:#0f172a">${Number(o.kgs).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1})}</strong></div>
-                        <div style="grid-column:1/-1"><span style="color:#94a3b8">Ruta:</span> <span style="color:#7c3aed;font-size:10px" title="${escAttr(o.ruta || '')}">${escText(o.proceso || o.ruta || '-')}</span></div>
-                        <div style="grid-column:1/-1"><span style="color:#94a3b8">Avance:</span> <span style="display:inline-flex;flex-wrap:wrap;gap:4px;margin-left:4px">${this._avanceBadges(o.avance)}</span></div>
+                        <div><span style="color:#64748b">Dim:</span> <span style="color:#475569">${dim || '-'}</span></div>
+                        <div><span style="color:#64748b">M²:</span> <strong style="color:#0f172a">${Number(o.m2).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1})}</strong> <span style="color:#64748b">Kgs:</span> <strong style="color:#0f172a">${Number(o.kgs).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1})}</strong></div>
+                        <div style="grid-column:1/-1"><span style="color:#64748b">Ruta:</span> <span style="color:#7c3aed;font-size:10px" title="${escAttr(o.ruta || '')}">${escText(o.proceso || o.ruta || '-')}</span></div>
+                        <div style="grid-column:1/-1"><span style="color:#64748b">Avance:</span> <span style="display:inline-flex;flex-wrap:wrap;gap:4px;margin-left:4px">${this._avanceBadges(o.avance)}</span></div>
                     </div>
                     <div style="display:flex;flex-wrap:wrap;gap:4px">
                         <span style="background:#f1f5f9;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:600">${escText(o.tipo || '-')}</span>
@@ -481,6 +495,11 @@ App.registerModule('prod_reportes', {
         clearTimeout(this._busqTimer);
         this.filtros[campo] = valor;
         this._busqTimer = setTimeout(() => this._aplicarLocal(), campo === 'espesor' ? 0 : 350);
+    },
+    _limpiarCampo(inputId, campo) {
+        const inp = document.getElementById(inputId);
+        if (inp) { inp.value = ''; inp.focus(); }
+        this._onBusqueda(campo, '');
     },
     _aplicarLocal() {
         this.renderResumen();
