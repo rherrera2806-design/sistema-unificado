@@ -248,7 +248,7 @@ App.registerModule('prod_reportes', {
                     <td style="font-size:11px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escAttr(o.ruta || '')}">${escText(o.proceso || o.ruta || '')}</td>
                     <td style="white-space:nowrap">${this._avanceBadges(o.avance)}</td>
                     <td>${escText(o.tipo || '')}</td>
-                    <td><span style="background:#f1f5f9;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:600">${escText(o.grupo || '')}</span></td>
+                    <td><span style="background:#f0fdf4;color:#166534;padding:2px 8px;border-radius:5px;font-size:10px;font-weight:700;white-space:nowrap">${escText(o.grupo || '—')}</span></td>
                 </tr>`;
 
                 // Card movil (patron MODULE_RESPONSIVE_V1): campos principales de la fila
@@ -270,7 +270,7 @@ App.registerModule('prod_reportes', {
                     </div>
                     <div style="display:flex;flex-wrap:wrap;gap:4px">
                         <span style="background:#f1f5f9;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:600">${escText(o.tipo || '-')}</span>
-                        <span style="background:#f1f5f9;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:600">${escText(o.grupo || '-')}</span>
+                        <span style="background:#f0fdf4;color:#166534;padding:2px 8px;border-radius:5px;font-size:10px;font-weight:700">${escText(o.grupo || '—')}</span>
                     </div>
                 </div>`;
             }

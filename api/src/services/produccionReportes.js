@@ -1,6 +1,18 @@
 const { query } = require('../config/database');
 
 const getReporteFechas = async ({ familia, fecha_inicio, fecha_fin, grupo, estado }) => {
+    // GRUPO RESUELTO (misma cadena que Prog. por Estación): el grupo real suele
+    // vivir en el catálogo de códigos, no en la orden — sin esto la columna
+    // Grupo aparecía vacía en el reporte. Orden: grupo de la orden → catálogo
+    // del código padre → receta BOM → catálogo de la MP → '(sin grupo)'.
+    const grupoSQL = `COALESCE(
+                NULLIF(TRIM(o.grupo), ''),
+                (SELECT NULLIF(TRIM(cc.grupo), '') FROM produccion_codigos cc WHERE cc.codigo = o.codigo_padre),
+                (SELECT NULLIF(TRIM(cc2.grupo), '') FROM recetas_bom rb JOIN produccion_codigos cc2 ON cc2.codigo = rb.codigo_sap_padre WHERE rb.id = o.bom_padre_id),
+                (SELECT NULLIF(TRIM(cc2.grupo), '') FROM produccion_recetas_bom rb JOIN produccion_codigos cc2 ON cc2.codigo = rb.codigo_sap_padre WHERE rb.id = o.bom_padre_id),
+                (SELECT NULLIF(TRIM(cc.grupo), '') FROM produccion_codigos cc WHERE cc.codigo = o.codigo_producto),
+                '(sin grupo)')`;
+
     const conditions = ["o.fecha_entrega_pactada IS NOT NULL"];
     const params = [];
     let idx = 1;
@@ -10,7 +22,7 @@ const getReporteFechas = async ({ familia, fecha_inicio, fecha_fin, grupo, estad
         params.push(familia);
     }
     if (grupo && grupo !== 'todos') {
-        conditions.push(`o.grupo = $${idx++}`);
+        conditions.push(`${grupoSQL} = $${idx++}`);
         params.push(grupo);
     }
     if (estado && estado !== 'todos') {
@@ -66,7 +78,7 @@ const getReporteFechas = async ({ familia, fecha_inicio, fecha_fin, grupo, estad
             o.nota as obs,
             o.tipo_entrega as tipo,
             o.nivel_prioridad,
-            o.grupo,
+            ${grupoSQL} as grupo,
             o.fecha_entrega_pactada::text as fecha,
             f.nombre_familia as familia,
             COALESCE(o.descripcion, pc.descripcion) as descripcion_completa,
@@ -229,7 +241,14 @@ const getReporteFechas = async ({ familia, fecha_inicio, fecha_fin, grupo, estad
     const famRes = await query("SELECT DISTINCT f.nombre_familia FROM familias_producto f WHERE f.activa = TRUE ORDER BY f.nombre_familia");
     const familias = famRes.rows.map(r => r.nombre_familia);
 
-    const grpRes = await query("SELECT DISTINCT grupo FROM produccion_ordenes WHERE grupo IS NOT NULL AND grupo != '' ORDER BY grupo");
+    // Grupos del filtro: los de las órdenes Y los del catálogo de códigos
+    // (el grupo resuelto puede venir del catálogo — igual que muestra la tabla)
+    const grpRes = await query(`
+        SELECT DISTINCT grupo FROM (
+            SELECT grupo FROM produccion_ordenes WHERE grupo IS NOT NULL AND TRIM(grupo) != ''
+            UNION
+            SELECT grupo FROM produccion_codigos WHERE grupo IS NOT NULL AND TRIM(grupo) != ''
+        ) t ORDER BY grupo`);
     const grupos = grpRes.rows.map(r => r.grupo);
 
     return { fechas, familias, grupos };
