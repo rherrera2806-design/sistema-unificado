@@ -32,7 +32,17 @@ const getReporteFechas = async ({ familia, fecha_inicio, fecha_fin, grupo, estad
         SELECT
             o.pedido_sap_id as ov,
             o.item_numero as item,
-            o.cantidad as pend,
+            -- PENDIENTE REAL de fabricar: cantidad del pedido menos lo terminado
+            -- en su ÚLTIMO paso (si el último paso no está terminado, la orden
+            -- completa sigue pendiente). Antes se mostraba la cantidad total
+            -- aunque la orden estuviera terminada — y sumaba al KPI "unidades a
+            -- fabricar" pedidos ya fabricados.
+            GREATEST(0, COALESCE(o.cantidad, 0) - COALESCE((
+                SELECT p.cantidad_real FROM cola_produccion_pasos p
+                WHERE p.orden_produccion_id = o.id
+                  AND p.estado = 'TERMINADO'
+                  AND p.orden_secuencia = (SELECT MAX(p2.orden_secuencia) FROM cola_produccion_pasos p2 WHERE p2.orden_produccion_id = o.id)
+                LIMIT 1), 0)) as pend,
             o.estado_programacion as estado,
             o.cliente,
             o.codigo_producto,
@@ -69,37 +79,7 @@ const getReporteFechas = async ({ familia, fecha_inicio, fecha_fin, grupo, estad
             (SELECT string_agg(em.nombre_estacion, ' → ' ORDER BY cp.orden_secuencia)
             FROM cola_produccion_pasos cp
             JOIN estaciones_maestras em ON cp.estacion_id = em.id
-            WHERE cp.orden_produccion_id = o.id) as ruta_completa,
-            EXISTS(SELECT 1 FROM cola_produccion_pasos cp
-                JOIN estaciones_maestras em ON cp.estacion_id = em.id
-                WHERE cp.orden_produccion_id = o.id AND em.nombre_estacion = 'Corte') as tiene_corte,
-            EXISTS(SELECT 1 FROM cola_produccion_pasos cp
-                JOIN estaciones_maestras em ON cp.estacion_id = em.id
-                WHERE cp.orden_produccion_id = o.id AND em.nombre_estacion = 'Pulido') as tiene_pulido,
-            EXISTS(SELECT 1 FROM cola_produccion_pasos cp
-                JOIN estaciones_maestras em ON cp.estacion_id = em.id
-                WHERE cp.orden_produccion_id = o.id AND em.nombre_estacion = 'Templado') as tiene_templado,
-            EXISTS(SELECT 1 FROM cola_produccion_pasos cp
-                JOIN estaciones_maestras em ON cp.estacion_id = em.id
-                WHERE cp.orden_produccion_id = o.id AND em.nombre_estacion = 'Formado') as tiene_formado,
-            EXISTS(SELECT 1 FROM cola_produccion_pasos cp
-                JOIN estaciones_maestras em ON cp.estacion_id = em.id
-                WHERE cp.orden_produccion_id = o.id AND em.nombre_estacion = 'Sellado') as tiene_sellado,
-            EXISTS(SELECT 1 FROM cola_produccion_pasos cp
-                JOIN estaciones_maestras em ON cp.estacion_id = em.id
-                WHERE cp.orden_produccion_id = o.id AND em.nombre_estacion = 'Radio') as tiene_radio,
-            EXISTS(SELECT 1 FROM cola_produccion_pasos cp
-                JOIN estaciones_maestras em ON cp.estacion_id = em.id
-                WHERE cp.orden_produccion_id = o.id AND em.nombre_estacion = 'Mecanizado') as tiene_mecanizado,
-            EXISTS(SELECT 1 FROM cola_produccion_pasos cp
-                JOIN estaciones_maestras em ON cp.estacion_id = em.id
-                WHERE cp.orden_produccion_id = o.id AND em.nombre_estacion = 'Ventana') as tiene_ventana,
-            EXISTS(SELECT 1 FROM cola_produccion_pasos cp
-                JOIN estaciones_maestras em ON cp.estacion_id = em.id
-                WHERE cp.orden_produccion_id = o.id AND em.nombre_estacion = 'Pintado') as tiene_pintado,
-            EXISTS(SELECT 1 FROM cola_produccion_pasos cp
-                JOIN estaciones_maestras em ON cp.estacion_id = em.id
-                WHERE cp.orden_produccion_id = o.id AND em.nombre_estacion = 'Armado') as tiene_armado
+            WHERE cp.orden_produccion_id = o.id) as ruta_completa
         FROM produccion_ordenes o
         LEFT JOIN familias_producto f ON o.familia_id = f.id
         LEFT JOIN produccion_codigos pc ON o.codigo_producto = pc.codigo
@@ -129,7 +109,9 @@ const getReporteFechas = async ({ familia, fecha_inicio, fecha_fin, grupo, estad
     //   espesor = SUMA de los espesores de CADA CAPA (ej: 6+6 = 12mm). Una MP
     //             usada N veces cuenta N capas (1 MP x 2 de 5mm = 10mm)
     //   kilos   = suma de las partes (= m² x espesor total x 2.5)
-    //   m² / unidades = los del PADRE (las filas MP los repiten, no se suman)
+    //   m²      = los del PADRE (las filas MP los repiten, no se suman)
+    //   pend    = unidades REALES pendientes de fabricar del padre (ya viene
+    //             descontando lo terminado desde la query)
     const macro = new Map();
     for (const r of rows) {
         const key = `${r.ov}|${r.item}|${r.codigo_sap_padre || ''}`;
@@ -178,12 +160,7 @@ const getReporteFechas = async ({ familia, fecha_inicio, fecha_fin, grupo, estad
             familia: r.familia || '',
             proceso: _buildProceso(r),
             ruta: r.ruta_completa || '',
-            tiene: {
-                C: r.tiene_corte, P: r.tiene_pulido, F: r.tiene_formado,
-                S: r.tiene_sellado, T: r.tiene_templado, R: r.tiene_radio,
-                M: r.tiene_mecanizado, V: r.tiene_ventana, PI: r.tiene_pintado,
-                A: r.tiene_armado
-            }
+            tiene: _buildTiene(r)
         });
         porFecha[fecha].totales.m2 += Number(r.m2) || 0;
         porFecha[fecha].totales.kgs += Number(r.kilos) || 0;
@@ -202,19 +179,36 @@ const getReporteFechas = async ({ familia, fecha_inicio, fecha_fin, grupo, estad
     return { fechas, familias, grupos };
 };
 
+// Código de proceso desde la RUTA REAL de la orden (estaciones configuradas:
+// incluye Laminado VM y cualquier estación nueva). ANTES eran 10 nombres
+// hardcodeados que no conocían Laminado VM (la estación final del laminado) y
+// obligaban a 10 subconsultas por fila. El mapa da letras conocidas; una
+// estación nueva toma sus 2 primeras letras sin romper nada.
+const LETRA_ESTACION = {
+    corte: 'C', pulido: 'P', radio: 'R', mecanizado: 'M', ventana: 'V',
+    pintado: 'PI', templado: 'T', formado: 'F', sellado: 'S', armado: 'A',
+    'laminado vm': 'L', 'laminado': 'L', lavado: 'LA', biselado: 'B', cnc: 'CNC'
+};
+const _letraEstacion = (nom) => {
+    const k = String(nom || '').trim().toLowerCase();
+    return LETRA_ESTACION[k] || String(nom || '').trim().slice(0, 2).toUpperCase();
+};
 function _buildProceso(r) {
-    const parts = [];
-    if (r.tiene_corte) parts.push('C');
-    if (r.tiene_pulido) parts.push('P');
-    if (r.tiene_radio) parts.push('R');
-    if (r.tiene_mecanizado) parts.push('M');
-    if (r.tiene_ventana) parts.push('V');
-    if (r.tiene_pintado) parts.push('PI');
-    if (r.tiene_templado) parts.push('T');
-    if (r.tiene_formado) parts.push('F');
-    if (r.tiene_sellado) parts.push('S');
-    if (r.tiene_armado) parts.push('A');
-    return parts.join('-');
+    const partes = [];
+    for (const nom of String(r.ruta_completa || '').split(' → ')) {
+        if (!nom.trim()) continue;
+        const letra = _letraEstacion(nom);
+        if (!partes.length || partes[partes.length - 1] !== letra) partes.push(letra);
+    }
+    return partes.join('-');
+}
+function _buildTiene(r) {
+    const tiene = {};
+    for (const nom of String(r.ruta_completa || '').split(' → ')) {
+        if (!nom.trim()) continue;
+        tiene[_letraEstacion(nom)] = true;
+    }
+    return tiene;
 }
 
 // ===== Lista de corte: órdenes ingresadas y programadas para corte =====
