@@ -4,7 +4,7 @@ const inspecciones = require('../services/inspeccionesCalidad');
 const { requireAnyPerm } = require('../middleware/permisos');
 const { asyncHandler } = require('../middleware/asyncHandler');
 
-const MOD = 'produccion';
+const MOD = 'taller';
 const canView = requireAnyPerm(MOD, `${MOD}.editar`, `${MOD}.eliminar`, `${MOD}.agregar`);
 const canCreate = requireAnyPerm(`${MOD}.agregar`, MOD);
 const canUpdate = requireAnyPerm(`${MOD}.editar`, MOD);
