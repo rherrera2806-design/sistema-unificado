@@ -10,6 +10,9 @@ const { asyncHandler } = require('../middleware/asyncHandler');
 
 const MOD = 'taller';
 const canView = requireAnyPerm(MOD, `${MOD}.editar`, `${MOD}.eliminar`, `${MOD}.agregar`);
+// El Dashboard TV (/dashboard/) es un permiso SEPARADO: quien solo tiene
+// 'dashboard_tv' puede ver la pantalla en vivo sin tener el Taller completo.
+const canDashboard = requireAnyPerm(MOD, `${MOD}.editar`, `${MOD}.eliminar`, `${MOD}.agregar`, 'dashboard_tv');
 const canCreate = requireAnyPerm(`${MOD}.agregar`, MOD);
 const canUpdate = requireAnyPerm(`${MOD}.editar`, MOD);
 
@@ -28,7 +31,7 @@ router.get('/api/taller/colaxestacion/:id', canView, asyncHandler(async (req, re
 }));
 
 // Datos agregados para el dashboard de planta (pantallas en vivo)
-router.get('/api/taller/dashboard', canView, asyncHandler(async (req, res) => {
+router.get('/api/taller/dashboard', canDashboard, asyncHandler(async (req, res) => {
     res.json(await taller.getDashboard());
 }));
 

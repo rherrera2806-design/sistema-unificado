@@ -73,6 +73,7 @@ App.registerModule('usuarios', {
             { id: 'prod_horarios', label: 'Horarios de Turno' },
             { id: 'prod_config', label: 'Configuración' },
             { id: 'taller', label: 'Taller' },
+            { id: 'dashboard_tv', label: 'Dashboard TV' },
             { id: 'bodega', label: 'Bodega' }
         ]},
         { key: 'costeo', label: 'COSTEO', subs: [

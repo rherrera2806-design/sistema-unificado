@@ -91,6 +91,8 @@ function verificar() {
     ok(resumen().length > 20, 'resumen en lenguaje natural renderizado');
     ok(document.querySelectorAll('.us-tpl-btn').length === u.PLANTILLAS.length,
         `botones de plantilla: ${document.querySelectorAll('.us-tpl-btn').length}`);
+    ok(u.SECTIONS.some(s => s.key === 'produccion' && s.subs.some(x => x.id === 'dashboard_tv')),
+        'árbol incluye dashboard_tv como permiso separado');
 
     // 2. Plantilla Bodega
     u.aplicarPlantilla('bodega');

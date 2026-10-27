@@ -842,9 +842,13 @@ function renderSidebar() {
         html += `<div class="nav-section" tabindex="0" role="button" onclick="toggleSection('${section.key}')"><span>${section.label}</span><span class="toggle-icon">▼</span></div>`;
         html += `<div class="nav-section-group" id="section-${section.key}">`;
         section.items.forEach(item => {
+            // Los enlaces externos (Taller, Dashboard TV) TAMBIÉN pasan por el
+            // permiso: sin esto se mostraban a cualquiera que viera la sección
+            // y no había forma de revocarlos desde Usuarios.
+            if (!canSeeItem(item.id, section.key)) return;
             if (item.external) {
                 html += `<div class="nav-item" data-tooltip="${item.label}" tabindex="0" role="link" onclick="window.open('${item.external}','_blank')"><span class="nav-icon">${item.icon}</span><span class="nav-text">${item.label}</span><span class="nav-badge" style="background:#f59e0b;color:#000;font-size:9px;padding:2px 6px;border-radius:8px;margin-left:auto">OPEN</span></div>`;
-            } else if (canSeeItem(item.id, section.key)) {
+            } else {
                 html += navI(item.id, item.label, item.icon);
             }
         });
