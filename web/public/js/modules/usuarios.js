@@ -928,7 +928,10 @@ App.registerModule('usuarios', {
 
             .us-cards-mobile{display:none}
 
-            .us-overlay{display:none;position:fixed;inset:0;z-index:40;align-items:center;justify-content:center;background:rgba(15,23,42,.5);backdrop-filter:blur(4px)}
+            /* z-index 1000: DEBE superar al sidebar (z-index 200), si no el
+               modal quedaba cortado por debajo de él en pantallas angostas.
+               2000 queda libre para los toasts de App.showAlert. */
+            .us-overlay{display:none;position:fixed;inset:0;z-index:1000;align-items:center;justify-content:center;background:rgba(15,23,42,.5);backdrop-filter:blur(4px)}
             .us-modal{background:#fff;border-radius:16px;width:92%;max-width:560px;max-height:86vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(15,23,42,.3)}
             .us-modal-sm{max-width:420px}
             .us-modal-head{padding:18px 24px;border-bottom:1px solid #e4e9f0;display:flex;align-items:center;justify-content:space-between}
