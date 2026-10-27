@@ -1,12 +1,26 @@
 App.registerModule('prod_maquinas', {
     maquinas: [],
 
+    // ── Permisos del modulo ──────────────────────────────────────────────────
+    // Claves REALES del backend (api/src/routes/produccionConfig.js, MOD='prod_config'):
+    //   prod_config (ver) · prod_config.agregar · prod_config.editar · prod_config.eliminar
+    // Antes se consultaba 'produccion', permiso que NO existe en ALL_PERMS
+    // (dbSchema.js), asi que todo usuario no admin perdia "Nuevo" y "Acciones".
+    _perm() {
+        const u = JSON.parse(localStorage.getItem('unified_user') || '{}');
+        const p = u.permisos || [];
+        const admin = u.rol === 'admin' || p.includes('usuarios');
+        return {
+            ver: admin || p.includes('prod_config'),
+            crear: admin || p.includes('prod_config.agregar'),
+            editar: admin || p.includes('prod_config.editar'),
+            eliminar: admin || p.includes('prod_config.eliminar')
+        };
+    },
+
     async render() {
         const el = document.getElementById('page-prod_maquinas');
-        const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
-        const permisos = user.permisos || [];
-        const esAdmin = permisos.includes('usuarios');
-        const puedeEditar = esAdmin || permisos.includes('produccion');
+        const perm = this._perm();
 
         el.innerHTML = `
             <style>
@@ -27,7 +41,7 @@ App.registerModule('prod_maquinas', {
                 </div>
 
                 <div class="m-actions">
-                    ${puedeEditar ? `
+                    ${perm.crear ? `
                         <button class="btn btn-accent" style="white-space:nowrap;padding:8px 14px;font-size:11px" onclick="App.modules.prod_maquinas.showCreateModal()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuevo</button>
                         <button class="btn btn-sm btn-outline" onclick="App.modules.prod_maquinas.showImportModal()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Importar</button>
                     ` : ''}
@@ -107,8 +121,8 @@ App.registerModule('prod_maquinas', {
             return; 
         }
         
-        const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
-        const puedeEditar = user.permisos?.includes('usuarios') || user.permisos?.includes('produccion');
+        const perm = this._perm();
+        const puedeEditar = perm.editar || perm.eliminar;
         const estadoBadge = (e) => {
             const cols = { ACTIVA: 'background:#dcfce7;color:#166534', INACTIVA: 'background:#f1f5f9;color:#64748b', MANTENCION: 'background:#fef9c3;color:#854d0e' };
             return `<span style="padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600;${cols[e] || ''}">${escText(e)}</span>`;
@@ -164,11 +178,13 @@ App.registerModule('prod_maquinas', {
 
     // ── Menú de acciones (popover fijo, patrón del sistema) ──
     menuAcciones(id) {
+        const perm = this._perm();
+        if (!perm.editar && !perm.eliminar) return '';
         return `<div class="maq-amenu"><button class="maq-amenu-btn" onclick="App.modules.prod_maquinas.toggleAcciones(event)">Acciones ▾</button>
         <div class="maq-amenu-drop">
-            <div class="it" onclick="App.modules.prod_maquinas.edit(${id})">✏️ Editar máquina</div>
-            <div class="sep"></div>
-            <div class="it danger" onclick="App.modules.prod_maquinas.delete(${id})">🗑 Eliminar máquina</div>
+            ${perm.editar ? `<div class="it" onclick="App.modules.prod_maquinas.edit(${id})">✏️ Editar máquina</div>` : ''}
+            ${perm.editar && perm.eliminar ? '<div class="sep"></div>' : ''}
+            ${perm.eliminar ? `<div class="it danger" onclick="App.modules.prod_maquinas.delete(${id})">🗑 Eliminar máquina</div>` : ''}
         </div></div>`;
     },
     toggleAcciones(e) {

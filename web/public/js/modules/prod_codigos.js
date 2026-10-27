@@ -15,11 +15,27 @@ App.registerModule('prod_codigos', {
     _grupoColores: {},
     _filterTimer: null,
 
+    // ── Permisos del modulo ──────────────────────────────────────────────────
+    // Claves REALES del backend (api/src/routes/produccionConfig.js, MOD='prod_config'):
+    //   prod_config (ver) · prod_config.agregar · prod_config.editar · prod_config.eliminar
+    // Antes se consultaba 'produccion', permiso que NO existe en ALL_PERMS
+    // (dbSchema.js), asi que todo usuario no admin perdia "Nuevo" y "Acciones".
+    _perm() {
+        const u = JSON.parse(localStorage.getItem('unified_user') || '{}');
+        const p = u.permisos || [];
+        const admin = u.rol === 'admin' || p.includes('usuarios');
+        return {
+            admin,
+            ver: admin || p.includes('prod_config'),
+            crear: admin || p.includes('prod_config.agregar'),
+            editar: admin || p.includes('prod_config.editar'),
+            eliminar: admin || p.includes('prod_config.eliminar')
+        };
+    },
+
     async render() {
         const el = document.getElementById('page-prod_codigos');
-        const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
-        const permisos = user.permisos || [];
-        const puedeEditar = permisos.includes('usuarios') || permisos.includes('produccion');
+        const perm = this._perm();
 
         el.innerHTML = this._estilos() + `
             <div class="pc-hero">
@@ -27,11 +43,11 @@ App.registerModule('prod_codigos', {
                     <h2>Códigos de Producto</h2>
                     <p>Catálogo maestro de códigos SAP · Grupo, Familia, Bloque de Tela</p>
                 </div>
-                ${puedeEditar ? `<div class="pc-hero-actions">
-                    <button class="pc-hbtn" onclick="App.modules.prod_codigos.importarExcel()">⬆ Importar</button>
+                ${(perm.crear || perm.ver) ? `<div class="pc-hero-actions">
+                    ${perm.crear ? `<button class="pc-hbtn" onclick="App.modules.prod_codigos.importarExcel()">⬆ Importar</button>` : ''}
                     <button class="pc-hbtn" onclick="App.modules.prod_codigos.exportarExcel()">⬇ Exportar</button>
-                    <button class="pc-hbtn solid" onclick="App.modules.prod_codigos.showCreateModal()">＋ Nuevo Código</button>
-                    ${permisos.includes('usuarios') ? `
+                    ${perm.crear ? `<button class="pc-hbtn solid" onclick="App.modules.prod_codigos.showCreateModal()">＋ Nuevo Código</button>` : ''}
+                    ${perm.admin ? `
                     <div class="pc-mant">
                         <button class="pc-hbtn ghost-danger" onclick="App.modules.prod_codigos.toggleMant(event)">⚠ Zona de mantenimiento</button>
                         <div class="pc-mant-drop" id="pcMantDrop">
@@ -233,8 +249,8 @@ App.registerModule('prod_codigos', {
         const cardsMobile = document.getElementById('codCardsMobile');
         const count = document.getElementById('codCount');
         if (count) count.textContent = '(' + codigos.length + ' código' + (codigos.length === 1 ? '' : 's') + ')';
-        const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
-        const puedeEditar = user.permisos?.includes('usuarios') || user.permisos?.includes('produccion');
+        const perm = this._perm();
+        const puedeEditar = perm.editar || perm.eliminar;
 
         if (!codigos.length) {
             tbody.innerHTML = '<tr><td colspan="6" class="pc-loading">Sin resultados</td></tr>';
@@ -260,9 +276,9 @@ App.registerModule('prod_codigos', {
         const acciones = (c) => puedeEditar ? `
             <div class="pc-amenu"><button class="pc-amenu-btn" onclick="App.modules.prod_codigos.toggleAcciones(event)">Acciones ▾</button>
             <div class="pc-amenu-drop">
-                <div class="it" onclick="App.modules.prod_codigos.edit(${c.id})">✏️ Editar código</div>
-                <div class="sep"></div>
-                <div class="it danger" onclick="App.modules.prod_codigos.delete(${c.id})">🗑 Eliminar código</div>
+                ${perm.editar ? `<div class="it" onclick="App.modules.prod_codigos.edit(${c.id})">✏️ Editar código</div>` : ''}
+                ${perm.editar && perm.eliminar ? '<div class="sep"></div>' : ''}
+                ${perm.eliminar ? `<div class="it danger" onclick="App.modules.prod_codigos.delete(${c.id})">🗑 Eliminar código</div>` : ''}
             </div></div>` : '';
 
         tbody.innerHTML = codigos.map(c => `

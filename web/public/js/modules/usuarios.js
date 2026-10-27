@@ -475,6 +475,17 @@ App.registerModule('usuarios', {
             c.dataset.type === 'ver' ? c.dataset.sub : c.dataset.sub + '.' + c.dataset.type
         );
 
+        // Permisos historicos que el arbol NO representa (p.ej. 'usuarios',
+        // 'produccion'): NO se borran al guardar, porque el array se sobrescribe
+        // completo y el admin quedaba sin 'usuarios' -> perdia todos los botones.
+        const arbolIds = new Set(this.SECTIONS.flatMap(s => s.subs.map(sub => sub.id)));
+        const previo = id ? (this.allUsers || []).find(u => u.id === id) : null;
+        const previos = previo && Array.isArray(previo.permisos) ? previo.permisos : [];
+        const permisos = [...new Set([...subPerms, ...previos.filter(p => !arbolIds.has(p))])];
+        // Todo usuario con rol admin necesita 'usuarios' (lo usan los modulos
+        // para detectar admin ademas del rol).
+        if (rol === 'admin' && !permisos.includes('usuarios')) permisos.push('usuarios');
+
         // Validación amigable, campo por campo
         ['Nombre', 'Email', 'Password'].forEach(f => this._fieldError(f, ''));
         let invalido = false;
@@ -485,7 +496,7 @@ App.registerModule('usuarios', {
         else if (pw && pw.length < 6) { this._fieldError('Password', 'La contraseña debe tener al menos 6 caracteres'); invalido = true; }
         if (invalido) return;
 
-        const data = { nombre, email, rol, area, permisos: [...new Set(subPerms)] };
+        const data = { nombre, email, rol, area, permisos };
         if (pw) data.password = pw;
 
         const btn = document.getElementById('uModalBtn');

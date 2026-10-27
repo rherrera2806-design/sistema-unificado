@@ -70,7 +70,9 @@ App.modules.planificacion = {
         if (!this.estacInicio) this.estacInicio = this.fmtDate(hoy);
 
         const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
-        const puedeEditar = (user.permisos || []).includes('usuarios') || (user.permisos || []).includes('produccion');
+        // Admin por ROL o por permiso: un admin sin 'usuarios' en el array
+        // (p.ej. tras editarlo desde la UI) perdia Auto asignar y Reprogramar.
+        const puedeEditar = user.rol === 'admin' || (user.permisos || []).includes('usuarios') || (user.permisos || []).includes('produccion');
         const page = document.getElementById('page-planificacion');
         if (!page) return;
 
@@ -423,7 +425,7 @@ App.modules.planificacion = {
     // ---------------- Capacidad por grupo ----------------
     showCapacidadGrupo() {
         const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
-        if (!(user.permisos || []).includes('usuarios') && !(user.permisos || []).includes('produccion')) {
+        if (user.rol !== 'admin' && !(user.permisos || []).includes('usuarios') && !(user.permisos || []).includes('produccion')) {
             App.showAlert('Sin permiso para editar la capacidad', 'danger'); return;
         }
         const html = `
@@ -458,7 +460,7 @@ App.modules.planificacion = {
     // ---------------- Auto-Asignar ----------------
     showAutoAsignarGrupo() {
         const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
-        if (!(user.permisos || []).includes('usuarios') && !(user.permisos || []).includes('produccion')) {
+        if (user.rol !== 'admin' && !(user.permisos || []).includes('usuarios') && !(user.permisos || []).includes('produccion')) {
             App.showAlert('Sin permiso para auto-asignar', 'danger'); return;
         }
         const html = `

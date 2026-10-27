@@ -7,12 +7,28 @@ App.registerModule('prod_recetas', {
     editingId: null,
     _procesosTemporales: [],
 
+    // ── Permisos del modulo ──────────────────────────────────────────────────
+    // Claves REALES del backend (api/src/routes/produccionConfig.js, MOD='prod_config'):
+    //   prod_config (ver) · prod_config.agregar · prod_config.editar · prod_config.eliminar
+    // Antes se consultaba 'produccion', permiso que NO existe en ALL_PERMS
+    // (dbSchema.js), asi que todo usuario no admin perdia "Nueva Receta" y "Acciones".
+    _perm() {
+        const u = JSON.parse(localStorage.getItem('unified_user') || '{}');
+        const p = u.permisos || [];
+        const admin = u.rol === 'admin' || p.includes('usuarios');
+        return {
+            admin,
+            ver: admin || p.includes('prod_config'),
+            crear: admin || p.includes('prod_config.agregar'),
+            editar: admin || p.includes('prod_config.editar'),
+            eliminar: admin || p.includes('prod_config.eliminar')
+        };
+    },
+
     async render() {
         const el = document.getElementById('page-prod_recetas');
         if (!el) return;
-        const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
-        const permisos = user.permisos || [];
-        const puedeEditar = permisos.includes('usuarios') || permisos.includes('produccion');
+        const perm = this._perm();
 
         el.innerHTML = `
             <style>
@@ -94,7 +110,7 @@ App.registerModule('prod_recetas', {
                         <h2>Recetas BOM · Modelo Híbrido</h2>
                         <p>Materia prima + ruta de procesos opcional para códigos estandarizados (Carroceros)</p>
                     </div>
-                    ${puedeEditar ? `<div class="rec-hero-actions">
+                    ${perm.crear ? `<div class="rec-hero-actions">
                         <button class="rec-hbtn" onclick="App.modules.prod_recetas.showImportModal()">
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                             Importar
@@ -103,7 +119,7 @@ App.registerModule('prod_recetas', {
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                             Nueva Receta
                         </button>
-                        ${permisos.includes('usuarios') ? `<div class="rec-amenu"><button class="rec-hbtn ghost-danger" onclick="App.modules.prod_recetas.toggleAcciones(event)">⚠ Zona de mantenimiento ▾</button><div class="rec-amenu-drop"><div class="it danger" onclick="App.modules.prod_recetas.deleteAll()">🗑 Limpiar Todo (eliminar todas las recetas)</div></div></div>` : ''}
+                        ${perm.admin ? `<div class="rec-amenu"><button class="rec-hbtn ghost-danger" onclick="App.modules.prod_recetas.toggleAcciones(event)">⚠ Zona de mantenimiento ▾</button><div class="rec-amenu-drop"><div class="it danger" onclick="App.modules.prod_recetas.deleteAll()">🗑 Limpiar Todo (eliminar todas las recetas)</div></div></div>` : ''}
                     </div>` : ''}
                 </div>
 
@@ -346,8 +362,8 @@ App.registerModule('prod_recetas', {
             const grupos = new Set(recetas.map(r => r.codigo_sap_padre)).size;
             count.textContent = '(' + recetas.length + ' receta' + (recetas.length === 1 ? '' : 's') + ' · ' + grupos + ' código' + (grupos === 1 ? '' : 's') + ')';
         }
-        const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
-        const puedeEditar = user.permisos?.includes('usuarios') || user.permisos?.includes('produccion');
+        const perm = this._perm();
+        const puedeEditar = perm.editar || perm.eliminar;
 
         const descMap = {};
         (this.codigos || []).forEach(c => { descMap[String(c.codigo)] = c.descripcion; });
@@ -420,10 +436,10 @@ App.registerModule('prod_recetas', {
                         <div class="rec-amenu"><button class="rec-amenu-btn" onclick="App.modules.prod_recetas.toggleAcciones(event)">Acciones ▾</button>
                         <div class="rec-amenu-drop">
                             <div class="it" onclick="App.modules.prod_recetas.verReceta(${r.id})">👁 Ver receta</div>
-                            <div class="it" onclick="App.modules.prod_recetas.edit(${r.id})">✏️ Editar receta</div>
+                            ${perm.editar ? `<div class="it" onclick="App.modules.prod_recetas.edit(${r.id})">✏️ Editar receta</div>` : ''}
                             ${tienePlano ? `<div class="it" onclick="App.modules.prod_recetas.verPlanoCodigo('${escJs(r.codigo_sap_padre)}')">👁 Ver plano del código</div>` : ''}
-                            <div class="sep"></div>
-                            <div class="it danger" onclick="App.modules.prod_recetas.delete(${r.id})">🗑 Eliminar receta</div>
+                            ${perm.eliminar ? `<div class="sep"></div>
+                            <div class="it danger" onclick="App.modules.prod_recetas.delete(${r.id})">🗑 Eliminar receta</div>` : ''}
                         </div></div>` : ''}</td>
                 </tr>`;
 
@@ -447,10 +463,10 @@ App.registerModule('prod_recetas', {
                             <div class="rec-amenu"><button class="rec-amenu-btn" onclick="App.modules.prod_recetas.toggleAcciones(event)">Acciones ▾</button>
                             <div class="rec-amenu-drop">
                                 <div class="it" onclick="App.modules.prod_recetas.verReceta(${r.id})">👁 Ver receta</div>
-                                <div class="it" onclick="App.modules.prod_recetas.edit(${r.id})">✏️ Editar receta</div>
+                                ${perm.editar ? `<div class="it" onclick="App.modules.prod_recetas.edit(${r.id})">✏️ Editar receta</div>` : ''}
                                 ${tienePlano ? `<div class="it" onclick="App.modules.prod_recetas.verPlanoCodigo('${escJs(r.codigo_sap_padre)}')">👁 Ver plano del código</div>` : ''}
-                                <div class="sep"></div>
-                                <div class="it danger" onclick="App.modules.prod_recetas.delete(${r.id})">🗑 Eliminar receta</div>
+                                ${perm.eliminar ? `<div class="sep"></div>
+                                <div class="it danger" onclick="App.modules.prod_recetas.delete(${r.id})">🗑 Eliminar receta</div>` : ''}
                             </div></div>` : ''}
                         </div>
                     </div>

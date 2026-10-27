@@ -27,7 +27,9 @@ App.registerModule('produccion', {
         if (!el) { console.error('page-produccion element not found'); return; }
         const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
         const permisos = user.permisos || [];
-        const esAdmin = permisos.includes('usuarios');
+        // Admin por ROL o por permiso: sin esto, un admin sin 'usuarios' en el
+        // array (p.ej. tras editarlo desde la UI) perdia todos los botones.
+        const esAdmin = user.rol === 'admin' || permisos.includes('usuarios');
         const puedeImportar = esAdmin || permisos.includes('produccion');
 
         el.innerHTML = this._estilos() + `
