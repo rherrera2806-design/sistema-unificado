@@ -37,7 +37,7 @@ App.registerModule('prod_reportes', {
                 .pr-hero-actions{margin-left:auto;display:flex;gap:8px;align-items:center}
                 .pr-hbtn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:8px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.1);color:#fff;cursor:pointer;font-size:11px;font-weight:600;white-space:nowrap}
                 .pr-hbtn:hover{background:rgba(255,255,255,.2)}
-                .pr-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px}
+                .pr-kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:14px}
                 .pr-kpi{background:#fff;border:1px solid #e4e9f0;border-radius:12px;padding:13px 16px}
                 .pr-kpi .k{font-size:10px;font-weight:600;letter-spacing:.7px;text-transform:uppercase;color:#8494a8}
                 .pr-kpi .v{font-size:20px;font-weight:700;margin-top:4px}
@@ -190,9 +190,10 @@ App.registerModule('prod_reportes', {
         }
         el.innerHTML = `
                 <div class="pr-kpi"><div class="k">Fechas</div><div class="v" style="color:#0f172a">${fechas.length}</div><div class="s">con órdenes para entregar</div></div>
-                <div class="pr-kpi"><div class="k">Items</div><div class="v" style="color:#7c3aed">${totalItems}</div><div class="s">líneas de producción</div></div>
+                <div class="pr-kpi"><div class="k">Items</div><div class="v" style="color:#7c3aed">${Number(totalItems).toLocaleString('es-CL')}</div><div class="s">líneas de producción</div></div>
                 <div class="pr-kpi"><div class="k">Unidades</div><div class="v" style="color:#15803d">${Math.round(totalUnd).toLocaleString('es-CL')}</div><div class="s">a fabricar</div></div>
                 <div class="pr-kpi"><div class="k">M² total</div><div class="v" style="color:#2563eb">${Number(totalM2).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1})}</div><div class="s">superficie del período</div></div>
+                <div class="pr-kpi"><div class="k">Kgs total</div><div class="v" style="color:#b45309">${Number(totalKgs).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1})}</div><div class="s">peso del período</div></div>
         `;
     },
 
