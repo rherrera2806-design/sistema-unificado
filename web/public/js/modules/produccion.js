@@ -45,6 +45,10 @@ App.registerModule('produccion', {
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                         Importar SAP
                     </button>
+                    <button class="po-hbtn" onclick="App.modules.produccion.showPreciosModal()" title="Subir precios de venta por pedido+item desde SAP (para reportes de ventas por vendedor)">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                        Precios SAP
+                    </button>
                     <button class="po-hbtn" onclick="window.open('/api/produccion/exportar-corte','_blank')" title="Exporta las órdenes ingresadas y programadas para corte (lista de corte en Excel)">
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                         Exportar corte
@@ -160,6 +164,33 @@ App.registerModule('produccion', {
                     <div class="po-modal-foot">
                         <button class="po-btn ghost" onclick="App.modules.produccion.hideImportModal()">Cancelar</button>
                         <button class="po-btn primary" id="prodImportBtn" onclick="App.modules.produccion.importar()" disabled>Importar</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal precios SAP (precio de venta por pedido+item) -->
+            <div class="po-overlay" id="prodPreciosModal">
+                <div class="po-modal" onclick="event.stopPropagation()">
+                    <div class="po-modal-head"><h3>💰 Cargar precios de venta (SAP)</h3><button class="po-x" onclick="App.modules.produccion.hidePreciosModal()">✕</button></div>
+                    <div class="po-modal-body">
+                        <label class="po-label">Archivo Excel de precios</label>
+                        <div id="prodPreciosArea" class="po-drop" onclick="document.getElementById('prodPreciosFile').click()">
+                            💰
+                            <div class="t">Arrastra el Excel de precios o haz clic para seleccionar</div>
+                            <div id="prodPreciosName" class="ok"></div>
+                        </div>
+                        <input type="file" id="prodPreciosFile" accept=".xlsx,.xls,.csv" style="display:none" onchange="App.modules.produccion.handlePreciosFile(event)">
+                        <div class="po-info">
+                            <strong>Columnas que necesita:</strong> pedido · item · precio unitario<br>
+                            <strong>Opcional:</strong> cantidad · cliente<br>
+                            <em>Se guarda por (pedido + item). Si cargas la misma OV otra vez, se ACTUALIZA el precio, no se duplica. El cruce con la orden es lo que permite saber el vendedor de cada precio.</em>
+                            <div style="margin-top:10px"><button class="po-btn ghost sm" onclick="window.open('/api/produccion/precios-sap/template')">⬇ Descargar Plantilla</button></div>
+                        </div>
+                        <div id="prodPreciosPreview" class="po-preview"></div>
+                    </div>
+                    <div class="po-modal-foot">
+                        <button class="po-btn ghost" onclick="App.modules.produccion.hidePreciosModal()">Cancelar</button>
+                        <button class="po-btn primary" id="prodPreciosBtn" onclick="App.modules.produccion.importarPrecios()" disabled>Guardar precios</button>
                     </div>
                 </div>
             </div>
@@ -790,6 +821,88 @@ App.registerModule('produccion', {
         const n = document.getElementById('prodImportName'); if (n) n.style.display = 'none';
         const b = document.getElementById('prodImportBtn'); if (b) b.disabled = true;
         const p = document.getElementById('prodImportPreview'); if (p) p.innerHTML = '';
+    },
+
+    // ---------------- Precios SAP (precio de venta por pedido+item) ----------
+    showPreciosModal() {
+        document.getElementById('prodPreciosModal').style.display = 'flex';
+        this.selectedPreciosFile = null;
+        const n = document.getElementById('prodPreciosName'); if (n) { n.style.display = 'none'; n.textContent = ''; }
+        const b = document.getElementById('prodPreciosBtn'); if (b) { b.disabled = true; b.textContent = 'Guardar precios'; }
+        const p = document.getElementById('prodPreciosPreview'); if (p) p.innerHTML = '';
+    },
+    hidePreciosModal() {
+        document.getElementById('prodPreciosModal').style.display = 'none';
+        this.selectedPreciosFile = null;
+    },
+    handlePreciosFile(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        this.selectedPreciosFile = file;
+        const n = document.getElementById('prodPreciosName');
+        if (n) { n.textContent = '📄 ' + file.name; n.style.display = 'block'; }
+        const b = document.getElementById('prodPreciosBtn'); if (b) b.disabled = false;
+    },
+    async importarPrecios() {
+        if (!this.selectedPreciosFile) return;
+        const btn = document.getElementById('prodPreciosBtn');
+        btn.textContent = 'Procesando...';
+        btn.disabled = true;
+        try {
+            const data = await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => {
+                    try {
+                        const wb = XLSX.read(reader.result, { type: 'array' });
+                        const ws = wb.Sheets[wb.SheetNames[0]];
+                        resolve(XLSX.utils.sheet_to_json(ws));
+                    } catch (e) { reject(e); }
+                };
+                reader.onerror = () => reject(new Error('Error al leer archivo'));
+                reader.readAsArrayBuffer(this.selectedPreciosFile);
+            });
+            if (!data.length) { App.showAlert('El archivo está vacío', 'danger'); btn.textContent = 'Guardar precios'; btn.disabled = false; return; }
+            const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
+            const res = await fetch('/api/produccion/precios-sap/importar', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-User-Permisos': (user.permisos || []).join(','), 'X-User-Email': user.email || '' },
+                body: JSON.stringify({ rows: data, file_name: this.selectedPreciosFile.name })
+            });
+            const result = await res.json();
+            if (res.ok) {
+                this.showPreciosResult(result);
+                this.hidePreciosModal();
+            } else {
+                App.showAlert(result.error || 'Error al importar precios', 'danger');
+            }
+        } catch (e) { App.showAlert('Error: ' + e.message, 'danger'); }
+        btn.textContent = 'Guardar precios';
+        btn.disabled = false;
+    },
+    showPreciosResult(result) {
+        const overlay = document.createElement('div');
+        overlay.className = 'po-overlay';
+        overlay.style.display = 'flex';
+        overlay.innerHTML = `
+        <div class="po-modal" onclick="event.stopPropagation()">
+            <div class="po-modal-head"><h3>💰 Precios importados</h3><button class="po-x" onclick="this.closest('.po-overlay').remove()">✕</button></div>
+            <div class="po-modal-body">
+                <div class="po-kpis" style="grid-template-columns:repeat(3,1fr)">
+                    <div class="po-kpi"><div class="k">Nuevos</div><div class="v" style="color:#15803d">${this._fmt(result.importados, 0)}</div></div>
+                    <div class="po-kpi"><div class="k">Actualizados</div><div class="v" style="color:#2563eb">${this._fmt(result.actualizados, 0)}</div></div>
+                    <div class="po-kpi"><div class="k">Ignorados</div><div class="v" style="color:#d97706">${this._fmt(result.ignoradas, 0)}</div></div>
+                </div>
+                ${result.errores && result.errores.length ? `
+                <div style="background:#fef3c7;border:1px solid #fcd34d;border-radius:8px;padding:12px;max-height:200px;overflow:auto">
+                    <strong style="font-size:12px;color:#92400e">Filas ignoradas (${result.errores.length}):</strong>
+                    ${result.errores.slice(0, 30).map(e => '<div style="font-size:11px;color:#78350f;margin-top:4px">Fila ' + e.fila + (e.pedido ? ' (OV ' + escText(e.pedido) + ')' : '') + ': ' + escText(e.error) + '</div>').join('')}
+                    ${result.errores.length > 30 ? '<div style="font-size:11px;color:#78350f;margin-top:4px">…y ' + (result.errores.length - 30) + ' más</div>' : ''}
+                </div>` : ''}
+            </div>
+            <div class="po-modal-foot"><button class="po-btn primary" onclick="this.closest('.po-overlay').remove()">Cerrar</button></div>
+        </div>`;
+        document.body.appendChild(overlay);
+        overlay.addEventListener('click', () => overlay.remove());
     },
 
     async importar() {

@@ -423,6 +423,23 @@ async function faseTablas({ q }) {
         hora_inicio TIMESTAMP, hora_fin TIMESTAMP, operario_id INTEGER,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`);
+    // ── Precios de venta SAP ─────────────────────────────────────────────────
+    // Tabla PROPIA que no toca produccion_ordenes. Guarda el precio de venta por
+    // (pedido + item) tal como lo trae el Excel exportado de SAP. Sirve para el
+    // reporte de ventas por vendedor: se cruza pedido_sap_id + item_numero con
+    // produccion_ordenes para saber a qué vendedor pertenece cada precio.
+    // UNIQUE(pedido, item) permite hacer UPSERT: si se carga dos veces la misma
+    // OV, se ACTUALIZA el precio, no se duplica.
+    await q(`CREATE TABLE IF NOT EXISTS sap_precios (
+        id SERIAL PRIMARY KEY,
+        pedido_sap_id VARCHAR(30) NOT NULL,
+        item_numero INTEGER DEFAULT 1,
+        precio_unitario DECIMAL(12,2) DEFAULT 0,
+        cantidad INTEGER,
+        cliente VARCHAR(200) DEFAULT '',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(pedido_sap_id, item_numero)
+    )`);
     // mermas referencia produccion_ordenes, cola_produccion_pasos y
     // estaciones_maestras: se crea DESPUÉS que las tres (antes estaba antes y
     // en una base nueva fallaba con "relation does not exist").
