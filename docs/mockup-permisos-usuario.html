@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Mockup · Formulario de Usuarios y Permisos — VitroFlow</title>
+<style>
+  :root{
+    --ink:#0f172a; --slate:#475569; --mute:#94a3b8; --line:#e2e8f0;
+    --bg:#f1f5f9; --card:#ffffff; --brand:#1d4ed8; --accent:#f59e0b;
+    --ok:#16a34a; --soft:#f8fafc;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--ink);padding:28px}
+  header{max-width:1240px;margin:0 auto 22px}
+  header h1{font-size:21px;font-weight:800;letter-spacing:-.3px}
+  header p{color:var(--slate);font-size:13px;margin-top:5px;max-width:820px;line-height:1.55}
+  .grid{max-width:1240px;margin:0 auto;display:grid;grid-template-columns:repeat(auto-fit,minmax(370px,1fr));gap:20px;align-items:start}
+
+  .variant{background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden;box-shadow:0 1px 3px rgba(15,23,42,.06)}
+  .v-head{padding:14px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px}
+  .v-tag{font-size:10px;font-weight:800;letter-spacing:.8px;padding:3px 8px;border-radius:6px;background:var(--ink);color:#fff}
+  .v-tag.rec{background:var(--ok)}
+  .v-head h2{font-size:14px;font-weight:700}
+  .v-body{padding:16px}
+  .v-foot{padding:11px 16px;background:var(--soft);border-top:1px solid var(--line);font-size:11.5px;color:var(--slate);line-height:1.55}
+  .v-foot b{color:var(--ink)}
+
+  /* ── formulario base ── */
+  .frow{display:flex;gap:10px;margin-bottom:11px}
+  .fld{flex:1}
+  .fld label{display:block;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--slate);margin-bottom:4px}
+  .fld .inp{border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:12.5px;background:#fff;color:var(--ink)}
+  .pillrow{display:flex;gap:6px;flex-wrap:wrap}
+
+  /* ── A: chips + secciones colapsables ── */
+  .sec{border:1px solid var(--line);border-radius:10px;margin-bottom:8px;overflow:hidden}
+  .sec-h{display:flex;align-items:center;gap:9px;padding:9px 11px;background:var(--soft);cursor:pointer}
+  .sec-h .name{font-size:12px;font-weight:700;flex:1}
+  .sec-h .count{font-size:10.5px;font-weight:700;color:var(--brand);background:#eff6ff;padding:2px 7px;border-radius:20px}
+  .sec-h .car{color:var(--mute);font-size:10px}
+  .sec-b{padding:7px 11px 10px}
+  .mrow{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px dashed #eef2f7}
+  .mrow:last-child{border:0}
+  .mrow .mn{font-size:12px;flex:1;color:var(--slate)}
+  .chip{font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px;border:1.5px solid var(--line);background:#fff;color:var(--mute);cursor:pointer;user-select:none}
+  .chip.on{background:#eff6ff;border-color:var(--brand);color:var(--brand)}
+  .chip.on.g{background:#f0fdf4;border-color:var(--ok);color:var(--ok)}
+
+  /* ── B: plantillas + resumen natural ── */
+  .tpl{display:flex;gap:7px;margin-bottom:12px;flex-wrap:wrap}
+  .tpl .t{font-size:11px;font-weight:600;padding:7px 11px;border:1.5px solid var(--line);border-radius:9px;cursor:pointer;background:#fff}
+  .tpl .t.on{border-color:var(--brand);background:#eff6ff;color:var(--brand);font-weight:700}
+  .tpl .t small{display:block;font-weight:400;font-size:9.5px;color:var(--mute);margin-top:1px}
+  .tpl .t.on small{color:#3b82f6}
+  .plain{background:#f8fafc;border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:8px;padding:11px 13px;font-size:12.5px;line-height:1.7;color:var(--slate);margin-bottom:12px}
+  .plain b{color:var(--ink)}
+  .plain .ttl{font-size:10px;font-weight:800;letter-spacing:.7px;text-transform:uppercase;color:var(--accent);display:block;margin-bottom:5px}
+  .search{border:1px solid var(--line);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--mute);margin-bottom:9px;background:#fff}
+
+  /* ── C: matriz ── */
+  table{width:100%;border-collapse:collapse;font-size:11.5px}
+  th{background:var(--soft);font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--slate);padding:7px 6px;border-bottom:1.5px solid var(--line);text-align:center}
+  th.l{text-align:left}
+  td{padding:6px;border-bottom:1px solid #eef2f7;text-align:center}
+  td.l{text-align:left;color:var(--slate);font-weight:500}
+  tr.grp td{background:#f8fafc;font-weight:800;font-size:10px;letter-spacing:.6px;color:var(--ink);text-align:left;padding:6px}
+  .cb{width:15px;height:15px;border-radius:4px;border:1.5px solid #cbd5e1;display:inline-block;vertical-align:middle;background:#fff}
+  .cb.on{background:var(--brand);border-color:var(--brand);position:relative}
+  .cb.on::after{content:"✓";color:#fff;font-size:10px;font-weight:900;position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
+  .cb.ro.on{background:var(--ok);border-color:var(--ok)}
+  .legend{display:flex;gap:12px;font-size:10.5px;color:var(--slate);margin-bottom:9px;align-items:center;flex-wrap:wrap}
+  .legend span{display:flex;gap:5px;align-items:center}
+
+  /* stats bar */
+  .stats{max-width:1240px;margin:0 auto 20px;display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
+  .stat{background:#fff;border:1px solid var(--line);border-radius:12px;padding:13px 15px}
+  .stat .n{font-size:24px;font-weight:900;letter-spacing:-1px}
+  .stat .n.bad{color:#dc2626} .stat .n.warn{color:#d97706} .stat .n.ok{color:#16a34a}
+  .stat .l{font-size:11px;color:var(--slate);margin-top:3px;line-height:1.4}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Formulario de Usuarios &amp; Permisos — 3 opciones de rediseño</h1>
+  <p>El formulario actual pone <b>204 checkboxes</b> en un solo modal (42 módulos × 4 acciones + 36 "todo"), sin plegar, sin buscar y sin resumen. Estas variantes mantienen <b>la misma lógica de datos</b> (mismo árbol, mismos IDs) y cambian solo la presentación.</p>
+</header>
+
+<div class="stats">
+  <div class="stat"><div class="n bad">204</div><div class="l">checkboxes visibles a la vez en el formulario actual</div></div>
+  <div class="stat"><div class="n warn">2</div><div class="l">permisos que el frontend pide y el backend rechaza (Taller, Mantención)</div></div>
+  <div class="stat"><div class="n warn">17</div><div class="l">permisos basura guardados hoy en tu cuenta (sub-sub-permisos)</div></div>
+  <div class="stat"><div class="n ok">28/42</div><div class="l">módulos con permisos backend↔árbol correctos</div></div>
+</div>
+
+<div class="grid">
+
+  <!-- ══════════ OPCIÓN A ══════════ -->
+  <div class="variant">
+    <div class="v-head"><span class="v-tag">OPCIÓN A</span><h2>Panel plegable con chips</h2></div>
+    <div class="v-body">
+      <div class="frow">
+        <div class="fld"><label>Nombre</label><div class="inp">María Pérez</div></div>
+        <div class="fld"><label>Rol</label><div class="inp">Usuario — módulos que asignes ▾</div></div>
+      </div>
+
+      <div class="sec">
+        <div class="sec-h"><span class="name">PRODUCCIÓN</span><span class="count">4 de 9</span><span class="car">▼</span></div>
+        <div class="sec-b">
+          <div class="mrow"><span class="mn">Órdenes de producción</span>
+            <span class="chip on">Ver</span><span class="chip on">Crear</span><span class="chip on">Editar</span><span class="chip">Borrar</span></div>
+          <div class="mrow"><span class="mn">Planificación</span>
+            <span class="chip on">Ver</span><span class="chip">Crear</span><span class="chip on">Editar</span><span class="chip">Borrar</span></div>
+          <div class="mrow"><span class="mn">Configuración</span>
+            <span class="chip on">Ver</span><span class="chip">Crear</span><span class="chip">Editar</span><span class="chip">Borrar</span></div>
+          <div class="mrow"><span class="mn">Taller</span>
+            <span class="chip on g">Ver</span><span class="chip on g">Crear</span><span class="chip on g">Editar</span><span class="chip">Borrar</span></div>
+        </div>
+      </div>
+
+      <div class="sec">
+        <div class="sec-h"><span class="name">INVENTARIO</span><span class="count">0 de 8</span><span class="car">▶</span></div>
+      </div>
+      <div class="sec">
+        <div class="sec-h"><span class="name">MANTENCIÓN</span><span class="count">0 de 12</span><span class="car">▶</span></div>
+      </div>
+      <div class="sec">
+        <div class="sec-h"><span class="name">ATENCIÓN</span><span class="count">0 de 6</span><span class="car">▶</span></div>
+      </div>
+    </div>
+    <div class="v-foot"><b>Qué cambia:</b> secciones colapsadas con contador · chips en vez de 4 checkboxes por fila · ver de un vistazo qué tiene marcado. <b>Riesgo mínimo</b>: solo presentación.</div>
+  </div>
+
+  <!-- ══════════ OPCIÓN B ══════════ -->
+  <div class="variant">
+    <div class="v-head"><span class="v-tag rec">OPCIÓN B · RECOMENDADA</span><h2>Plantillas + resumen en lenguaje natural</h2></div>
+    <div class="v-body">
+      <div class="frow">
+        <div class="fld"><label>Nombre</label><div class="inp">María Pérez</div></div>
+        <div class="fld"><label>Rol</label><div class="inp">Usuario — módulos que asignes ▾</div></div>
+      </div>
+
+      <label style="display:block;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#475569;margin-bottom:5px">Empezar con una plantilla</label>
+      <div class="tpl">
+        <div class="t">Administrador<small>acceso total</small></div>
+        <div class="t on">Producción<small>órdenes + planificación</small></div>
+        <div class="t">Bodega<small>solo inventario</small></div>
+        <div class="t">Solo lectura<small>ver reportes</small></div>
+        <div class="t">Personalizado<small>armar a mano</small></div>
+      </div>
+
+      <div class="plain">
+        <span class="ttl">Así quedará el acceso</span>
+        <b>María</b> podrá <b>ver, crear y editar</b> órdenes de producción y su programación; <b>ver y editar</b> la configuración de códigos y recetas; y <b>ver y editar</b> el taller. <u>No</u> podrá eliminar nada ni tocar inventario, atención ni mantenimiento.
+      </div>
+
+      <div class="search">🔍 Buscar módulo… &nbsp;&nbsp;<span style="color:#1d4ed8;font-weight:700">Detalle: 4 módulos activos</span></div>
+
+      <div class="sec">
+        <div class="sec-h"><span class="name">PRODUCCIÓN</span><span class="count">4 de 9</span><span class="car">▼</span></div>
+        <div class="sec-b">
+          <div class="mrow"><span class="mn">Órdenes de producción</span>
+            <span class="chip on">Ver</span><span class="chip on">Crear</span><span class="chip on">Editar</span><span class="chip">Borrar</span></div>
+          <div class="mrow"><span class="mn">Planificación</span>
+            <span class="chip on">Ver</span><span class="chip on">Crear</span><span class="chip on">Editar</span><span class="chip">Borrar</span></div>
+        </div>
+      </div>
+      <div class="sec">
+        <div class="sec-h"><span class="name">INVENTARIO</span><span class="count">0 de 8</span><span class="car">▶</span></div>
+      </div>
+    </div>
+    <div class="v-foot"><b>Qué cambia:</b> plantillas pre-armadas (2 clics en vez de 200) · resumen en texto claro antes de guardar · chips + buscador como en A. <b>Más amigable</b> para quien configura usuarios poco seguido.</div>
+  </div>
+
+  <!-- ══════════ OPCIÓN C ══════════ -->
+  <div class="variant">
+    <div class="v-head"><span class="v-tag">OPCIÓN C</span><h2>Matriz tipo enterprise</h2></div>
+    <div class="v-body">
+      <div class="frow">
+        <div class="fld"><label>Nombre</label><div class="inp">María Pérez</div></div>
+        <div class="fld"><label>Rol</label><div class="inp">Usuario — módulos que asignes ▾</div></div>
+      </div>
+
+      <div class="legend">
+        <span><i class="cb on"></i> permitido</span>
+        <span><i class="cb"></i> sin acceso</span>
+        <span style="color:#94a3b8">· clic en cabecera = marcar columna</span>
+      </div>
+
+      <table>
+        <tr><th class="l">Módulo</th><th>Ver</th><th>Crear</th><th>Editar</th><th>Borrar</th></tr>
+        <tr><td colspan="5" class="grp" style="padding:6px;background:#f8fafc;font-weight:800;font-size:10px;letter-spacing:.6px">PRODUCCIÓN</td></tr>
+        <tr><td class="l">Órdenes de producción</td><td><i class="cb on"></i></td><td><i class="cb on"></i></td><td><i class="cb on"></i></td><td><i class="cb"></i></td></tr>
+        <tr><td class="l">Planificación</td><td><i class="cb on"></i></td><td><i class="cb on"></i></td><td><i class="cb on"></i></td><td><i class="cb"></i></td></tr>
+        <tr><td class="l">Configuración</td><td><i class="cb on"></i></td><td><i class="cb on"></i></td><td><i class="cb"></i></td><td><i class="cb"></i></td></tr>
+        <tr><td class="l">Taller</td><td><i class="cb on"></i></td><td><i class="cb on"></i></td><td><i class="cb on"></i></td><td><i class="cb"></i></td></tr>
+        <tr><td colspan="5" class="grp" style="padding:6px;background:#f8fafc;font-weight:800;font-size:10px;letter-spacing:.6px">INVENTARIO</td></tr>
+        <tr><td class="l">Inventario</td><td><i class="cb"></i></td><td><i class="cb"></i></td><td><i class="cb"></i></td><td><i class="cb"></i></td></tr>
+        <tr><td class="l">Movimientos</td><td><i class="cb"></i></td><td><i class="cb"></i></td><td><i class="cb"></i></td><td><i class="cb"></i></td></tr>
+        <tr><td colspan="5" class="grp" style="padding:6px;background:#f8fafc;font-weight:800;font-size:10px;letter-spacing:.6px">MANTENCIÓN · SIGMA</td></tr>
+        <tr><td class="l">Máquinas</td><td><i class="cb"></i></td><td><i class="cb"></i></td><td><i class="cb"></i></td><td><i class="cb"></i></td></tr>
+      </table>
+      <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:7px">… 38 módulos más (colapsables por sección)</div>
+    </div>
+    <div class="v-foot"><b>Qué cambia:</b> una tabla densa con checkboxes pequeños, cabeceras con "todo" por columna y secciones colapsables. <b>Más profesional/enterprise</b> (estilo GitHub Teams o Google Workspace): ideal si creas muchos usuarios seguido.</div>
+  </div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Test · Formulario Usuarios (Opción B)</title>
+<style>
+  body{margin:0;background:#eef2f7;font-family:'Segoe UI',system-ui,-apple-system,sans-serif}
+  .barra{background:#0f172a;color:#fff;padding:10px 16px;font-size:12px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;position:sticky;top:0;z-index:50}
+  .barra b{color:#93c5fd}
+  .barra button{background:#1e40af;border:none;color:#fff;border-radius:6px;padding:6px 11px;font-size:11px;cursor:pointer;font-weight:600}
+  .barra button:hover{background:#2563eb}
+  #resultado{font-size:11px;font-weight:700}
+  #salida{margin:0;padding:12px 16px;font-size:11.5px;line-height:1.6;white-space:pre-wrap;background:#fff;border-top:1px solid #e2e8f0;color:#334155;min-height:60px}
+</style>
+</head>
+<body>
+
+<div class="barra">
+  <b>Harness local · Usuarios Opción B</b>
+  <button onclick="escenario('nuevo')">Nuevo usuario</button>
+  <button onclick="escenario('editando')">Editar (con permisos)</button>
+  <button onclick="verificar()">▶ Ejecutar verificación</button>
+  <span id="resultado"></span>
+</div>
+
+<div id="app"></div>
+<pre id="salida">Presiona "Ejecutar verificación"…</pre>
+
+<script>
+function escapeHtml(str) {
+    if (str === null || str === undefined) return '';
+    return String(str).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+const App = {
+    modules: {},
+    registerModule(n, o) { this.modules[n] = o; },
+    showAlert(m, t) { console.log('[alert]', t, m); }
+};
+</script>
+<script src="../web/public/js/modules/usuarios.js"></script>
+<script>
+const u = App.modules.usuarios;
+
+// Usuario de prueba: permisos reales de la BD + los históricos que el árbol
+// NO representa ('usuarios', 'produccion') para verificar que NO se pierden.
+const USUARIO = {
+    id: 7, nombre: 'María Pérez', email: 'maria@templaglass.cl', rol: 'usuario', area: 'Producción',
+    permisos: ['prod_ordenes', 'prod_ordenes.agregar', 'prod_ordenes.editar', 'prod_planificacion',
+        'prod_planificacion.editar', 'taller', 'taller.editar', 'inv_inventario', 'usuarios', 'produccion']
+};
+
+function escenario(tipo) {
+    u.allUsers = tipo === 'editando' ? [USUARIO] : [];
+    document.getElementById('app').innerHTML = u._estilos() + `
+        <div id="uModalOverlay" class="us-overlay" style="display:flex" onclick="if(event.target===this)App.modules.usuarios.tryCloseModal()">
+            <div class="us-modal us-modal-wide" onclick="event.stopPropagation()">
+                <div class="us-modal-head"><h3 id="uModalTitle">Nuevo usuario</h3>
+                    <button class="us-x" onclick="App.modules.usuarios.pedirCerrarForm()">✕</button></div>
+                <div class="us-modal-body" id="uModalBody"></div>
+                <div class="us-modal-foot">
+                    <button class="us-btn-ghost" onclick="App.modules.usuarios.pedirCerrarForm()">Cancelar</button>
+                    <button class="us-btn-primary" id="uModalBtn">Crear usuario</button>
+                </div>
+            </div>
+        </div>
+        <div id="uConfirmOverlay" class="us-overlay">
+            <div class="us-modal us-modal-sm" onclick="event.stopPropagation()">
+                <div class="us-modal-head"><h3 id="uConfirmTitle">Confirmar</h3></div>
+                <div class="us-modal-body"><p id="uConfirmText" class="us-confirm-text"></p></div>
+                <div class="us-modal-foot">
+                    <button class="us-btn-ghost" onclick="App.modules.usuarios.closeConfirm()">Cancelar</button>
+                    <button class="us-btn-danger" id="uConfirmBtn">Confirmar</button>
+                </div>
+            </div>
+        </div>`;
+    u.showForm(tipo === 'editando' ? USUARIO.id : null);
+}
+
+function verificar() {
+    const log = [];
+    const ok = (c, m) => log.push((c ? '  OK   ' : '  FALLA ') + m);
+    const resumen = () => (document.getElementById('usResumenBody').textContent || '').replace(/\s+/g, ' ').trim();
+
+    // 1. Estructura
+    const total = document.querySelectorAll('.perm-sub-check').length;
+    const marcados = document.querySelectorAll('.perm-sub-check:checked').length;
+    ok(total > 150, `chips generados: ${total} (antes ~204 checkboxes), marcados: ${marcados}`);
+    ok(document.querySelectorAll('.us-permsec').length === u.SECTIONS.length,
+        `secciones: ${document.querySelectorAll('.us-permsec').length} de ${u.SECTIONS.length}`);
+    ok(resumen().length > 20, 'resumen en lenguaje natural renderizado');
+    ok(document.querySelectorAll('.us-tpl-btn').length === u.PLANTILLAS.length,
+        `botones de plantilla: ${document.querySelectorAll('.us-tpl-btn').length}`);
+
+    // 2. Plantilla Bodega
+    u.aplicarPlantilla('bodega');
+    const bodega = document.querySelectorAll('.perm-sub-check:checked').length;
+    ok(bodega > 5, `plantilla Bodega marca ${bodega} casillas`);
+    ok(!document.querySelector('.perm-sub-check[data-sub="inv_inventario.sensible"]').checked,
+        'Bodega NO incluye "Ver Sensible (costos/CPM)"');
+    ok(document.querySelector('.us-tpl-btn[data-tpl="bodega"]').classList.contains('on'),
+        'botón de plantilla queda resaltado');
+    log.push('  RESUMEN (Bodega): ' + resumen());
+
+    // 3. Búsqueda
+    u.buscarPerm('taller');
+    const vis = Array.from(document.querySelectorAll('.us-permrow')).filter(r => r.style.display !== 'none').length;
+    ok(vis === 1, `búsqueda "taller" deja ${vis} fila(s) visible(s)`);
+    ok(document.querySelector('.us-permsec[data-sec="produccion"]').classList.contains('open'),
+        'la sección coincidente se abre sola al buscar');
+    u.buscarPerm('');
+    ok(Array.from(document.querySelectorAll('.us-permrow')).every(r => r.style.display !== 'none'),
+        'búsqueda vacía restaura todas las filas');
+
+    // 4. Formato que consume save() (sin cambios)
+    const ids = Array.from(document.querySelectorAll('.perm-sub-check:checked'))
+        .map(c => c.dataset.type === 'ver' ? c.dataset.sub : c.dataset.sub + '.' + c.dataset.type);
+    ok(ids.length === bodega, `save() leería ${ids.length} permisos con el MISMO formato de siempre`);
+    log.push('  MUESTRA ids: ' + ids.slice(0, 6).join(', '));
+
+    // 5. Colapso
+    u.toggleSec('inventario');
+    ok(!document.querySelector('.us-permsec[data-sec="inventario"]').classList.contains('open'), 'colapsar sección funciona');
+    u.toggleExpAll();
+    ok(document.querySelectorAll('.us-permsec.open').length === u.SECTIONS.length, '"Expandir todo" funciona');
+
+    // 6. Plantilla Administrador → rol admin
+    u.aplicarPlantilla('admin');
+    ok(document.getElementById('fURol').value === 'admin', 'plantilla Administrador pone rol = admin');
+    log.push('  RESUMEN (admin): ' + resumen());
+
+    // 7. Plantilla Solo lectura (después de haber puesto rol=admin arriba)
+    u.aplicarPlantilla('lectura');
+    const soloVer = Array.from(document.querySelectorAll('.perm-sub-check:checked')).every(c => c.dataset.type === 'ver');
+    ok(soloVer, '"Solo lectura" marca únicamente casillas Ver');
+    ok(document.getElementById('fURol').value === 'usuario',
+        'plantilla restringida baja el rol de admin a usuario (si no, el resumen mintió)');
+    ok(!resumen().includes('secciónes') && !resumen().includes('móduloes'), 'plural del resumen correcto: ' + resumen().slice(0, 90));
+    log.push('  RESUMEN (solo lectura): ' + resumen());
+
+    // 8. Plantilla Personalizar → limpia
+    u.aplicarPlantilla('limpiar');
+    ok(document.querySelectorAll('.perm-sub-check:checked').length === 0, '"Personalizado" deja todo en cero');
+    log.push('  RESUMEN (cero): ' + resumen());
+
+    // 9. Toggler "Todo X" de sección
+    u.aplicarPlantilla('produccion');
+    const secProd = document.querySelector('.us-permsec[data-sec="produccion"]');
+    const todoVer = secProd.querySelector('.quick input[data-type="ver"]');
+    ok(todoVer && todoVer.checked, 'casilla "Todo Ver" se marca al aplicar plantilla');
+    todoVer.checked = false;
+    u.toggleSubPerm('produccion', 'ver', false);
+    ok(!Array.from(secProd.querySelectorAll('.perm-sub-check[data-type="ver"]')).some(c => c.checked),
+        '"Todo Ver" desmarca todo el módulo');
+
+    // 10. Permisos históricos (usuarios/produccion) en el resumen de edición
+    escenario('editando');
+    const hist = ['usuarios', 'produccion'];
+    ok(hist.every(h => USUARIO.permisos.includes(h)), 'usuario de prueba tiene permisos históricos');
+
+    const fallos = log.filter(l => l.startsWith('  FALLA')).length;
+    const r = document.getElementById('resultado');
+    r.textContent = fallos ? `${fallos} FALLA(S)` : 'TODO OK';
+    r.style.color = fallos ? '#fca5a5' : '#86efac';
+    document.getElementById('salida').textContent =
+        (fallos ? `RESULTADO: ${fallos} fallo(s)\n` : 'RESULTADO: todas las verificaciones pasaron\n') + log.join('\n');
+}
+
+escenario('editando');
+</script>
+</body>
+</html>

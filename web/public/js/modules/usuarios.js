@@ -80,6 +80,29 @@ App.registerModule('usuarios', {
         ]}
     ],
 
+    // Plantillas pre-armadas (Opción B). Aplican cambios SOLO sobre los
+    // checkboxes del árbol: la lógica de datos de save() no cambia.
+    //   todo     → todas las casillas (rol admin)
+    //   soloVer  → solo la casilla "Ver" de cada módulo
+    //   aplicar  → reglas por sección: { seccion, subs?, sin?, tipos }
+    //   limpiar  → deja todo desmarcado
+    PLANTILLAS: [
+        { key: 'admin', label: 'Administrador', desc: 'acceso total', todo: true, rol: 'admin' },
+        { key: 'produccion', label: 'Producción', desc: 'órdenes, planificación y taller', aplicar: [
+            { seccion: 'produccion', tipos: ['ver', 'agregar', 'editar'] },
+            { seccion: 'costeo', tipos: ['ver'] }
+        ]},
+        { key: 'bodega', label: 'Bodega', desc: 'inventario y almacén', aplicar: [
+            { seccion: 'inventario', sin: ['inv_inventario.sensible'], tipos: ['ver'] },
+            { seccion: 'inventario', subs: ['inv_inventario', 'inv_movimientos', 'inv_catalogos'], tipos: ['agregar', 'editar'] },
+            { seccion: 'atencion', subs: ['turnos_bodega', 'turnos_almacen'], tipos: ['ver'] },
+            { seccion: 'produccion', subs: ['bodega'], tipos: ['ver', 'agregar', 'editar'] },
+            { seccion: 'pedidos', tipos: ['ver'] }
+        ]},
+        { key: 'lectura', label: 'Solo lectura', desc: 'ver todo, sin editar', soloVer: true },
+        { key: 'limpiar', label: 'Personalizado', desc: 'empezar de cero', limpiar: true }
+    ],
+
     async render() {
         const el = document.getElementById('page-usuarios');
         el.innerHTML = this._estilos() + `
@@ -128,7 +151,7 @@ App.registerModule('usuarios', {
 
             <!-- Modal formulario -->
             <div id="uModalOverlay" class="us-overlay" onclick="if(event.target===this)App.modules.usuarios.tryCloseModal()">
-                <div class="us-modal" onclick="event.stopPropagation()">
+                <div class="us-modal us-modal-wide" onclick="event.stopPropagation()">
                     <div class="us-modal-head">
                         <h3 id="uModalTitle">Nuevo usuario</h3>
                         <button class="us-x" onclick="App.modules.usuarios.pedirCerrarForm()" aria-label="Cerrar">✕</button>
@@ -341,36 +364,47 @@ App.registerModule('usuarios', {
         const up = Array.isArray(user.permisos) ? user.permisos : [];
         const areasExistentes = [...new Set(this.allUsers.map(u => (u.area || '').trim()).filter(Boolean))];
 
+        // Secciones abiertas: las que ya tienen permisos marcados. Si es un
+        // usuario nuevo (nada marcado), todas plegadas: así no se muestran
+        // ~200 casillas de golpe (Opción B).
+        const conPerms = this.SECTIONS.filter(sec => sec.subs.some(sub =>
+            up.includes(sub.id) || ['agregar', 'editar', 'eliminar'].some(t => up.includes(sub.id + '.' + t))));
+        this._secAbierta = new Set(conPerms.map(s => s.key));
+
+        const TIPOS = ['ver', 'agregar', 'editar', 'eliminar'];
+        const LBL = { ver: 'Ver', agregar: 'Crear', editar: 'Editar', eliminar: 'Borrar' };
+
         let permTreeHtml = '';
         this.SECTIONS.forEach(sec => {
-            const allSubKeys = sec.subs.map(s => s.id);
-            const allVer = allSubKeys.length > 0 && allSubKeys.every(k => up.includes(k));
-            const allAg = allSubKeys.length > 0 && allSubKeys.every(k => up.includes(k + '.agregar'));
-            const allEd = allSubKeys.length > 0 && allSubKeys.every(k => up.includes(k + '.editar'));
-            const allEl = allSubKeys.length > 0 && allSubKeys.every(k => up.includes(k + '.eliminar'));
-            permTreeHtml += '<div class="us-permsec">';
-            permTreeHtml += '<div class="us-permsec-head"><span class="t">' + escapeHtml(sec.label) + '</span>'
-                + '<label><input type="checkbox" ' + (allVer ? 'checked' : '') + ' onchange="App.modules.usuarios.toggleSubPerm(\'' + sec.key + '\',\'ver\',this.checked)"> Ver todo</label>'
-                + '<label><input type="checkbox" ' + (allAg ? 'checked' : '') + ' onchange="App.modules.usuarios.toggleSubPerm(\'' + sec.key + '\',\'agregar\',this.checked)"> Agregar todo</label>'
-                + '<label><input type="checkbox" ' + (allEd ? 'checked' : '') + ' onchange="App.modules.usuarios.toggleSubPerm(\'' + sec.key + '\',\'editar\',this.checked)"> Editar todo</label>'
-                + '<label><input type="checkbox" ' + (allEl ? 'checked' : '') + ' onchange="App.modules.usuarios.toggleSubPerm(\'' + sec.key + '\',\'eliminar\',this.checked)"> Eliminar todo</label>'
-                + '</div>';
-            sec.subs.forEach(sub => {
-                permTreeHtml += '<div class="us-permrow">'
-                    + '<span class="s">' + escapeHtml(sub.label) + '</span>'
-                    + `<label><input type="checkbox" class="perm-sub-check" data-section="${sec.key}" data-sub="${sub.id}" data-type="ver" ${up.includes(sub.id) ? 'checked' : ''}> Ver</label>`
-                    + `<label><input type="checkbox" class="perm-sub-check" data-section="${sec.key}" data-sub="${sub.id}" data-type="agregar" ${up.includes(sub.id + '.agregar') ? 'checked' : ''}> Agregar</label>`
-                    + `<label><input type="checkbox" class="perm-sub-check" data-section="${sec.key}" data-sub="${sub.id}" data-type="editar" ${up.includes(sub.id + '.editar') ? 'checked' : ''}> Editar</label>`
-                    + `<label><input type="checkbox" class="perm-sub-check" data-section="${sec.key}" data-sub="${sub.id}" data-type="eliminar" ${up.includes(sub.id + '.eliminar') ? 'checked' : ''}> Eliminar</label>`
-                    + '</div>';
-            });
-            permTreeHtml += '</div>';
+            let marcados = 0;
+            const allBy = {};
+            TIPOS.forEach(t => allBy[t] = sec.subs.length > 0 && sec.subs.every(s =>
+                t === 'ver' ? up.includes(s.id) : up.includes(s.id + '.' + t)));
+
+            const rows = sec.subs.map(sub => {
+                const chips = TIPOS.map(t => {
+                    const chk = t === 'ver' ? up.includes(sub.id) : up.includes(sub.id + '.' + t);
+                    if (chk) marcados++;
+                    return `<label class="us-chip"><input type="checkbox" class="perm-sub-check" data-section="${sec.key}" data-sub="${sub.id}" data-type="${t}" ${chk ? 'checked' : ''} onchange="App.modules.usuarios.permChange()"><i>✓</i>${LBL[t]}</label>`;
+                }).join('');
+                return `<div class="us-permrow" data-txt="${escapeHtml((sub.label + ' ' + sub.id).toLowerCase())}">`
+                    + `<span class="s">${escapeHtml(sub.label)}</span><span class="chips">${chips}</span></div>`;
+            }).join('');
+
+            permTreeHtml += `<div class="us-permsec${this._secAbierta.has(sec.key) ? ' open' : ''}" data-sec="${sec.key}">`
+                + `<div class="us-permsec-head" onclick="App.modules.usuarios.toggleSec('${sec.key}')">`
+                + `<span class="car">▶</span><span class="t">${escapeHtml(sec.label)}</span>`
+                + `<span class="count${marcados ? '' : ' zero'}" id="usCnt-${sec.key}">${marcados} de ${sec.subs.length}</span>`
+                + `<span class="quick" onclick="event.stopPropagation()">`
+                + TIPOS.map(t => `<label class="us-chip sm" title="Marcar o desmarcar todos"><input type="checkbox" data-type="${t}" ${allBy[t] ? 'checked' : ''} onchange="App.modules.usuarios.toggleSubPerm('${sec.key}','${t}',this.checked)"><i>✓</i>Todo ${LBL[t].toLowerCase()}</label>`).join('')
+                + `</span></div>`
+                + `<div class="us-permsec-body">${rows}</div></div>`;
         });
 
         document.getElementById('uModalTitle').textContent = id ? 'Editar usuario' : 'Nuevo usuario';
         document.getElementById('uModalBody').innerHTML = ''
             + '<div class="us-field"><label>Nombre completo</label>'
-            + `<input id="fUNombre" type="text" autocomplete="off" value="${escapeHtml(user.nombre)}" placeholder="Ej: María Pérez">`
+            + `<input id="fUNombre" type="text" autocomplete="off" value="${escapeHtml(user.nombre)}" placeholder="Ej: María Pérez" oninput="App.modules.usuarios.permChange()">`
             + '<div class="us-err" id="eUNombre"></div></div>'
 
             + '<div class="us-field"><label>Email</label>'
@@ -387,7 +421,7 @@ App.registerModule('usuarios', {
             + '<div class="us-err" id="eUPassword"></div></div>'
 
             + '<div class="us-field"><label>Rol</label>'
-            + '<select id="fURol">'
+            + '<select id="fURol" onchange="App.modules.usuarios.permChange()">'
             + '<option value="usuario" ' + (user.rol !== 'admin' ? 'selected' : '') + '>Usuario — solo los módulos que le asignes</option>'
             + '<option value="admin" ' + (user.rol === 'admin' ? 'selected' : '') + '>Administrador — acceso total</option>'
             + '</select><div class="us-err" id="eURol"></div></div>'
@@ -398,11 +432,27 @@ App.registerModule('usuarios', {
             + '<div class="us-hint">Aparece como filtro en el listado.</div></div>'
 
             + '<div class="us-field"><label>Permisos del sistema</label>'
-            + '<div class="us-hint">Marca qué puede hacer. El permiso "Ver" habilita el módulo; Agregar / Editar / Eliminar son acciones sueltas.</div>'
-            + '<div class="us-permtree">' + permTreeHtml + '</div></div>';
+            + '<div class="us-hint" style="margin-bottom:10px">Empieza con una plantilla y afina abajo. <strong>Ver</strong> habilita el módulo; Crear / Editar / Borrar son acciones sueltas.</div>'
+
+            + '<div class="us-tpl-lbl">Empezar con una plantilla</div>'
+            + '<div class="us-tpl-row">'
+            + this.PLANTILLAS.map(p => `<button type="button" class="us-tpl-btn" data-tpl="${p.key}" onclick="App.modules.usuarios.aplicarPlantilla('${p.key}')">${escapeHtml(p.label)}<small>${escapeHtml(p.desc)}</small></button>`).join('')
+            + '</div>'
+
+            + '<div class="us-resumen"><span class="us-resumen-t">Así quedará el acceso</span>'
+            + '<div class="us-resumen-b" id="usResumenBody"></div></div>'
+
+            + '<div class="us-permtools">'
+            + '<input type="text" id="usPermSearch" placeholder="Buscar módulo..." oninput="App.modules.usuarios.buscarPerm(this.value)">'
+            + '<span class="us-permcount" id="usPermCount"></span>'
+            + '<button type="button" class="us-exp" id="usExpAll" onclick="App.modules.usuarios.toggleExpAll()">Expandir todo</button>'
+            + '</div>'
+
+            + '<div class="us-permtree" id="usPermtree">' + permTreeHtml + '</div></div>';
 
         document.getElementById('uModalBtn').textContent = id ? 'Guardar cambios' : 'Crear usuario';
         document.getElementById('uModalOverlay').style.display = 'flex';
+        this.permChange();
         this._formInicial = this._capturarForm();
         setTimeout(() => document.getElementById('fUNombre')?.focus(), 60);
     },
@@ -426,6 +476,187 @@ App.registerModule('usuarios', {
 
     toggleSubPerm(sectionKey, type, checked) {
         document.querySelectorAll(`.perm-sub-check[data-section="${sectionKey}"][data-type="${type}"]`).forEach(cb => cb.checked = checked);
+        this.permChange();
+    },
+
+    // ---------------- Opción B: plantillas · resumen · colapso · búsqueda ----------------
+    // Lee el árbol tal como está en el DOM: { seccion: { subId: [tipos] } }
+    _leerPermisos() {
+        const mapa = {};
+        document.querySelectorAll('.perm-sub-check').forEach(cb => {
+            if (!cb.checked) return;
+            const s = cb.dataset.section, sub = cb.dataset.sub;
+            (mapa[s] = mapa[s] || {});
+            (mapa[s][sub] = mapa[s][sub] || []).push(cb.dataset.type);
+        });
+        return mapa;
+    },
+
+    // Se llama desde cualquier cambio del árbol: repinta chips, contadores,
+    // casillas "Todo X" y el resumen en lenguaje natural.
+    permChange() {
+        const mapa = this._leerPermisos();
+
+        document.querySelectorAll('.us-chip').forEach(ch => {
+            const inp = ch.querySelector('input');
+            if (inp) ch.classList.toggle('on', !!inp.checked);
+        });
+
+        const TIPOS = ['ver', 'agregar', 'editar', 'eliminar'];
+        this.SECTIONS.forEach(sec => {
+            const mods = mapa[sec.key] || {};
+            const n = Object.keys(mods).length;
+            const cnt = document.getElementById('usCnt-' + sec.key);
+            if (cnt) { cnt.textContent = n + ' de ' + sec.subs.length; cnt.classList.toggle('zero', n === 0); }
+            TIPOS.forEach(t => {
+                const todo = document.querySelector(`.us-permsec[data-sec="${sec.key}"] .quick input[data-type="${t}"]`);
+                if (todo) todo.checked = sec.subs.length > 0 && sec.subs.every(sub => (mods[sub.id] || []).includes(t));
+            });
+        });
+
+        // Al tocar el árbol a mano deja de haber plantilla activa
+        // (aplicarPlantilla() la vuelve a marcar después de llamar a esto).
+        document.querySelectorAll('.us-tpl-btn.on').forEach(b => b.classList.remove('on'));
+
+        this._actualizarResumen(mapa);
+    },
+
+    // Resumen en lenguaje natural de lo que se está por guardar.
+    _actualizarResumen(mapa) {
+        const box = document.getElementById('usResumenBody');
+        if (!box) return;
+        const rol = (document.getElementById('fURol') || {}).value || 'usuario';
+        const nombre = ((document.getElementById('fUNombre') || {}).value || '').trim();
+        const quien = escapeHtml(nombre ? nombre.split(/\s+/)[0] : 'Este usuario');
+        const ACC = { ver: 'ver', agregar: 'crear', editar: 'editar', eliminar: 'eliminar' };
+        const ORDEN = ['ver', 'agregar', 'editar', 'eliminar'];
+
+        if (rol === 'admin') {
+            box.innerHTML = `<b>${quien}</b> será <b>Administrador</b>: acceso total a todo el sistema. `
+                + 'Los permisos de abajo no lo restringen (se guardan igual por si luego pasa a rol usuario).';
+            return;
+        }
+
+        const grupos = [];
+        let totalMods = 0;
+        this.SECTIONS.forEach(sec => {
+            const mods = mapa[sec.key] || {};
+            const items = sec.subs.filter(s => mods[s.id]).map(s => {
+                const fr = ORDEN.filter(t => mods[s.id].includes(t)).map(t => ACC[t]);
+                const txt = fr.length === 4 ? 'todo' : fr.length === 1 ? fr[0] : fr.slice(0, -1).join(', ') + ' y ' + fr[fr.length - 1];
+                return { nom: s.label, txt };
+            });
+            if (items.length) { grupos.push({ label: sec.label, items }); totalMods += items.length; }
+        });
+
+        if (!totalMods) {
+            box.innerHTML = `<span class="none"><b>${quien}</b> no tendrá ningún módulo asignado: `
+                + 'no verá nada en el menú (solo su perfil).</span>';
+            return;
+        }
+
+        let html = `<b>${quien}</b> tendrá acceso a <b>${totalMods} módulo${totalMods === 1 ? '' : 's'}</b> `
+            + `en <b>${grupos.length} ${grupos.length === 1 ? 'sección' : 'secciones'}</b>:<ul>`
+            + grupos.map(g => `<li><b>${escapeHtml(g.label)}</b> — `
+                + g.items.map(i => `${escapeHtml(i.nom)} (${i.txt})`).join(' · ') + '</li>').join('')
+            + '</ul>';
+
+        const pie = [];
+        const hayBorrar = Object.values(mapa).some(m => Object.values(m).some(t => t.includes('eliminar')));
+        if (!hayBorrar) pie.push('No podrá eliminar nada.');
+        const sinAcceso = this.SECTIONS.filter(s => !grupos.some(g => g.label === s.label)).map(s => s.label);
+        if (sinAcceso.length) pie.push('Sin acceso a: ' + sinAcceso.join(', ') + '.');
+        if (pie.length) html += `<span class="foot">${pie.join(' ')}</span>`;
+
+        box.innerHTML = html;
+    },
+
+    aplicarPlantilla(key) {
+        const tpl = this.PLANTILLAS.find(p => p.key === key);
+        if (!tpl) return;
+
+        // La búsqueda debe quedar limpia o no se verían los cambios
+        const s = document.getElementById('usPermSearch');
+        if (s && s.value) { s.value = ''; this.buscarPerm(''); }
+
+        document.querySelectorAll('.perm-sub-check').forEach(cb => cb.checked = false);
+
+        const r = document.getElementById('fURol');
+        if (tpl.rol) { if (r) r.value = tpl.rol; }
+        // Plantilla restringida + rol admin: sin esto el resumen seguiría
+        // diciendo "acceso total" y la plantilla parecería no hacer nada.
+        else if (r && r.value === 'admin') r.value = 'usuario';
+        if (tpl.todo) {
+            document.querySelectorAll('.perm-sub-check').forEach(cb => cb.checked = true);
+        } else if (tpl.soloVer) {
+            document.querySelectorAll('.perm-sub-check[data-type="ver"]').forEach(cb => cb.checked = true);
+        } else if (tpl.aplicar) {
+            tpl.aplicar.forEach(regla => {
+                const sec = this.SECTIONS.find(x => x.key === regla.seccion);
+                if (!sec) return;
+                sec.subs
+                    .filter(sub => (!regla.subs || regla.subs.includes(sub.id)) && !(regla.sin || []).includes(sub.id))
+                    .forEach(sub => (regla.tipos || []).forEach(t => {
+                        const cb = document.querySelector(`.perm-sub-check[data-section="${sec.key}"][data-sub="${sub.id}"][data-type="${t}"]`);
+                        if (cb) cb.checked = true;
+                    }));
+            });
+        }
+
+        this._secAbierta = new Set(Object.keys(this._leerPermisos()));
+        this._pintarSecs();
+        this.permChange();
+        const btn = document.querySelector(`.us-tpl-btn[data-tpl="${key}"]`);
+        if (btn) btn.classList.add('on');
+    },
+
+    toggleSec(key) {
+        if (!this._secAbierta) this._secAbierta = new Set();
+        if (this._secAbierta.has(key)) this._secAbierta.delete(key); else this._secAbierta.add(key);
+        this._pintarSecs();
+    },
+
+    _pintarSecs() {
+        const buscando = document.getElementById('usPermSearch');
+        if (buscando && buscando.value.trim()) { this.buscarPerm(buscando.value); return; }
+        document.querySelectorAll('.us-permsec').forEach(el => el.classList.toggle('open', this._secAbierta.has(el.dataset.sec)));
+        const b = document.getElementById('usExpAll');
+        if (b) {
+            const total = document.querySelectorAll('.us-permsec').length;
+            b.textContent = this._secAbierta.size >= total ? 'Contraer todo' : 'Expandir todo';
+        }
+    },
+
+    toggleExpAll() {
+        const els = Array.from(document.querySelectorAll('.us-permsec'));
+        const abrir = this._secAbierta.size < els.length;
+        this._secAbierta = new Set(abrir ? els.map(e => e.dataset.sec) : []);
+        this._pintarSecs();
+    },
+
+    // Filtra módulos por nombre/id; al buscar, las secciones coincidentes se
+    // abren solas para que se vean los resultados.
+    buscarPerm(q) {
+        const t = (q || '').trim().toLowerCase();
+        let n = 0;
+        this.SECTIONS.forEach(sec => {
+            const el = document.querySelector(`.us-permsec[data-sec="${sec.key}"]`);
+            if (!el) return;
+            const secOk = !t || sec.label.toLowerCase().includes(t);
+            let hay = 0;
+            el.querySelectorAll('.us-permrow').forEach(row => {
+                const ok = secOk || !t || (row.dataset.txt || '').includes(t);
+                row.style.display = ok ? '' : 'none';
+                if (ok && t) hay++;
+            });
+            const visible = !t || hay > 0;
+            el.style.display = visible ? '' : 'none';
+            if (t && visible) el.classList.add('open');
+            else el.classList.toggle('open', this._secAbierta.has(sec.key));
+            n += hay;
+        });
+        const c = document.getElementById('usPermCount');
+        if (c) c.textContent = t ? `${n} módulo${n === 1 ? '' : 's'}` : '';
     },
 
     // Cierre protegido: nunca se pierde lo escrito sin avisar.
@@ -726,16 +957,57 @@ App.registerModule('usuarios', {
             .us-hint{font-size:11px;color:#8494a8;margin-top:5px}
             .us-err{display:none;color:#dc2626;font-size:11px;font-weight:600;margin-top:5px}
 
-            .us-permtree{border:1px solid #e4e9f0;border-radius:10px;overflow:hidden;max-height:320px;overflow-y:auto}
+            .us-modal-wide{max-width:680px}
+
+            .us-tpl-lbl{font-size:10px;font-weight:800;letter-spacing:.7px;text-transform:uppercase;color:#8494a8;margin-bottom:7px}
+            .us-tpl-row{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:12px}
+            .us-tpl-btn{border:1.5px solid #e2e8f0;background:#fff;border-radius:9px;padding:7px 11px;font-size:11.5px;font-weight:600;color:#334155;cursor:pointer;text-align:left;line-height:1.25;transition:.15s;font-family:inherit}
+            .us-tpl-btn small{display:block;font-size:9.5px;font-weight:500;color:#94a3b8;margin-top:2px}
+            .us-tpl-btn:hover{border-color:#bfdbfe;background:#f8fbff}
+            .us-tpl-btn.on{border-color:#2563eb;background:#eff6ff;color:#1d4ed8;box-shadow:0 0 0 3px rgba(37,99,235,.1)}
+            .us-tpl-btn.on small{color:#3b82f6}
+
+            .us-resumen{background:#f8fafc;border:1px solid #e2e8f0;border-left:3px solid #f59e0b;border-radius:9px;padding:11px 13px;margin-bottom:12px}
+            .us-resumen-t{display:block;font-size:9.5px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;color:#b45309;margin-bottom:6px}
+            .us-resumen-b{font-size:12.5px;line-height:1.6;color:#475569}
+            .us-resumen-b b{color:#0f172a}
+            .us-resumen-b ul{list-style:none;margin:6px 0 0;padding:0}
+            .us-resumen-b li{padding:2.5px 0;font-size:12px}
+            .us-resumen-b li > b{font-size:10px;letter-spacing:.6px;color:#334155}
+            .us-resumen-b .none{color:#94a3b8}
+            .us-resumen-b .foot{display:block;margin-top:7px;padding-top:7px;border-top:1px dashed #e2e8f0;font-size:11.5px;color:#64748b}
+
+            .us-permtools{display:flex;align-items:center;gap:8px;margin-bottom:9px}
+            .us-permtools input{flex:1;min-width:0;border:1px solid #e2e8f0;border-radius:8px;padding:8px 11px;font-size:12px;outline:none;color:#0f172a;font-family:inherit}
+            .us-permtools input:focus{border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,.12)}
+            .us-permcount{font-size:10.5px;font-weight:600;color:#8494a8;white-space:nowrap}
+            .us-exp{border:1px solid #e2e8f0;background:#fff;border-radius:8px;padding:7px 9px;font-size:10.5px;font-weight:600;color:#475569;cursor:pointer;white-space:nowrap;font-family:inherit}
+            .us-exp:hover{background:#f8fafc}
+
+            .us-permtree{border:1px solid #e4e9f0;border-radius:10px;overflow:hidden;max-height:340px;overflow-y:auto}
             .us-permsec{border-bottom:1px solid #f1f5f9}
             .us-permsec:last-child{border-bottom:none}
-            .us-permsec-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:9px 14px;background:#f8fafc}
+            .us-permsec-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:9px 14px;background:#f8fafc;cursor:pointer;user-select:none}
+            .us-permsec-head:hover{background:#f1f5f9}
+            .us-permsec-head .car{font-size:9px;color:#94a3b8;transition:transform .15s}
+            .us-permsec.open .us-permsec-head .car{transform:rotate(90deg)}
             .us-permsec-head .t{font-size:11px;font-weight:700;color:#334155;letter-spacing:.7px}
-            .us-permsec-head label{font-size:10px;color:#64748b;cursor:pointer;display:flex;align-items:center;gap:4px}
-            .us-permrow{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:7px 14px 7px 26px;border-top:1px solid #f1f5f9}
-            .us-permrow .s{font-size:13px;color:#475569;min-width:180px}
-            .us-permrow label{font-size:11px;color:#475569;cursor:pointer;display:flex;align-items:center;gap:4px}
-            .us-permsec input,.us-permrow input{accent-color:#3b82f6}
+            .us-permsec-head .count{font-size:10px;font-weight:700;color:#1d4ed8;background:#eff6ff;padding:2px 8px;border-radius:20px}
+            .us-permsec-head .count.zero{color:#94a3b8;background:#eef2f7}
+            .us-permsec-head .quick{display:flex;gap:5px;flex-wrap:wrap;margin-left:auto}
+            .us-permsec-body{display:none;padding:3px 0 8px}
+            .us-permsec.open .us-permsec-body{display:block}
+            .us-permrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:6px 14px 6px 30px;border-top:1px dashed #f1f5f9}
+            .us-permrow .s{font-size:12.5px;color:#475569;flex:1;min-width:150px}
+            .us-permrow .chips{display:flex;gap:5px;flex-wrap:wrap}
+
+            .us-chip{display:inline-flex;align-items:center;gap:4px;padding:4px 9px;border:1px solid #e2e8f0;border-radius:20px;background:#fff;font-size:10.5px;font-weight:600;color:#94a3b8;cursor:pointer;user-select:none;transition:.15s}
+            .us-chip input{display:none}
+            .us-chip i{display:none;font-style:normal;font-size:9px;font-weight:900}
+            .us-chip:hover{border-color:#cbd5e1;background:#f8fafc}
+            .us-chip.on{background:#eff6ff;border-color:#2563eb;color:#1d4ed8}
+            .us-chip.on i{display:inline}
+            .us-chip.sm{padding:3px 8px;font-size:9.5px}
 
             .us-confirm-text{font-size:13px;color:#475569;line-height:1.6;margin:0}
             .us-cred{background:#f8fafc;border:1px solid #e4e9f0;border-radius:10px;padding:14px;margin-top:12px}
@@ -768,7 +1040,9 @@ App.registerModule('usuarios', {
                 .us-mcard .meta{font-size:11px;color:#64748b;margin-bottom:3px}
                 .us-mcard .acc{display:flex;gap:6px;margin-top:8px}
                 .us-modal{width:96%}
-                .us-permrow .s{min-width:120px}
+                .us-permsec-head .quick{margin-left:0}
+                .us-permrow{flex-direction:column;align-items:flex-start;gap:6px;padding-left:26px}
+                .us-permrow .s{min-width:0}
             }
         </style>`;
     }
