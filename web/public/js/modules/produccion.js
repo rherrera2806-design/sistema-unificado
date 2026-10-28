@@ -834,39 +834,158 @@ App.registerModule('produccion', {
     hidePreciosModal() {
         document.getElementById('prodPreciosModal').style.display = 'none';
         this.selectedPreciosFile = null;
+        this._preciosRows = null;
+        this._preciosValidados = null;
     },
-    handlePreciosFile(event) {
+    // Lee el Excel en cliente y devuelve las filas (compartido por validar y guardar)
+    _leerExcelPrecios(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => {
+                try {
+                    const wb = XLSX.read(reader.result, { type: 'array' });
+                    const ws = wb.Sheets[wb.SheetNames[0]];
+                    resolve(XLSX.utils.sheet_to_json(ws));
+                } catch (e) { reject(e); }
+            };
+            reader.onerror = () => reject(new Error('Error al leer archivo'));
+            reader.readAsArrayBuffer(file);
+        });
+    },
+    // Al arrastrar/seleccionar el archivo: VALIDA sin guardar y muestra la preview
+    async handlePreciosFile(event) {
         const file = event.target.files[0];
         if (!file) return;
         this.selectedPreciosFile = file;
+        this._preciosRows = null;
+        this._preciosValidados = null;
         const n = document.getElementById('prodPreciosName');
         if (n) { n.textContent = '📄 ' + file.name; n.style.display = 'block'; }
-        const b = document.getElementById('prodPreciosBtn'); if (b) b.disabled = false;
+        const btn = document.getElementById('prodPreciosBtn');
+        const prev = document.getElementById('prodPreciosPreview');
+        // El botón queda BLOQUEADO hasta que la validación confirme que hay algo válido
+        if (btn) { btn.disabled = true; btn.textContent = 'Validando...'; }
+        if (prev) prev.innerHTML = '<div style="font-size:12px;color:#8494a8;padding:8px 0">🔎 Analizando el archivo…</div>';
+        try {
+            const rows = await this._leerExcelPrecios(file);
+            if (!rows.length) {
+                if (prev) prev.innerHTML = '<div class="po-err-box">El archivo está vacío (sin filas de datos).</div>';
+                if (btn) { btn.disabled = true; btn.textContent = 'Guardar precios'; }
+                return;
+            }
+            const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
+            const res = await fetch('/api/produccion/precios-sap/validar', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-User-Permisos': (user.permisos || []).join(','), 'X-User-Email': user.email || '' },
+                body: JSON.stringify({ rows })
+            });
+            const v = await res.json();
+            if (!res.ok) throw new Error(v.error || 'Error al validar el archivo');
+            this._preciosRows = rows;
+            this._preciosValidados = v;
+            this.renderPreciosPreview(v);
+            if (btn) {
+                const ok = v.aGuardar > 0;
+                btn.disabled = !ok;
+                btn.textContent = ok ? ('💾 Guardar ' + v.aGuardar + ' precio' + (v.aGuardar === 1 ? '' : 's')) : 'Nada que guardar';
+            }
+        } catch (e) {
+            if (prev) prev.innerHTML = '<div class="po-err-box">Error al analizar: ' + escText(e.message || e) + '</div>';
+            if (btn) { btn.disabled = true; btn.textContent = 'Guardar precios'; }
+        }
+    },
+    // Pinta el resultado de la validación: resumen + tabla + errores
+    renderPreciosPreview(v) {
+        const prev = document.getElementById('prodPreciosPreview');
+        if (!prev) return;
+        const celdaErr = (txt) => '<span style="color:#b91c1c">' + escText(txt) + '</span>';
+        let html = '';
+
+        // Resumen en tarjetas
+        html += '<div class="po-kpis" style="grid-template-columns:repeat(4,1fr);margin:4px 0 10px">';
+        html += '<div class="po-kpi"><div class="k">A guardar</div><div class="v">' + this._fmt(v.aGuardar, 0) + '</div></div>';
+        html += '<div class="po-kpi"><div class="k">Con vendedor</div><div class="v" style="color:#15803d">' + this._fmt(v.cruzadas, 0) + '</div></div>';
+        html += '<div class="po-kpi"><div class="k">Sin orden</div><div class="v" style="color:#d97706">' + this._fmt(v.sinOrden, 0) + '</div></div>';
+        html += '<div class="po-kpi"><div class="k">Con error</div><div class="v" style="color:' + (v.conError > 0 ? '#dc2626' : '#15803d') + '">' + this._fmt(v.conError, 0) + '</div></div>';
+        html += '</div>';
+
+        // Mensaje general
+        if (v.aGuardar === 0) {
+            html += '<div class="po-err-box"><strong>Ninguna fila es válida.</strong> Revisa que el Excel tenga columnas de <em>pedido</em>, <em>item</em> y <em>precio unitario</em>.</div>';
+        } else if (v.conError === 0 && v.sinOrden === 0) {
+            html += '<div class="po-ok-box" style="padding:10px 12px">✅ <strong>Todo listo.</strong> Las ' + this._fmt(v.cruzadas, 0) + ' filas son válidas y coinciden con órdenes de Producción (tendrán vendedor).</div>';
+        } else {
+            const partes = [];
+            if (v.seranNuevos) partes.push(this._fmt(v.seranNuevos, 0) + ' nuevos');
+            if (v.seranActualizados) partes.push(this._fmt(v.seranActualizados, 0) + ' actualizarán un precio ya cargado');
+            html += '<div class="po-info" style="margin-bottom:8px">Se guardarán <strong>' + this._fmt(v.aGuardar, 0) + '</strong> precios (' + partes.join(', ') + ').';
+            if (v.sinOrden > 0) html += ' <span style="color:#b45309">' + this._fmt(v.sinOrden, 0) + ' no coinciden con ninguna orden de Producción todavía</span> — se guardan igual y quedarán sin vendedor hasta que exista la orden.';
+            if (v.conError > 0) html += ' <span style="color:#dc2626">' + this._fmt(v.conError, 0) + ' filas se ignorarán</span> (ver abajo).';
+            html += '</div>';
+        }
+
+        // Tabla de preview
+        if (v.preview && v.preview.length) {
+            html += '<div style="max-height:190px;overflow:auto;border:1px solid #e4e9f0;border-radius:8px"><table style="width:100%;border-collapse:collapse;font-size:11px">';
+            html += '<thead><tr style="background:#f8fafc;position:sticky;top:0">'
+                + '<th style="text-align:left;padding:6px 8px">Fila</th>'
+                + '<th style="text-align:left;padding:6px 8px">Pedido</th>'
+                + '<th style="text-align:center;padding:6px 8px">Item</th>'
+                + '<th style="text-align:right;padding:6px 8px">Precio</th>'
+                + '<th style="text-align:left;padding:6px 8px">Cliente</th>'
+                + '<th style="text-align:left;padding:6px 8px">Estado</th>'
+                + '<th style="text-align:left;padding:6px 8px">Acción</th>'
+                + '</tr></thead><tbody>';
+            for (const p of v.preview) {
+                const estado = p.estado === 'cruzada'
+                    ? '<span style="color:#15803d">✔ Con orden · ' + escText(p.vendedor_nombre || 's/vendedor') + '</span>'
+                    : '<span style="color:#b45309">⚠ Sin orden</span>';
+                const accion = p.accion === 'actualizar'
+                    ? '<span style="color:#2563eb">Actualizar</span>'
+                    : '<span style="color:#475569">Nuevo</span>';
+                html += '<tr style="border-top:1px solid #f1f5f9">'
+                    + '<td style="padding:5px 8px;color:#8494a8">' + p.fila + '</td>'
+                    + '<td style="padding:5px 8px"><strong>' + escText(p.pedido) + '</strong></td>'
+                    + '<td style="padding:5px 8px;text-align:center">' + p.item + '</td>'
+                    + '<td style="padding:5px 8px;text-align:right">' + this._fmt(p.precio, 2) + '</td>'
+                    + '<td style="padding:5px 8px">' + escText(p.cliente || '—') + '</td>'
+                    + '<td style="padding:5px 8px">' + estado + '</td>'
+                    + '<td style="padding:5px 8px">' + accion + '</td>'
+                    + '</tr>';
+            }
+            if (v.validas > v.preview.length) {
+                html += '<tr><td colspan="7" style="text-align:center;color:#8494a8;padding:6px">…y ' + this._fmt(v.validas - v.preview.length, 0) + ' filas más</td></tr>';
+            }
+            html += '</tbody></table></div>';
+        }
+
+        // Errores
+        if (v.errores && v.errores.length) {
+            html += '<div style="background:#fef3c7;border:1px solid #fcd34d;border-radius:8px;padding:10px 12px;margin-top:8px;max-height:130px;overflow:auto">';
+            html += '<strong style="font-size:11px;color:#92400e">Filas ignoradas (' + v.errores.length + '):</strong>';
+            for (const e of v.errores.slice(0, 30)) {
+                html += '<div style="font-size:11px;color:#78350f;margin-top:3px">Fila ' + e.fila + (e.pedido ? ' (OV ' + escText(e.pedido) + ')' : '') + ': ' + escText(e.error) + '</div>';
+            }
+            if (v.errores.length > 30) html += '<div style="font-size:11px;color:#78350f;margin-top:3px">…y ' + (v.errores.length - 30) + ' más</div>';
+            html += '</div>';
+        }
+
+        prev.innerHTML = html;
     },
     async importarPrecios() {
-        if (!this.selectedPreciosFile) return;
+        // Usa las MISMAS filas que se validaron (no re-lee el archivo)
+        const data = this._preciosRows;
+        if (!data || !data.length) return;
         const btn = document.getElementById('prodPreciosBtn');
-        btn.textContent = 'Procesando...';
+        const original = btn.textContent;
+        btn.textContent = 'Guardando...';
         btn.disabled = true;
         try {
-            const data = await new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = () => {
-                    try {
-                        const wb = XLSX.read(reader.result, { type: 'array' });
-                        const ws = wb.Sheets[wb.SheetNames[0]];
-                        resolve(XLSX.utils.sheet_to_json(ws));
-                    } catch (e) { reject(e); }
-                };
-                reader.onerror = () => reject(new Error('Error al leer archivo'));
-                reader.readAsArrayBuffer(this.selectedPreciosFile);
-            });
-            if (!data.length) { App.showAlert('El archivo está vacío', 'danger'); btn.textContent = 'Guardar precios'; btn.disabled = false; return; }
             const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
             const res = await fetch('/api/produccion/precios-sap/importar', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-User-Permisos': (user.permisos || []).join(','), 'X-User-Email': user.email || '' },
-                body: JSON.stringify({ rows: data, file_name: this.selectedPreciosFile.name })
+                body: JSON.stringify({ rows: data, file_name: this.selectedPreciosFile ? this.selectedPreciosFile.name : 'excel' })
             });
             const result = await res.json();
             if (res.ok) {
@@ -876,7 +995,7 @@ App.registerModule('produccion', {
                 App.showAlert(result.error || 'Error al importar precios', 'danger');
             }
         } catch (e) { App.showAlert('Error: ' + e.message, 'danger'); }
-        btn.textContent = 'Guardar precios';
+        btn.textContent = original;
         btn.disabled = false;
     },
     showPreciosResult(result) {
@@ -1553,6 +1672,7 @@ App.registerModule('produccion', {
             .po-err-wrap{border:1px solid #e4e9f0;border-radius:10px;overflow:hidden;max-height:220px;overflow-y:auto}
             .po-solution{margin-top:10px;padding:10px 14px;background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;font-size:11px;color:#9a3412}
             .po-ok-box{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:16px;text-align:center}
+            .po-err-box{background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:12px 14px;font-size:12px;color:#b91c1c}
             .po-ok-box .big{font-size:20px;color:#15803d;font-weight:700}
             .po-ok-box .t{font-size:13px;font-weight:700;color:#166534;margin-top:4px}
             .po-ok-box .s{font-size:11px;color:#16a34a;margin-top:4px}

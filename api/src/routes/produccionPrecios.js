@@ -10,6 +10,19 @@ const MOD = 'prod_planificacion';
 const canView   = requireAnyPerm(MOD);
 const canCreate = requireAnyPerm(`${MOD}.agregar`);
 
+// Validación PREVIA (dry run): analiza el Excel y devuelve la preview de lo que
+// se guardaría, SIN escribir nada. El frontend la llama al arrastrar el archivo
+// para mostrar "¿está todo bien?" antes de pulsar "Guardar precios".
+router.post('/api/produccion/precios-sap/validar', canCreate, asyncHandler(async (req, res) => {
+    let rows = req.body.rows;
+    if (!rows && req.body.excel_data) {
+        const { parseExcelSimple } = require('../utils/excelUtils');
+        rows = parseExcelSimple(req.body.excel_data);
+    }
+    if (!Array.isArray(rows) || !rows.length) return res.status(400).json({ error: 'El archivo Excel esta vacio' });
+    res.json(await precios.validarPrecios(rows));
+}));
+
 // Importar Excel de precios (pedido + item + precio unitario).
 // Acepta rows ya parseados o excel_data en base64 (mismo patrón que
 // /api/produccion/importar).
