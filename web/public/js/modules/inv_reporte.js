@@ -51,15 +51,12 @@ App.registerModule('inv_reporte', {
             + '<div class="ir-chart-box"><div class="ir-chart-title"><svg viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 0 20" fill="#8b5cf6" opacity="0.2"/></svg>Por Tipo de Cristal</div><div style="position:relative;height:280px;display:flex;justify-content:center"><canvas id="irChartTipo"></canvas></div></div>'
             + '</div>'
             + '<div class="ir-chart-row">'
-            + '<div class="ir-chart-box"><div class="ir-chart-title"><svg viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>M2 Entradas vs Salidas</div><div style="position:relative;height:280px"><canvas id="irChartM2"></canvas></div></div>'
+            + '<div class="ir-chart-box"><div class="ir-chart-title"><svg viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>Kilos Entradas vs Salidas</div><div style="position:relative;height:280px"><canvas id="irChartKilos"></canvas></div></div>'
             + '<div class="ir-chart-box"><div class="ir-chart-title"><svg viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>Top Materiales (Salidas)</div><div style="position:relative;height:280px"><canvas id="irChartMaterial"></canvas></div></div>'
             + '</div>'
             + '<div class="ir-chart-row">'
             + '<div class="ir-chart-box"><div class="ir-chart-title"><svg viewBox="0 0 24 24" fill="none" stroke="#0ea5e9" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>Tendencia de Stock</div><div style="position:relative;height:280px"><canvas id="irChartTendencia"></canvas></div></div>'
             + '<div class="ir-chart-box"><div class="ir-chart-title"><svg viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>Top Dimensiones</div><div style="position:relative;height:280px"><canvas id="irChartDimension"></canvas></div></div>'
-            + '</div>'
-            + '<div class="ir-chart-row">'
-            + '<div class="ir-chart-box" style="grid-column:1/-1"><div class="ir-chart-title"><svg viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>Kilos Entradas vs Salidas</div><div style="position:relative;height:280px"><canvas id="irChartKilos"></canvas></div></div>'
             + '</div>'
             + '<div class="ir-section"><div class="ir-chart-title" style="margin-bottom:12px"><svg viewBox="0 0 24 24" fill="none" stroke="#334155" stroke-width="2" width="16" height="16"><path d="M3 3h18v18H3z"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M9 3v18"/></svg>Detalle Mensual</div><div id="irTabla" class="ir-table-wrap"></div></div>';
 
@@ -116,7 +113,6 @@ App.registerModule('inv_reporte', {
         const defaults = { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, datalabels: { display: false } } };
 
         const maxSalidas = Math.max(...d.meses.map(m => m.salidas), 1);
-        const maxM2 = Math.max(...d.meses.map(m => Math.max(m.m2_entradas, m.m2_salidas)), 1);
 
         this.charts.mes = new Chart(document.getElementById('irChartMes'), {
             type: 'bar',
@@ -132,16 +128,6 @@ App.registerModule('inv_reporte', {
             type: 'doughnut',
             data: { labels: tipoTotal.map(t => t.nombre), datasets: [{ data: tipoTotal.map(t => t.total), backgroundColor: ['#10b981','#3b82f6','#f59e0b','#8b5cf6','#ef4444','#06b6d4','#ec4899','#f97316'], borderWidth: 2, borderColor: '#fff', hoverOffset: 8 }] },
             options: { ...defaults, cutout: '60%', plugins: { ...defaults.plugins, legend: { display: true, position: 'bottom', labels: { padding: 10, usePointStyle: true, pointStyleWidth: 8, font: { size: 9 } } }, datalabels: { display: (ctx) => ctx.dataset.data[ctx.dataIndex] > 0, color: '#fff', font: { size: 10, weight: '700' }, formatter: (v, ctx) => { const t = ctx.dataset.data.reduce((a,b)=>a+b,0); return t > 0 ? Math.round((v/t)*100)+'%' : ''; } } } },
-            plugins: [ChartDataLabels]
-        });
-
-        this.charts.m2 = new Chart(document.getElementById('irChartM2'), {
-            type: 'bar',
-            data: { labels, datasets: [
-                { label: 'M2 Entradas', data: d.meses.map(m => Math.round(m.m2_entradas)), backgroundColor: '#10b981', borderRadius: 6, borderSkipped: false },
-                { label: 'M2 Salidas', data: d.meses.map(m => Math.round(m.m2_salidas)), backgroundColor: '#ef4444', borderRadius: 6, borderSkipped: false }
-            ] },
-            options: { ...defaults, layout: { padding: { top: 30 } }, scales: { y: { beginAtZero: true, suggestedMax: maxM2 * 1.15, grid: { color: '#f1f5f9' }, ticks: { font: { size: 10 } } }, x: { grid: { display: false }, ticks: { font: { size: 10, weight: '600' } } } }, plugins: { ...defaults.plugins, legend: { display: true, position: 'bottom', labels: { padding: 12, usePointStyle: true, pointStyleWidth: 8, font: { size: 10 } } }, datalabels: { display: (ctx) => ctx.dataset.data[ctx.dataIndex] > 0, anchor: 'end', align: 'top', offset: 6, color: '#1e293b', font: { size: 11, weight: '700' } } } },
             plugins: [ChartDataLabels]
         });
 
