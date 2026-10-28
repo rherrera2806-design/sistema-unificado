@@ -140,7 +140,7 @@ const mergearFilas = (rows) => {
                 fecha_creacion: String(row['fecha_creacion'] || row['FechaCreacion'] || row['fecha'] || row['Fecha'] || '').trim() || new Date().toISOString(),
                 nota: String(row['nota'] || row['Nota'] || row['NOTA'] || row['observacion'] || row['Observacion'] || '').trim() || null,
                 posicion: String(row['posicion'] || row['Posicion'] || row['POSICION'] || row['position'] || '').trim() || null,
-                orden_compra: String(row['orden de compra'] || row['orden_compra'] || row['OrdenCompra'] || row['ORDEN DE COMPRA'] || row['OC'] || row['oc'] || '').trim() || null,
+                orden_compra: String(row['orden de compra'] || row['orden_compra'] || row['OrdenCompra'] || row['ORDEN DE COMPRA'] || row['OC'] || row['oc'] || row['O/C'] || row['o/c'] || '').trim() || null,
                 tipo_entrega: String(row['tipo de entrega'] || row['tipo_entrega'] || row['TipoEntrega'] || row['TIPO DE ENTREGA'] || 'Despacho').trim(),
                 kilos: Number(row['kilos'] || row['Kilos'] || row['KILOS'] || row['peso'] || row['Peso'] || row['PESO'] || 0)
             };

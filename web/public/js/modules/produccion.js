@@ -153,10 +153,10 @@ App.registerModule('produccion', {
                         </div>
                         <input type="file" id="prodImportFile" accept=".xlsx,.xls,.csv" style="display:none" onchange="App.modules.produccion.handleImportFile(event)">
                         <div class="po-info">
-                            <strong>Columnas de la plantilla:</strong><br>
+                            <strong>Columnas de la plantilla (19):</strong><br>
                             <strong>Obligatoria:</strong> codigo<br>
-                            <strong>Opcionales:</strong> pedido, item, cliente, vendedor, descripcion, cantidad, ancho, alto, kilos, precio, familia, perforaciones, mecanizado, destaje, sacado, radio, pulido, ventana, pintado, pintado car, tipo de venta, fecha_creacion, nota, posicion, orden de compra, tipo de entrega<br>
-                            <em>Las flags (perforaciones, mecanizado, destaje, sacado, radio, pulido, ventana, pintado, pintado car) van con 0 o 1. Si falta ancho/alto se toman del BOM del código. Filas iguales (pedido+item+codigo) se fusionan sumando cantidad.</em>
+                            <strong>Opcionales:</strong> pedido, item, cliente, descripcion, cantidad, ancho, alto, precio, mecanizado, destaje, radio, pintado, tipo de venta, nota, posicion, O/C, tipo de entrega, vendedor<br>
+                            <em>Las flags (mecanizado, destaje, radio, pintado) van con 0 o 1. Si falta ancho/alto se toman del BOM del código. Filas iguales (pedido+item+codigo) se fusionan sumando cantidad.</em>
                             <div style="margin-top:10px"><button class="po-btn ghost sm" onclick="window.open('/api/produccion/importar/template')">⬇ Descargar Plantilla</button></div>
                         </div>
                         <div id="prodImportPreview" class="po-preview"></div>
@@ -798,7 +798,7 @@ App.registerModule('produccion', {
                         const cod = r.codigo || r.Codigo || r.CODIGO || '';
                         const ped = r.pedido || r.Pedido || r.PEDIDO || '';
                         const it = r.item || r.Item || r.ITEM || '';
-                        const oc = r['orden de compra'] || r['orden_compra'] || r.OrdenCompra || r['ORDEN DE COMPRA'] || r.OC || r.oc || '';
+                        const oc = r['orden de compra'] || r['orden_compra'] || r.OrdenCompra || r['ORDEN DE COMPRA'] || r.OC || r.oc || r['O/C'] || r['o/c'] || '';
                         const cli = r.cliente || r.Cliente || '';
                         const cant = r.cantidad || r.Cantidad || 1;
                         const ancho = r.anho || r.ancho || r.Ancho || r.ANCHO || 0;

@@ -29,11 +29,15 @@ router.post('/api/produccion/importar', canCreate, asyncHandler(async (req, res)
 
 router.get('/api/produccion/importar/template', canView, (req, res) => {
     const XLSX = require('xlsx');
-    // Plantilla COMPLETA: todas las columnas que el importador entiende
-    // (ver services/produccionImportar.js). Las flags son 0/1; solo "codigo"
-    // es obligatoria — el resto tiene valores por defecto.
-    const headers = ['codigo', 'pedido', 'item', 'cliente', 'vendedor', 'descripcion', 'cantidad', 'ancho', 'alto', 'kilos', 'precio', 'familia', 'perforaciones', 'mecanizado', 'destaje', 'sacado', 'radio', 'pulido', 'ventana', 'pintado', 'pintado car', 'tipo de venta', 'fecha_creacion', 'nota', 'posicion', 'orden de compra', 'tipo de entrega'];
-    const example = ['VT-001', 'PED-2026-001', 1, 'VIDRIERIA LOS ANDES', 'ANDREA BARRIOS', 'Vidrio templado 8mm', 10, 1500, 1000, 0, 0, 'TEMPLADOS', 0, 0, 0, 0, 0, 0, 0, 0, 0, 'Normal', '2026-08-07', '', '', 'OC-2026-001', 'Despacho'];
+    // Plantilla reducida a los 19 campos que usan las planillas SAP de planta
+    // (pedido, item, codigo, cliente, descripcion, cantidad, ancho, alto, precio,
+    // mecanizado, destaje, radio, pintado, tipo de venta, nota, posicion, O/C,
+    // tipo de entrega, vendedor). El importador entiende además kilos, familia,
+    // perforaciones, sacado, pulido, ventana, pintado car y fecha_creacion
+    // (ver services/produccionImportar.js) por si se agregan columnas a mano.
+    // Las flags son 0/1; solo "codigo" es obligatoria.
+    const headers = ['pedido', 'item', 'codigo', 'cliente', 'descripcion', 'cantidad', 'ancho', 'alto', 'precio', 'mecanizado', 'destaje', 'radio', 'pintado', 'tipo de venta', 'nota', 'posicion', 'O/C', 'tipo de entrega', 'vendedor'];
+    const example = [112311, 1, '659', 'SIAC SOLUTIONS SPA', 'VIDRIO TEMP 10MM INCOLORO', 1, 1100, 2292, 130879, 1, 1, 0, 0, 'Normal', '', '', 'OC-2026-001', 'Despacho', 'DAMARIS GUERRERO'];
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.aoa_to_sheet([headers, example]);
     ws['!cols'] = headers.map(() => ({ wch: 20 }));
