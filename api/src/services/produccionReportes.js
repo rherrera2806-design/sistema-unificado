@@ -26,8 +26,17 @@ const getReporteFechas = async ({ familia, fecha_inicio, fecha_fin, grupo, estad
         params.push(grupo);
     }
     if (estado && estado !== 'todos') {
-        conditions.push(`o.estado_programacion = $${idx++}`);
-        params.push(estado);
+        // Acepta UN estado exacto o una LISTA separada por comas (la vista por
+        // defecto de Prog. General manda "PENDIENTE,PROGRAMADO,EN_PROCESO" para
+        // ocultar Terminadas/Cerradas). Con lista se usa ANY(...).
+        const estados = String(estado).split(',').map(s => s.trim()).filter(Boolean);
+        if (estados.length === 1) {
+            conditions.push(`o.estado_programacion = $${idx++}`);
+            params.push(estados[0]);
+        } else if (estados.length > 1) {
+            conditions.push(`o.estado_programacion = ANY($${idx++})`);
+            params.push(estados);
+        }
     }
     if (fecha_inicio) {
         conditions.push(`o.fecha_entrega_pactada >= $${idx++}`);

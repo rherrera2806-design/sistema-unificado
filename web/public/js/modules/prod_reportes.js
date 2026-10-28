@@ -1,6 +1,9 @@
 App.registerModule('prod_reportes', {
     datos: null,
-    filtros: { familia: 'todas', fecha_inicio: '', fecha_fin: '', grupo: 'todos', estado: 'todos', pedido: '', cliente: '', espesor: '' },
+    // Estados que muestra la vista POR DEFECTO: todo lo que aún no está
+    // terminado. Terminadas/Cerradas solo se ven eligiéndolas en el filtro.
+    _ESTADOS_DEFECTO: 'PENDIENTE,PROGRAMADO,EN_PROCESO',
+    filtros: { familia: 'todas', fecha_inicio: '', fecha_fin: '', grupo: 'todos', estado: 'PENDIENTE,PROGRAMADO,EN_PROCESO', pedido: '', cliente: '', espesor: '' },
 
     async render() {
         const el = document.getElementById('page-prod_reportes');
@@ -10,6 +13,19 @@ App.registerModule('prod_reportes', {
             const fin = new Date(); fin.setDate(fin.getDate() + 14);
             this.filtros.fecha_fin = fin.toISOString().split('T')[0];
         }
+
+        // Opciones del filtro de estado: la primera es la vista por defecto
+        // (todo lo no terminado) y "Todos los estados" queda disponible para
+        // ver Terminadas/Cerradas cuando se elija.
+        const opcionesEstado = [
+            [this._ESTADOS_DEFECTO, 'Pendientes y en curso'],
+            ['todos', 'Todos los estados'],
+            ['PENDIENTE', 'Pendientes'],
+            ['PROGRAMADO', 'Programadas'],
+            ['EN_PROCESO', 'En Proceso'],
+            ['TERMINADO', 'Terminadas'],
+            ['CERRADO', 'Cerradas']
+        ].map(([v, t]) => `<option value="${escAttr(v)}" ${this.filtros.estado === v ? 'selected' : ''}>${escText(t)}</option>`).join('');
 
         el.innerHTML = `
             <style>
@@ -94,12 +110,7 @@ App.registerModule('prod_reportes', {
                     <div style="flex:1;min-width:140px">
                         <label style="display:block;font-size:11px;font-weight:600;color:#64748b;margin-bottom:4px">Estado</label>
                         <select id="prFilterEstado" onchange="App.modules.prod_reportes.aplicarFiltros()" style="width:100%;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;outline:none;background:white">
-                            <option value="todos">Todos</option>
-                            <option value="PENDIENTE">Pendientes</option>
-                            <option value="PROGRAMADO">Programadas</option>
-                            <option value="EN_PROCESO">En Proceso</option>
-                            <option value="TERMINADO">Terminadas</option>
-                            <option value="CERRADO">Cerradas</option>
+                            ${opcionesEstado}
                         </select>
                     </div>
                     <div style="flex:1;min-width:140px">
@@ -364,7 +375,7 @@ App.registerModule('prod_reportes', {
     },
 
     limpiarFiltros() {
-        this.filtros = { familia: 'todas', fecha_inicio: this._hoyLocal(), fecha_fin: '', grupo: 'todos', estado: 'todos', pedido: '', cliente: '', espesor: '' };
+        this.filtros = { familia: 'todas', fecha_inicio: this._hoyLocal(), fecha_fin: '', grupo: 'todos', estado: this._ESTADOS_DEFECTO, pedido: '', cliente: '', espesor: '' };
         const fin = new Date(); fin.setDate(fin.getDate() + 14);
         this.filtros.fecha_fin = fin.toISOString().split('T')[0];
         this.render();
@@ -420,7 +431,7 @@ App.registerModule('prod_reportes', {
             'Período: ' + (this.formatFecha(f.fecha_inicio) || '—') + ' al ' + (this.formatFecha(f.fecha_fin) || '—'),
             f.familia && f.familia !== 'todas' ? 'Familia: ' + f.familia : null,
             f.grupo && f.grupo !== 'todos' ? 'Grupo: ' + f.grupo : null,
-            f.estado && f.estado !== 'todos' ? 'Estado: ' + f.estado : null,
+            f.estado && f.estado !== 'todos' ? 'Estado: ' + (f.estado === this._ESTADOS_DEFECTO ? 'Pendientes y en curso' : f.estado) : null,
             f.pedido ? 'Pedido: ' + f.pedido : null,
             f.cliente ? 'Cliente: ' + f.cliente : null,
             f.espesor ? 'Espesor: ' + f.espesor + ' mm' : null
@@ -541,7 +552,7 @@ App.registerModule('prod_reportes', {
         const partes = [
             selTxt('prFilterFamilia', 'todas'),
             selTxt('prFilterGrupo', 'todos'),
-            selTxt('prFilterEstado', 'todos'),
+            selTxt('prFilterEstado', this._ESTADOS_DEFECTO),
             selTxt('prFilterEspesor', ''),
             f.pedido ? 'Pedido: ' + f.pedido : null,
             f.cliente ? 'Cliente: ' + f.cliente : null,
