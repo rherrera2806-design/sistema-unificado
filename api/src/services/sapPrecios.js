@@ -131,6 +131,23 @@ const getPrecios = async () => {
     return result.rows;
 };
 
+/** Borra un precio puntual (corregir fila cargada mal). */
+const borrarPrecio = async (id) => {
+    const result = await query('DELETE FROM sap_precios WHERE id = $1', [id]);
+    if (result.rowCount === 0) {
+        const err = new Error('Precio no encontrado');
+        err.status = 404;
+        throw err;
+    }
+    return { borrados: result.rowCount };
+};
+
+/** Vacía todos los precios (recarga limpia tras carga errónea). */
+const vaciarPrecios = async () => {
+    const result = await query('DELETE FROM sap_precios');
+    return { borrados: result.rowCount };
+};
+
 /** Resumen para la UI: cuántos precios hay y a cuántas órdenes llegan. */
 const getResumen = async () => {
     const result = await query(`
@@ -148,4 +165,4 @@ const getResumen = async () => {
 
 // Se exportan los helpers internos para poder testear el parseo (columnas de
 // SAP con distintos nombres/mayúsculas) sin necesidad de base de datos.
-module.exports = { importarPrecios, getPrecios, getResumen, _col, _num, _int };
+module.exports = { importarPrecios, getPrecios, getResumen, borrarPrecio, vaciarPrecios, _col, _num, _int };

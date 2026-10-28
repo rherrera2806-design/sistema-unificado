@@ -34,6 +34,16 @@ router.get('/api/produccion/precios-sap/resumen', canView, asyncHandler(async (r
     res.json(await precios.getResumen());
 }));
 
+// Borrar un precio puntual (corregir una fila cargada mal).
+router.delete('/api/produccion/precios-sap/:id', canCreate, asyncHandler(async (req, res) => {
+    res.json(await precios.borrarPrecio(Number(req.params.id)));
+}));
+
+// Vaciar todos los precios cargados (recarga limpia tras una carga errónea).
+router.delete('/api/produccion/precios-sap', canCreate, asyncHandler(async (req, res) => {
+    res.json(await precios.vaciarPrecios());
+}));
+
 // Plantilla Excel mínima para que el usuario sepa qué columnas subir.
 router.get('/api/produccion/precios-sap/template', canView, (req, res) => {
     const XLSX = require('xlsx');
