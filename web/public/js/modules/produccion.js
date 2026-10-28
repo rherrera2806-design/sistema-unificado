@@ -173,6 +173,7 @@ App.registerModule('produccion', {
                 <div class="po-modal" onclick="event.stopPropagation()">
                     <div class="po-modal-head"><h3>💰 Cargar precios de venta (SAP)</h3><button class="po-x" onclick="App.modules.produccion.hidePreciosModal()">✕</button></div>
                     <div class="po-modal-body">
+                        <div id="prodPreciosProxima" class="po-proxima" style="display:none"></div>
                         <label class="po-label">Archivo Excel de precios</label>
                         <div id="prodPreciosArea" class="po-drop" onclick="document.getElementById('prodPreciosFile').click()">
                             💰
@@ -830,6 +831,29 @@ App.registerModule('produccion', {
         const n = document.getElementById('prodPreciosName'); if (n) { n.style.display = 'none'; n.textContent = ''; }
         const b = document.getElementById('prodPreciosBtn'); if (b) { b.disabled = true; b.textContent = 'Guardar precios'; }
         const p = document.getElementById('prodPreciosPreview'); if (p) p.innerHTML = '';
+        this.cargarProximaOv();
+    },
+    // Muestra en el recuadro cuál es la próxima OV a cargar en SAP (la orden de
+    // Producción más antigua que todavía no tiene precios).
+    async cargarProximaOv() {
+        const box = document.getElementById('prodPreciosProxima');
+        if (!box) return;
+        try {
+            const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
+            const res = await fetch('/api/produccion/precios-sap/proxima', {
+                headers: { 'X-User-Permisos': (user.permisos || []).join(','), 'X-User-Email': user.email || '' }
+            });
+            if (!res.ok) { box.style.display = 'none'; return; }
+            const d = await res.json();
+            if (d.proxima) {
+                box.innerHTML = '👉 Busca en SAP la OV <span class="ov">' + escText(d.proxima) + '</span>'
+                    + ' · te quedan <strong>' + this._fmt(d.restantes, 0) + '</strong> órdenes sin precio';
+                box.style.display = 'flex';
+            } else {
+                box.innerHTML = '✅ Todas las órdenes de Producción ya tienen precio cargado.';
+                box.style.display = 'flex';
+            }
+        } catch (e) { box.style.display = 'none'; }
     },
     hidePreciosModal() {
         document.getElementById('prodPreciosModal').style.display = 'none';
@@ -1673,6 +1697,8 @@ App.registerModule('produccion', {
             .po-solution{margin-top:10px;padding:10px 14px;background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;font-size:11px;color:#9a3412}
             .po-ok-box{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:16px;text-align:center}
             .po-err-box{background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:12px 14px;font-size:12px;color:#b91c1c}
+            .po-proxima{background:linear-gradient(135deg,#eff6ff,#dbeafe);border:1px solid #bfdbfe;border-radius:10px;padding:11px 14px;font-size:12px;color:#1e40af;margin-bottom:14px;display:flex;align-items:center;gap:9px}
+            .po-proxima .ov{font-weight:700;font-size:15px;color:#1d4ed8;letter-spacing:.3px}
             .po-ok-box .big{font-size:20px;color:#15803d;font-weight:700}
             .po-ok-box .t{font-size:13px;font-weight:700;color:#166534;margin-top:4px}
             .po-ok-box .s{font-size:11px;color:#16a34a;margin-top:4px}

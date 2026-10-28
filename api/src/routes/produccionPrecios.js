@@ -47,6 +47,11 @@ router.get('/api/produccion/precios-sap/resumen', canView, asyncHandler(async (r
     res.json(await precios.getResumen());
 }));
 
+// Próxima OV a cargar (orden de Producción más antigua sin precios todavía).
+router.get('/api/produccion/precios-sap/proxima', canView, asyncHandler(async (req, res) => {
+    res.json(await precios.getProximaOv());
+}));
+
 // Borrar un precio puntual (corregir una fila cargada mal).
 router.delete('/api/produccion/precios-sap/:id', canCreate, asyncHandler(async (req, res) => {
     res.json(await precios.borrarPrecio(Number(req.params.id)));

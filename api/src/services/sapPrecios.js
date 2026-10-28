@@ -233,6 +233,43 @@ const vaciarPrecios = async () => {
     return { borrados: result.rowCount };
 };
 
+/**
+ * Próxima OV a cargar: la orden de Producción (pedido) más antigua —menor
+ * número— que todavía NO tiene ningún precio cargado en sap_precios.
+ * Es la guía para que el usuario sepa desde qué OV buscar en SAP.
+ * Devuelve { proxima, restantes }.
+ */
+const getProximaOv = async () => {
+    // Se ordena por la parte numérica del pedido (los splits agregan letras,
+    // p.ej. "111102A"), de forma segura: solo se castea a bigint si son todos
+    // dígitos; si no, queda NULL y va al final.
+    const restaNum = `regexp_replace(pedido_sap_id, '[^0-9]', '', 'g')`;
+    const result = await query(`
+        WITH pedidos_prod AS (
+            SELECT DISTINCT pedido_sap_id FROM produccion_ordenes
+            WHERE pedido_sap_id IS NOT NULL AND TRIM(pedido_sap_id) <> ''
+        )
+        SELECT pp.pedido_sap_id
+        FROM pedidos_prod pp
+        WHERE NOT EXISTS (SELECT 1 FROM sap_precios sp WHERE sp.pedido_sap_id = pp.pedido_sap_id)
+        ORDER BY (CASE WHEN ${restaNum} ~ '^[0-9]+$' THEN ${restaNum}::bigint END) NULLS LAST,
+                 pp.pedido_sap_id
+    `);
+    const cont = await query(`
+        WITH pedidos_prod AS (
+            SELECT DISTINCT pedido_sap_id FROM produccion_ordenes
+            WHERE pedido_sap_id IS NOT NULL AND TRIM(pedido_sap_id) <> ''
+        )
+        SELECT COUNT(*) as restantes
+        FROM pedidos_prod pp
+        WHERE NOT EXISTS (SELECT 1 FROM sap_precios sp WHERE sp.pedido_sap_id = pp.pedido_sap_id)
+    `);
+    return {
+        proxima: result.rows[0] ? result.rows[0].pedido_sap_id : null,
+        restantes: Number((cont.rows[0] || {}).restantes || 0)
+    };
+};
+
 /** Resumen para la UI: cuántos precios hay y a cuántas órdenes llegan. */
 const getResumen = async () => {
     const result = await query(`
@@ -250,4 +287,4 @@ const getResumen = async () => {
 
 // Se exportan los helpers internos para poder testear el parseo (columnas de
 // SAP con distintos nombres/mayúsculas) sin necesidad de base de datos.
-module.exports = { importarPrecios, validarPrecios, getPrecios, getResumen, borrarPrecio, vaciarPrecios, _col, _num, _int, _parseRows };
+module.exports = { importarPrecios, validarPrecios, getPrecios, getResumen, getProximaOv, borrarPrecio, vaciarPrecios, _col, _num, _int, _parseRows };
