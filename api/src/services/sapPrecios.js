@@ -133,7 +133,7 @@ const validarPrecios = async (rows) => {
         const key = v.pedido + '|' + v.item;
         const o = ordenesMap[key];
         return {
-            fila: v.filaExcel,
+            fila: v.fila,
             pedido: v.pedido,
             item: v.item,
             precio: v.precio,
