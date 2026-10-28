@@ -58,6 +58,9 @@ App.registerModule('inv_reporte', {
             + '<div class="ir-chart-box"><div class="ir-chart-title"><svg viewBox="0 0 24 24" fill="none" stroke="#0ea5e9" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>Tendencia de Stock</div><div style="position:relative;height:280px"><canvas id="irChartTendencia"></canvas></div></div>'
             + '<div class="ir-chart-box"><div class="ir-chart-title"><svg viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>Top Dimensiones</div><div style="position:relative;height:280px"><canvas id="irChartDimension"></canvas></div></div>'
             + '</div>'
+            + '<div class="ir-chart-row">'
+            + '<div class="ir-chart-box" style="grid-column:1/-1"><div class="ir-chart-title"><svg viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>Kilos Consumidos por Mes</div><div style="position:relative;height:280px"><canvas id="irChartKilos"></canvas></div></div>'
+            + '</div>'
             + '<div class="ir-section"><div class="ir-chart-title" style="margin-bottom:12px"><svg viewBox="0 0 24 24" fill="none" stroke="#334155" stroke-width="2" width="16" height="16"><path d="M3 3h18v18H3z"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M9 3v18"/></svg>Detalle Mensual</div><div id="irTabla" class="ir-table-wrap"></div></div>';
 
         await this.loadData();
@@ -164,6 +167,19 @@ App.registerModule('inv_reporte', {
             type: 'bar',
             data: { labels: dims.map(r => r.dimension), datasets: [{ data: dims.map(r => r.salidas), backgroundColor: ['#06b6d4','#0ea5e9','#3b82f6','#6366f1','#8b5cf6','#a855f7','#d946ef','#ec4899'], borderRadius: 6, borderSkipped: false }] },
             options: { ...defaults, layout: { padding: { top: 30 } }, scales: { y: { beginAtZero: true, suggestedMax: Math.max(...dims.map(r => r.salidas), 1) * 1.15, grid: { color: '#f1f5f9' }, ticks: { font: { size: 10 } } }, x: { grid: { display: false }, ticks: { font: { size: 10, weight: '600' } } } }, plugins: { ...defaults.plugins, datalabels: { display: (ctx) => ctx.dataset.data[ctx.dataIndex] > 0, anchor: 'end', align: 'top', color: '#475569', font: { size: 11, weight: '700' } } } },
+            plugins: [ChartDataLabels]
+        });
+
+        // Kilos consumidos por mes (solo salidas), fórmula canónica KG_SQL.
+        // Color morado = mismo del KPI "KG en Stock".
+        const kgData = d.meses.map(m => Math.round(m.kg_salidas || 0));
+        const maxKg = Math.max(...kgData, 1);
+        this.charts.kilos = new Chart(document.getElementById('irChartKilos'), {
+            type: 'bar',
+            data: { labels, datasets: [
+                { label: 'Kilos Consumidos', data: kgData, backgroundColor: '#8b5cf6', hoverBackgroundColor: '#7c3aed', borderRadius: 6, borderSkipped: false, maxBarThickness: 44 }
+            ] },
+            options: { ...defaults, layout: { padding: { top: 30 } }, scales: { y: { beginAtZero: true, suggestedMax: maxKg * 1.15, grid: { color: '#f1f5f9' }, ticks: { font: { size: 10 }, callback: (v) => Number(v).toLocaleString('es-CL') } }, x: { grid: { display: false }, ticks: { font: { size: 10, weight: '600' } } } }, plugins: { ...defaults.plugins, legend: { display: false }, tooltip: { callbacks: { label: (ctx) => ' ' + Number(ctx.parsed.y).toLocaleString('es-CL') + ' kg' } }, datalabels: { display: (ctx) => ctx.dataset.data[ctx.dataIndex] > 0, anchor: 'end', align: 'top', offset: 6, color: '#1e293b', font: { size: 11, weight: '700' }, formatter: (v) => Number(v).toLocaleString('es-CL') } } },
             plugins: [ChartDataLabels]
         });
     },
