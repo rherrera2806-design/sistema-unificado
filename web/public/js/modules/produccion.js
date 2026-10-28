@@ -1633,7 +1633,7 @@ App.registerModule('produccion', {
             .po-modal.sm{max-width:420px}
             .po-modal-head{padding:18px 24px;border-bottom:1px solid #e4e9f0;display:flex;align-items:center;justify-content:space-between;gap:10px}
             .po-modal-head h3{margin:0;font-size:15px;font-weight:700}
-            .po-modal-body{padding:20px 24px;overflow-y:auto}
+            .po-modal-body{padding:20px 24px;overflow-y:auto;flex:1;min-height:0}
             .po-modal-foot{padding:14px 24px 20px;display:flex;gap:8px;justify-content:flex-end;border-top:1px solid #e4e9f0}
             .po-x{width:28px;height:28px;border-radius:8px;border:none;background:#f1f5f9;color:#64748b;cursor:pointer;font-size:13px}
             .po-x:hover{background:#e2e8f0}
