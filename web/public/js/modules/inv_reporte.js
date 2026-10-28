@@ -201,18 +201,23 @@ App.registerModule('inv_reporte', {
         for (let i = 0; i < 12; i++) {
             const m = d.meses[i];
             if (m.total === 0) continue;
+            const netoM2 = (m.m2_entradas || 0) - (m.m2_salidas || 0);
+            const netoKg = (m.kg_entradas || 0) - (m.kg_salidas || 0);
             rows += `<tr>
                 <td style="font-weight:700">${mesesCortos[i]}</td>
                 <td>${escText(m.entradas)}</td>
                 <td>${escText(m.salidas)}</td>
                 <td>${Math.round(m.m2_entradas).toLocaleString('es-CL')}</td>
                 <td>${Math.round(m.m2_salidas).toLocaleString('es-CL')}</td>
-                <td style="font-weight:600;color:${(m.m2_entradas - m.m2_salidas) >= 0 ? '#16a34a' : '#dc2626'}">${(m.m2_entradas - m.m2_salidas) >= 0 ? '+' : ''}${Math.round(m.m2_entradas - m.m2_salidas).toLocaleString('es-CL')}</td>
+                <td style="font-weight:600;color:${netoM2 >= 0 ? '#16a34a' : '#dc2626'}">${netoM2 >= 0 ? '+' : ''}${Math.round(netoM2).toLocaleString('es-CL')}</td>
+                <td style="color:#16a34a">${Math.round(m.kg_entradas || 0).toLocaleString('es-CL')}</td>
+                <td style="color:#dc2626">${Math.round(m.kg_salidas || 0).toLocaleString('es-CL')}</td>
+                <td style="font-weight:600;color:${netoKg >= 0 ? '#16a34a' : '#dc2626'}">${netoKg >= 0 ? '+' : ''}${Math.round(netoKg).toLocaleString('es-CL')}</td>
             </tr>`;
         }
-        if (!rows) rows = '<tr><td colspan="6" style="text-align:center;color:#94a3b8;padding:24px">Sin datos para este anio</td></tr>';
+        if (!rows) rows = '<tr><td colspan="9" style="text-align:center;color:#94a3b8;padding:24px">Sin datos para este anio</td></tr>';
         document.getElementById('irTabla').innerHTML = '<table class="ir-table">'
-            + '<thead><tr><th>Mes</th><th>Entradas</th><th>Salidas</th><th>M2 Entrada</th><th>M2 Salida</th><th>Neto M2</th></tr></thead>'
+            + '<thead><tr><th>Mes</th><th>Entradas</th><th>Salidas</th><th>M2 Entrada</th><th>M2 Salida</th><th>Neto M2</th><th>Kg Entrada</th><th>Kg Salida</th><th>Neto Kg</th></tr></thead>'
             + '<tbody>' + rows + '</tbody></table>';
     },
 
