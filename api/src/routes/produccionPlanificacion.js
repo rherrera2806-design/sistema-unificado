@@ -50,6 +50,14 @@ router.get('/api/produccion/importar/template', canView, (req, res) => {
 
 router.get('/api/produccion/calendario', canView, asyncHandler(async (req, res) => { res.json(await planificacion.getCalendario()); }));
 
+// Turnos RESTANTES de hoy (según Horarios de Turno) para los modales de
+// Auto-Asignar / Reprogramar por Avance: si el planificador elige "hoy" como
+// inicio, el sistema pregunta con qué turnos cuenta y recorta la capacidad
+// proporcionalmente al tiempo que falta (18:00+ = sin capacidad → mañana).
+router.get('/api/produccion/planificacion/turnos-hoy', canView, asyncHandler(async (req, res) => {
+    res.json(await require('../../services/turnosHoy').getTurnosRestantesHoy());
+}));
+
 router.post('/api/produccion/calendario', canCreate, asyncHandler(async (req, res) => {
     if (!req.body.fecha) return res.status(400).json({ error: 'fecha requerida' });
     await planificacion.marcarDia(req.body);
@@ -143,7 +151,7 @@ router.post('/api/produccion/planificacion-grupo/auto-asignar', canCreate, async
         const h = new Date();
         return h.getFullYear() + '-' + String(h.getMonth() + 1).padStart(2, '0') + '-' + String(h.getDate()).padStart(2, '0');
     })();
-    res.json(await reprogramarPorAvance({ fechaMinima: inicio, soloSinFecha: true }));
+    res.json(await reprogramarPorAvance({ fechaMinima: inicio, soloSinFecha: true, turnosHoy: req.body.turnos_hoy }));
 }));
 
 // El dueno de la nota es el usuario de la SESION (req.user lo setea el middleware),
@@ -210,7 +218,7 @@ router.get('/api/produccion/reprogramar/pendientes', canView, asyncHandler(async
 // no se vuelve a programar). Cola: atrasados primero y dentro de cada grupo
 // Reposición → Express → Urgencia → Normal. Ver reprogramarService.
 router.post('/api/produccion/reprogramar/avance', canCreate, asyncHandler(async (req, res) => {
-    res.json(await reprogramarPorAvance({ fechaMinima: req.body.fecha_minima || undefined }));
+    res.json(await reprogramarPorAvance({ fechaMinima: req.body.fecha_minima || undefined, turnosHoy: req.body.turnos_hoy }));
 }));
 
 module.exports = router;

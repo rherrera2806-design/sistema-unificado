@@ -466,6 +466,57 @@ App.modules.planificacion = {
     },
 
     // ---------------- Auto-Asignar ----------------
+    // Selector de turnos de HOY (compartido por Auto-Asignar y Por Avance):
+    // si el planificador elige "hoy" como "Desde", hoy NO es un día completo:
+    // se preguntan los turnos restantes (según Horarios de Turno) y la
+    // capacidad se recorta proporcionalmente al tiempo que falta de cada uno.
+    async _turnosHoyUI(inputId, contId) {
+        const cont = document.getElementById(contId);
+        if (!cont) return;
+        const inp = document.getElementById(inputId);
+        const hoy = this._hoyStr();
+        if (!inp || inp.value !== hoy) { cont.innerHTML = ''; cont._turnosSel = null; return; }
+        try {
+            const res = await fetch('/api/produccion/planificacion/turnos-hoy', {
+                headers: { 'X-User-Permisos': (JSON.parse(localStorage.getItem('unified_user') || '{}').permisos || []).join(','), 'X-User-Email': JSON.parse(localStorage.getItem('unified_user') || '{}').email || '' }
+            });
+            const d = await res.json();
+            const turnos = d.turnos || [];
+            cont._turnosSel = turnos.filter(t => t.pct_restante > 0).map(t => t.turno);
+            if (!turnos.length) return; // sin horarios configurados → día completo normal
+            const fila = (t) => {
+                const pct = Math.round((t.pct_restante || 0) * 100);
+                const act = cont._turnosSel.includes(t.turno);
+                const emoji = t.turno === 'noche' ? '🌙 Turno 1 Noche' : '🌞 Turno 2 Día';
+                return `<label style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:8px;border:1px solid ${act ? '#bfdbfe' : '#e2e8f0'};background:${act ? '#eff6ff' : '#f8fafc'};opacity:${pct > 0 ? 1 : .45};cursor:${pct > 0 ? 'pointer' : 'not-allowed'};font-size:12.5px;margin-bottom:5px">
+                    <input type="checkbox" class="plnTurnoHoy" value="${t.turno}" ${act ? 'checked' : ''} ${pct > 0 ? '' : 'disabled'} onchange="App.modules.planificacion._turnosHoyChange('${contId}')">
+                    <strong>${emoji}</strong>
+                    <span style="color:#64748b">${t.inicio} → ${t.fin}</span>
+                    <span style="margin-left:auto;font-weight:700;color:${pct > 0 ? '#b45309' : '#94a3b8'}">${pct > 0 ? pct + '% disponible' : 'agotado'}</span>
+                </label>`;
+            };
+            const ninguno = cont._turnosSel.length === 0;
+            cont.innerHTML = `<div style="margin-top:8px;border:1px solid ${ninguno ? '#fecaca' : '#fde68a'};background:${ninguno ? '#fef2f2' : '#fffbeb'};border-radius:10px;padding:10px 12px">
+                <div style="font-size:12px;font-weight:700;color:${ninguno ? '#b91c1c' : '#92400e'};margin-bottom:7px">⏳ Hoy (<strong>${d.ahora}</strong>) no es un día completo — elige con qué turnos cuentas:</div>
+                ${turnos.map(fila).join('')}
+                ${ninguno ? `<div style="font-size:11.5px;color:#b91c1c;font-weight:600">🚫 Hoy ya no queda capacidad: la programación partirá del <strong>siguiente día hábil — Turno 1 (noche)</strong>.</div>` : ''}
+            </div>`;
+        } catch (e) { cont.innerHTML = ''; }
+    },
+    _turnosHoyChange(contId) {
+        const cont = document.getElementById(contId);
+        if (!cont) return;
+        cont._turnosSel = Array.from(cont.querySelectorAll('.plnTurnoHoy:checked')).map(c => c.value);
+    },
+    _turnosHoySel(contId) {
+        const cont = document.getElementById(contId);
+        return (cont && cont._turnosSel) || null;
+    },
+    _hoyStr() {
+        const d = new Date();
+        return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    },
+
     showAutoAsignarGrupo() {
         const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
         if (!this._puedeEditar(user)) {
@@ -474,7 +525,8 @@ App.modules.planificacion = {
         const html = `
             <p style="font-size:13px;color:#64748b;margin-bottom:12px">Inserta las ordenes <strong>nuevas (sin fecha)</strong> con el mismo motor de "Por Avance": turnos, ventanas rigidas, cuellos de botella y capacidad dura. <strong>No toca</strong> el plan ya programado. Solo dias habiles.</p>
             <div style="margin-bottom:12px"><label style="display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#475569;margin-bottom:5px">Desde</label>
-            <input type="date" id="planAutoGInicio" value="${this.fechaGrupo}" style="width:100%;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px"></div>
+            <input type="date" id="planAutoGInicio" value="${this.fechaGrupo}" onchange="App.modules.planificacion._turnosHoyUI('planAutoGInicio','planAutoGTurnos')" style="width:100%;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px"></div>
+            <div id="planAutoGTurnos"></div>
             <div><label style="display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#475569;margin-bottom:5px">Cantidad de días hábiles a buscar</label>
             <input type="number" id="planAutoGDias" value="14" min="1" max="60" style="width:100%;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px"></div>
             <div id="planAutoGResultado" style="margin-top:12px"></div>
@@ -484,6 +536,7 @@ App.modules.planificacion = {
             <button class="pln-btn primary" onclick="App.modules.planificacion.ejecutarAutoAsignarGrupo()">Asignar pendientes</button>
         `;
         App.showModalInv('⚡ Auto-Asignar Pendientes', html, footer);
+        this._turnosHoyUI('planAutoGInicio', 'planAutoGTurnos');
     },
 
     async ejecutarAutoAsignarGrupo() {
@@ -495,7 +548,7 @@ App.modules.planificacion = {
             const res = await fetch('/api/produccion/planificacion-grupo/auto-asignar', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ inicio, dias })
+                body: JSON.stringify({ inicio, dias, turnos_hoy: inicio === this._hoyStr() ? (this._turnosHoySel('planAutoGTurnos') || undefined) : undefined })
             });
             const data = await res.json();
             if (res.ok) {
@@ -602,8 +655,9 @@ App.modules.planificacion = {
                 </div>
                 <div class="sub2" style="margin-top:8px"><strong>Sin splits:</strong> no fragmenta ordenes avanzadas. Los pasos terminados/mermados son historia y los EN PROCESO se mantienen hoy ocupando capacidad.</div>
             </div>
-            <div style="margin-bottom:12px"><label style="display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#475569;margin-bottom:5px">Desde (día de inicio de la re-programación — por defecto el día siguiente hábil, hoy no alcanza)</label>
-            <input type="date" id="reprogAvanceInicio" value="${this._mananaHabil()}" style="width:100%;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px"></div>
+            <div style="margin-bottom:12px"><label style="display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#475569;margin-bottom:5px">Desde (día de inicio de la re-programación — por defecto el día siguiente hábil; si eliges HOY se preguntan los turnos restantes)</label>
+            <input type="date" id="reprogAvanceInicio" value="${this._mananaHabil()}" onchange="App.modules.planificacion._turnosHoyUI('reprogAvanceInicio','reprogAvanceTurnos')" style="width:100%;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px"></div>
+            <div id="reprogAvanceTurnos"></div>
             <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#475569;margin:4px 0 8px">Ordenes comprometidas incumplidas (${vencidas.length} vencidas · ${porVencer.length} por vencer)</div>
             <div style="max-height:38vh;overflow:auto">${lista || '<div class="pln-loading">Sin ordenes incumplidas</div>'}</div>
             <div id="reprogAvanceResultado" style="margin-top:12px"></div>
@@ -614,6 +668,7 @@ App.modules.planificacion = {
             <button class="pln-btn warn" id="reprogAvanceRun" onclick="App.modules.planificacion.ejecutarReprogramarAvance()">Reprogramar por Avance</button>
         `;
         App.showModalInv('Reprogramar por Avance', html, footer);
+        this._turnosHoyUI('reprogAvanceInicio', 'reprogAvanceTurnos');
     },
 
     async ejecutarReprogramarAvance() {
@@ -644,7 +699,10 @@ App.modules.planificacion = {
             const res = await fetch('/api/produccion/reprogramar/avance', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(desde ? { fecha_minima: desde } : {})
+                body: JSON.stringify({
+                    ...(desde ? { fecha_minima: desde } : {}),
+                    ...(desde === this._hoyStr() ? { turnos_hoy: this._turnosHoySel('reprogAvanceTurnos') || undefined } : {})
+                })
             });
             const data = await res.json();
             clearInterval(timer);

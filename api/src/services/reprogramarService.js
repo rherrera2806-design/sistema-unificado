@@ -220,14 +220,42 @@ module.exports = { reprogramarPendientes, reprogramarPorAvance, getCumplimiento 
  *    por eso no se generan cuellos nuevos (p.ej. Pulido lunes, Templado
  *    martes, sin exceder la capacidad de cada uno).
  */
-async function reprogramarPorAvance({ fechaMinima, soloSinFecha } = {}) {
+async function reprogramarPorAvance({ fechaMinima, soloSinFecha, turnosHoy } = {}) {
     const calendario = require('./calendario');
     const fmtL = (d) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
     const hoy = fechaMinima || fmtL(new Date());
     // REGLA: reprogramar NUNCA fecha para hoy ("hoy no alcanza" — el día ya
     // está en curso): por defecto lo pendiente parte del SIGUIENTE día hábil.
     // El planificador puede elegir otra fecha de inicio (selector "Desde").
-    const desde = fechaMinima || await calendario.siguienteDiaHabil(hoy);
+    let desde = fechaMinima || await calendario.siguienteDiaHabil(hoy);
+
+    // ═══ TURNOS DE HOY (solo si el inicio es HOY) ═══════════════════════════
+    // HOY NO ES DÍA COMPLETO: la capacidad del día se recorta a los turnos
+    // elegidos por el planificador y proporcionalmente al tiempo que FALTA de
+    // cada uno (ej: 14:00 con turno día 08:00→18:00 = 40% de ese turno).
+    // Los turnos no elegidos quedan en 0% → bloqueados para hoy.
+    // Si HOY ya no queda nada (ej: 18:00+, día agotado y la noche de esta
+    // noche se acredita a mañana): se obliga a partir del siguiente día hábil
+    // con el TURNO 1 (noche) — nunca se programa capacidad fantasma de hoy.
+    // turnosHoy: ['dia'] | ['noche'] | ['dia','noche'] (undefined = auto: los
+    // turnos que aún tienen tiempo restante).
+    const hoyReal = fmtL(new Date());
+    let pctRestanteHoy = null;   // { dia: 0..1, noche: 0..1 } | null = sin recorte
+    if (desde === hoyReal) {
+        const turnos = (await require('./turnosHoy').getTurnosRestantesHoy()).turnos || [];
+        const elegidos = Array.isArray(turnosHoy)
+            ? turnosHoy.filter(t => t === 'dia' || t === 'noche')
+            : turnos.filter(t => t.pct_restante > 0).map(t => t.turno);
+        pctRestanteHoy = { dia: 0, noche: 0 };
+        for (const t of elegidos) {
+            const info = turnos.find(x => x.turno === t);
+            if (info) pctRestanteHoy[t] = Math.max(0, Math.min(1, Number(info.pct_restante) || 0));
+        }
+        if (pctRestanteHoy.dia <= 0 && pctRestanteHoy.noche <= 0) {
+            desde = await calendario.siguienteDiaHabil(hoyReal);
+            pctRestanteHoy = null;
+        }
+    }
 
     // AVANCE IMPLÍCITO (previo): los pasos intactos que quedaron "atrás" del
     // avance real se cierran solos (si Pulido avanzó, el Corte ocurrió). Sin
@@ -395,16 +423,22 @@ async function reprogramarPorAvance({ fechaMinima, soloSinFecha } = {}) {
             cargaGrupo.set(gk, (cargaGrupo.get(gk) || 0) + (Number(kg) || 0));
         }
     };
-    // BLOQUEO DURO doble: estación (m²) Y grupo (kg) — sin tolerancia
+    // BLOQUEO DURO doble: estación (m²) Y grupo (kg) — sin tolerancia.
+    // HOY con recorte (pctRestanteHoy): la capacidad de cada turno de hoy se
+    // multiplica por el % de tiempo restante del turno; los turnos no elegidos
+    // quedan en 0 → nada nuevo cabe ahí (la cascada salta al turno/día que sí).
+    const factorHoy = (fecha, turno) => (pctRestanteHoy && fecha === hoyReal)
+        ? (pctRestanteHoy[turno] || 0) : 1;
     const cabeEnTurno = (estId, grupo, fecha, turno, m2, kg) => {
+        const fh = factorHoy(fecha, turno);
         const capDia = caps.get(estId) || 0;
         if (capDia > 0) {
-            const capTurno = configTurnos.capacidadTurno(capDia, turno, cfgTurnos);
+            const capTurno = configTurnos.capacidadTurno(capDia, turno, cfgTurnos) * fh;
             if (((carga.get(fecha + '|' + turno + '|' + estId) || 0) + m2) > capTurno) return false;
         }
         const capG = grupo ? (capsGrupo.get(String(grupo)) || 0) : 0;
         if (capG > 0) {
-            const capGTurno = configTurnos.capacidadTurno(capG, turno, cfgTurnos);
+            const capGTurno = configTurnos.capacidadTurno(capG, turno, cfgTurnos) * fh;
             if (((cargaGrupo.get(fecha + '|' + turno + '|' + grupo) || 0) + (Number(kg) || 0)) > capGTurno) return false;
         }
         return true;
@@ -461,7 +495,14 @@ async function reprogramarPorAvance({ fechaMinima, soloSinFecha } = {}) {
     for (const o of cola) {
         // El primer slot del día productivo es el TURNO 1 (noche), que comienza
         // la tarde anterior: desde = martes implica empezar en lun 22:00.
+        // HOY con recorte: se arranca por el PRIMER turno de hoy que quedó con
+        // capacidad (si solo queda el día, el slot inicial es el día; si no
+        // quedó nada, `desde` ya se movió a mañana turno 1 arriba).
         let slot = { fecha: desde, turno: 'noche' };
+        if (desde === hoyReal && pctRestanteHoy) {
+            const primerTurno = pctRestanteHoy.noche > 0 ? 'noche' : (pctRestanteHoy.dia > 0 ? 'dia' : 'noche');
+            slot = { fecha: desde, turno: primerTurno };
+        }
         let primeraFecha = null;
         let ultimaFecha = null;
         // REGLA: el kg de la orden consume capacidad del GRUPO UNA sola vez
