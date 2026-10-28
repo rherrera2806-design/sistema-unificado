@@ -14,12 +14,20 @@
 // ============================================================================
 const { query } = require('../config/database');
 
-// Aliases tolerados para cada columna (mayúsculas/minúsculas y variantes comunes
-// que SAP puede emitir). El Excel del usuario trae "pedido", "item", "precio
-// unitario" pero SAP suele usar otros nombres.
+// Aliases tolerados para cada columna. La comparación es INSENSIBLE a
+// mayúsculas/minúsculas (ver _col): SAP puede emitir "Unit Price", "unit
+// price", "PRECIO UNITARIO", "Doc. num.", etc.
 const _col = (row, nombres) => {
+    // Claves del row en minúsculas + sin espores dobles, para comparar manzanas con manzanas
+    const claves = Object.keys(row);
     for (const n of nombres) {
-        if (row[n] !== undefined && row[n] !== null && String(row[n]).trim() !== '') return row[n];
+        const objetivo = n.toLowerCase().trim();
+        for (const k of claves) {
+            if (k.toLowerCase().trim() === objetivo) {
+                const v = row[k];
+                if (v !== undefined && v !== null && String(v).trim() !== '') return v;
+            }
+        }
     }
     return '';
 };
@@ -40,6 +48,8 @@ const _num = (v) => {
 };
 
 const _int = (v) => {
+    // Vacío o sin número → null (los callers distinguen "no venía" de "era 0")
+    if (v === undefined || v === null || String(v).trim() === '') return null;
     const n = _num(v);
     return Number.isFinite(n) ? Math.round(n) : null;
 };
@@ -62,17 +72,17 @@ const importarPrecios = async (rows) => {
         const row = rows[i];
         const filaExcel = i + 2; // +2: el encabezado es fila 1, datos parten en 2
 
-        const pedido = String(_col(row, ['pedido', 'Pedido', 'PEDIDO', 'numero_pedido', 'N° Pedido', 'OV', 'ov', 'Doc. num.', 'Document', 'Order'])).trim();
+        const pedido = String(_col(row, ['pedido', 'Pedido', 'PEDIDO', 'numero_pedido', 'N° Pedido', 'OV', 'ov', 'Doc. num.', 'Doc Num', 'DocNum', 'Document', 'Order', 'Order No.', 'Sales Document', 'Base Ref'])).trim();
         if (!pedido) {
             ignoradas++;
             errores.push({ fila: filaExcel, error: 'Sin número de pedido' });
             continue;
         }
 
-        const itemRaw = _col(row, ['item', 'Item', 'ITEM', 'Linea', 'Línea', 'Line', 'No. linea', 'Subitem']);
+        const itemRaw = _col(row, ['item', 'Item', 'ITEM', 'Linea', 'Línea', 'Line', 'Line No.', 'LineNo', 'No. linea', 'Subitem', 'SubItem', 'Line Number']);
         const item = itemRaw === '' ? 1 : (_int(itemRaw) || 1);
 
-        const precioRaw = _col(row, ['precio unitario', 'Precio Unitario', 'precio_unitario', 'PRECIO UNITARIO', 'precio', 'Precio', 'PRECIO', 'precio venta', 'Precio Venta', 'unit price', 'Price', 'Monto', 'monto', 'Total', 'total', 'Valor', 'valor']);
+        const precioRaw = _col(row, ['precio unitario', 'Precio Unitario', 'precio_unitario', 'PRECIO UNITARIO', 'precio', 'Precio', 'PRECIO', 'precio venta', 'Precio Venta', 'unit price', 'Unit Price', 'UnitPrice', 'price', 'Price', 'PRICE', 'Monto', 'monto', 'Total', 'total', 'Valor', 'valor', 'Amount', 'amount', 'Line Total', 'price (unit)']);
         const precio = _num(precioRaw);
         if (precio <= 0) {
             ignoradas++;
@@ -80,8 +90,8 @@ const importarPrecios = async (rows) => {
             continue;
         }
 
-        const cliente = String(_col(row, ['cliente', 'Cliente', 'CLIENTE', 'CardName', 'Razon social'])).trim().slice(0, 200);
-        const cantidadRaw = _col(row, ['cantidad', 'Cantidad', 'CANTIDAD', 'Qty', 'Cant.']);
+        const cliente = String(_col(row, ['cliente', 'Cliente', 'CLIENTE', 'CardName', 'Card Name', 'Razon social', 'Customer', 'customer'])).trim().slice(0, 200);
+        const cantidadRaw = _col(row, ['cantidad', 'Cantidad', 'CANTIDAD', 'Qty', 'Qty.', 'Cant.', 'Quantity', 'quantity']);
         const cantidad = cantidadRaw === '' ? null : _int(cantidadRaw);
 
         // UPSERT: misma OV + item → actualiza, no duplica.
@@ -136,4 +146,6 @@ const getResumen = async () => {
     return result.rows[0] || {};
 };
 
-module.exports = { importarPrecios, getPrecios, getResumen };
+// Se exportan los helpers internos para poder testear el parseo (columnas de
+// SAP con distintos nombres/mayúsculas) sin necesidad de base de datos.
+module.exports = { importarPrecios, getPrecios, getResumen, _col, _num, _int };
