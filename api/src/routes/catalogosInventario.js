@@ -185,8 +185,10 @@ router.get('/api/inv/reporte', canViewInv, async (req, res) => {
                 COALESCE(SUM(cantidad_planchas) FILTER (WHERE tipo_movimiento = 'salida'), 0)::int as salidas,
                 COALESCE(SUM(metros_cuadrados) FILTER (WHERE tipo_movimiento = 'entrada'), 0)::numeric as m2_entradas,
                 COALESCE(SUM(metros_cuadrados) FILTER (WHERE tipo_movimiento = 'salida'), 0)::numeric as m2_salidas,
-                -- Kg consumidos del mes (solo salidas). Fórmula canónica KG_SQL:
-                -- metros_cuadrados * espesor * 2.5 (misma que kg_stock y sparkline).
+                -- Kg por mes. Fórmula canónica KG_SQL: metros_cuadrados * espesor
+                -- * 2.5 (misma que kg_stock y sparkline). Entradas y salidas por
+                -- separado, igual que el gráfico de M2.
+                COALESCE(SUM(${inventarioService.KG_SQL()}) FILTER (WHERE tipo_movimiento = 'entrada'), 0)::numeric as kg_entradas,
                 COALESCE(SUM(${inventarioService.KG_SQL()}) FILTER (WHERE tipo_movimiento = 'salida'), 0)::numeric as kg_salidas,
                 COALESCE(NULLIF(tipo_cristal,''), 'Sin tipo') as tipo_cristal,
                 espesor
@@ -216,11 +218,12 @@ router.get('/api/inv/reporte', canViewInv, async (req, res) => {
 
         for (const row of result.rows) {
             const idx = row.mes - 1;
-            if (!porMes[idx]) porMes[idx] = { entradas:0, salidas:0, m2_entradas:0, m2_salidas:0, kg_salidas:0 };
+            if (!porMes[idx]) porMes[idx] = { entradas:0, salidas:0, m2_entradas:0, m2_salidas:0, kg_entradas:0, kg_salidas:0 };
             porMes[idx].entradas += row.entradas;
             porMes[idx].salidas += row.salidas;
             porMes[idx].m2_entradas += parseFloat(row.m2_entradas) || 0;
             porMes[idx].m2_salidas += parseFloat(row.m2_salidas) || 0;
+            porMes[idx].kg_entradas += parseFloat(row.kg_entradas) || 0;
             porMes[idx].kg_salidas += parseFloat(row.kg_salidas) || 0;
 
             const tipo = ((row.tipo_cristal || '').trim() || 'Sin tipo') + ' ' + (row.espesor ? row.espesor + 'mm' : '');
@@ -229,13 +232,14 @@ router.get('/api/inv/reporte', canViewInv, async (req, res) => {
 
         const mesesData = meses.map((nombre, i) => ({
             nombre,
-            ...(porMes[i] || { entradas:0, salidas:0, m2_entradas:0, m2_salidas:0, kg_salidas:0 })
+            ...(porMes[i] || { entradas:0, salidas:0, m2_entradas:0, m2_salidas:0, kg_entradas:0, kg_salidas:0 })
         }));
 
         const totalEntradas = mesesData.reduce((s, m) => s + m.entradas, 0);
         const totalSalidas = mesesData.reduce((s, m) => s + m.salidas, 0);
         const totalM2Entradas = mesesData.reduce((s, m) => s + m.m2_entradas, 0);
         const totalM2Salidas = mesesData.reduce((s, m) => s + m.m2_salidas, 0);
+        const totalKgEntradas = mesesData.reduce((s, m) => s + (m.kg_entradas || 0), 0);
         const totalKgSalidas = mesesData.reduce((s, m) => s + (m.kg_salidas || 0), 0);
 
         // Agrupar: top 5 tipos, resto como "Otros"
@@ -304,6 +308,7 @@ router.get('/api/inv/reporte', canViewInv, async (req, res) => {
             totalSalidas,
             totalM2Entradas: Math.round(totalM2Entradas),
             totalM2Salidas: Math.round(totalM2Salidas),
+            totalKgEntradas: Math.round(totalKgEntradas),
             totalKgSalidas: Math.round(totalKgSalidas),
             stockPlanchas: stockData.stockPlanchas,
             kgStock: stockData.kgStock,
