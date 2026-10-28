@@ -186,7 +186,7 @@ App.registerModule('produccion', {
                             <em>Se guarda por (pedido + item). Si cargas la misma OV otra vez, se ACTUALIZA el precio, no se duplica. El cruce con la orden es lo que permite saber el vendedor de cada precio.</em>
                             <div style="margin-top:10px"><button class="po-btn ghost sm" onclick="window.open('/api/produccion/precios-sap/template')">⬇ Descargar Plantilla</button></div>
                         </div>
-                        <div id="prodPreciosPreview" class="po-preview"></div>
+                        <div id="prodPreciosPreview"></div>
                     </div>
                     <div class="po-modal-foot">
                         <button class="po-btn ghost" onclick="App.modules.produccion.hidePreciosModal()">Cancelar</button>
