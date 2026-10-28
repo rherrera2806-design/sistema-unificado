@@ -234,38 +234,54 @@ const vaciarPrecios = async () => {
 };
 
 /**
- * Próxima OV a cargar: la orden de Producción (pedido) más antigua —menor
- * número— que todavía NO tiene ningún precio cargado en sap_precios.
- * Es la guía para que el usuario sepa desde qué OV buscar en SAP.
+ * Próxima OV a cargar: la OV de SAP —por número, la más antigua— que todavía
+ * NO tiene precios cargados. Es la guía para que el usuario sepa desde qué OV
+ * buscar en SAP.
+ *
+ * Detalle de los splits: al partir una orden, NUESTRO sistema le agrega una
+ * letra (112138 → 112138A), pero SAP solo conoce el número base (112138). Los
+ * precios se cargan con el número de SAP, así que una orden partida "112138A"
+ * ya tiene precio bajo su base "112138". Por eso se compara por OV BASE
+ * (quitando la letra): si la base ya tiene precio, la partida NO se sugiere
+ * (y de hecho no existe como OV buscable en SAP).
  * Devuelve { proxima, restantes }.
  */
 const getProximaOv = async () => {
-    // Se ordena por la parte numérica del pedido (los splits agregan letras,
-    // p.ej. "111102A"), de forma segura: solo se castea a bigint si son todos
-    // dígitos; si no, queda NULL y va al final.
-    const restaNum = `regexp_replace(pedido_sap_id, '[^0-9]', '', 'g')`;
+    // base = pedido sin letras finales (split). '112138A' -> '112138'
+    const base = (col) => `regexp_replace(${col}, '[^0-9]+$', '')`;
+    const restaNum = (expr) => `CASE WHEN ${expr} ~ '^[0-9]+$' THEN ${expr}::bigint END`;
+
     const result = await query(`
-        WITH pedidos_prod AS (
-            SELECT DISTINCT pedido_sap_id FROM produccion_ordenes
+        WITH bases AS (
+            SELECT DISTINCT ${base('pedido_sap_id')} AS base_pedido
+            FROM produccion_ordenes
             WHERE pedido_sap_id IS NOT NULL AND TRIM(pedido_sap_id) <> ''
+              AND ${base('pedido_sap_id')} <> ''
         )
-        SELECT pp.pedido_sap_id
-        FROM pedidos_prod pp
-        WHERE NOT EXISTS (SELECT 1 FROM sap_precios sp WHERE sp.pedido_sap_id = pp.pedido_sap_id)
-        ORDER BY (CASE WHEN ${restaNum} ~ '^[0-9]+$' THEN ${restaNum}::bigint END) NULLS LAST,
-                 pp.pedido_sap_id
+        SELECT b.base_pedido
+        FROM bases b
+        WHERE NOT EXISTS (
+            SELECT 1 FROM sap_precios sp
+            WHERE ${base('sp.pedido_sap_id')} = b.base_pedido
+        )
+        ORDER BY ${restaNum('b.base_pedido')} NULLS LAST, b.base_pedido
     `);
     const cont = await query(`
-        WITH pedidos_prod AS (
-            SELECT DISTINCT pedido_sap_id FROM produccion_ordenes
+        WITH bases AS (
+            SELECT DISTINCT ${base('pedido_sap_id')} AS base_pedido
+            FROM produccion_ordenes
             WHERE pedido_sap_id IS NOT NULL AND TRIM(pedido_sap_id) <> ''
+              AND ${base('pedido_sap_id')} <> ''
         )
         SELECT COUNT(*) as restantes
-        FROM pedidos_prod pp
-        WHERE NOT EXISTS (SELECT 1 FROM sap_precios sp WHERE sp.pedido_sap_id = pp.pedido_sap_id)
+        FROM bases b
+        WHERE NOT EXISTS (
+            SELECT 1 FROM sap_precios sp
+            WHERE ${base('sp.pedido_sap_id')} = b.base_pedido
+        )
     `);
     return {
-        proxima: result.rows[0] ? result.rows[0].pedido_sap_id : null,
+        proxima: result.rows[0] ? result.rows[0].base_pedido : null,
         restantes: Number((cont.rows[0] || {}).restantes || 0)
     };
 };
