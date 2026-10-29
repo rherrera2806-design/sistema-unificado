@@ -223,7 +223,8 @@ module.exports = { reprogramarPendientes, reprogramarPorAvance, getCumplimiento 
 async function reprogramarPorAvance({ fechaMinima, soloSinFecha, turnosHoy } = {}) {
     const calendario = require('./calendario');
     const fmtL = (d) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-    const hoy = fechaMinima || fmtL(new Date());
+    const ahoraCL = () => new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Santiago' }));
+    const hoy = fechaMinima || fmtL(ahoraCL());
     // REGLA: reprogramar NUNCA fecha para hoy ("hoy no alcanza" — el día ya
     // está en curso): por defecto lo pendiente parte del SIGUIENTE día hábil.
     // El planificador puede elegir otra fecha de inicio (selector "Desde").
@@ -239,7 +240,9 @@ async function reprogramarPorAvance({ fechaMinima, soloSinFecha, turnosHoy } = {
     // con el TURNO 1 (noche) — nunca se programa capacidad fantasma de hoy.
     // turnosHoy: ['dia'] | ['noche'] | ['dia','noche'] (undefined = auto: los
     // turnos que aún tienen tiempo restante).
-    const hoyReal = fmtL(new Date());
+    // HOY SIEMPRE en hora de CHILE (el servidor corre en UTC: sin esto, a las
+    // 21:00 Chile el servidor ya ve otro día y el recorte de turnos no aplica)
+    const hoyReal = fmtL(ahoraCL());
     let pctRestanteHoy = null;   // { dia: 0..1, noche: 0..1 } | null = sin recorte
     if (desde === hoyReal) {
         const turnos = (await require('./turnosHoy').getTurnosRestantesHoy()).turnos || [];
@@ -408,37 +411,39 @@ async function reprogramarPorAvance({ fechaMinima, soloSinFecha, turnosHoy } = {
     // Configuración → Turnos (p.ej. 60/40 o 50/50). BLOQUEO DURO como cabeEnDia.
     const configTurnos = require('./configTurnos');
     const cfgTurnos = await configTurnos.getConfigTurnos();
-    const carga = new Map();      // 'fecha|turno|estId' -> m²
-    const cargaPend = new Map();  // 'fecha|turno|estId' -> m² SOLO de pasos PENDIENTE
+    const carga = new Map();      // 'fecha|turno|estId' -> m² (total comprometido)
+    const cargaPend = new Map();  // 'fecha|turno|estId' -> m² SOLO pasos PENDIENTE
+    const cargaCurso = new Map(); // 'fecha|turno|estId' -> m² SOLO pasos EN PROCESO
     const caps = new Map();       // estId -> cap_max (m²/día)
     const cargaGrupo = new Map(); // 'fecha|turno|grupo' -> kg
     const cargaPendGrupo = new Map(); // 'fecha|turno|grupo' -> kg SOLO pendiente
+    const cargaCursoGrupo = new Map(); // 'fecha|turno|grupo' -> kg solo en curso
     // Capacidad por GRUPO (kg/día) = la línea roja de los gráficos
     const capGruposRes = await query('SELECT grupo, capacidad_kg_dia FROM produccion_capacidad_grupo WHERE activo = TRUE');
     const capsGrupo = new Map();  // grupo -> kg/día
     for (const g of capGruposRes.rows) capsGrupo.set(String(g.grupo || ''), Number(g.capacidad_kg_dia) || 0);
-    const agregarCarga = (estId, grupo, fecha, turno, m2, kg, esPendiente = true) => {
+    // tipo: 'pend' (PENDIENTE — consume ventana completa) | 'curso' (EN PROCESO
+    // — solo consume la parte RESTANTE del turno, approx. m² × %tiempo que falta)
+    const agregarCarga = (estId, grupo, fecha, turno, m2, kg, tipo = 'pend') => {
         const k = fecha + '|' + turno + '|' + estId;
         carga.set(k, (carga.get(k) || 0) + m2);
-        // cargaPend = solo pasos PENDIENTE: lo que realmente correrá dentro de
-        // la VENTANA RESTANTE de hoy. Los EN PROCESO no entran (su m² ya
-        // "pagó" la mañana transcurrida; descontarlos dos veces dejaba la
-        // ventana vacía y todo se iba a mañana — ver cabeEnTurno).
-        if (esPendiente) cargaPend.set(k, (cargaPend.get(k) || 0) + m2);
+        if (tipo === 'pend') cargaPend.set(k, (cargaPend.get(k) || 0) + m2);
+        else if (tipo === 'curso') cargaCurso.set(k, (cargaCurso.get(k) || 0) + m2);
         if (grupo) {
             const gk = fecha + '|' + turno + '|' + grupo;
             cargaGrupo.set(gk, (cargaGrupo.get(gk) || 0) + (Number(kg) || 0));
-            if (esPendiente) cargaPendGrupo.set(gk, (cargaPendGrupo.get(gk) || 0) + (Number(kg) || 0));
+            if (tipo === 'pend') cargaPendGrupo.set(gk, (cargaPendGrupo.get(gk) || 0) + (Number(kg) || 0));
+            else if (tipo === 'curso') cargaCursoGrupo.set(gk, (cargaCursoGrupo.get(gk) || 0) + (Number(kg) || 0));
         }
     };
-    // BLOQUEO DURO doble: estación (m²) Y grupo (kg) — sin tolerancia.
-    // HOY con recorte (pctRestanteHoy) la regla es de DOS condiciones:
-    //   1) TOPE DEL TURNO: carga total + nuevo ≤ capacidad del turno COMPLETO
-    //      (lo comprometido del turno —incluido lo EN PROCESO— sigue siendo
-    //      límite absoluto, igual que siempre).
-    //   2) VENTANA RESTANTE: lo nuevo + lo PENDIENTE de hoy ≤ capacidad ×
-    //      %tiempo restante del turno. Los turnos no elegidos quedan en 0%
-    //      → nada nuevo cabe ahí (la cascada salta al turno/día que sí).
+    // BLOQUEO DURO: estación (m²) Y grupo (kg) — sin tolerancia.
+    // MODELO UNIFICADO (fh = % de turno RESTANTE; fh=1 en días normales):
+    //     cargaPendientes + cargaEnCurso × fh + nuevo ≤ capTurno × fh
+    // · Los pasos EN PROCESO se contabilizan solo con la PARTE QUE LES FALTA
+    //   (transcurrieron (1-fh) del turno ya): antes su m² COMPLETO contra la
+    //   capacidad restante hacía imposible que cupiera nada nuevo hoy y todo
+    //   se iba a mañana.
+    // · Los turnos no elegidos de hoy quedan en fh=0 → nada nuevo cabe ahí.
     const factorHoy = (fecha, turno) => (pctRestanteHoy && fecha === hoyReal)
         ? (pctRestanteHoy[turno] || 0) : 1;
     const cabeEnTurno = (estId, grupo, fecha, turno, m2, kg) => {
@@ -447,20 +452,20 @@ async function reprogramarPorAvance({ fechaMinima, soloSinFecha, turnosHoy } = {
         if (capDia > 0) {
             const k = fecha + '|' + turno + '|' + estId;
             const capTurno = configTurnos.capacidadTurno(capDia, turno, cfgTurnos);
-            if (((carga.get(k) || 0) + m2) > capTurno) return false;                    // 1) tope turno
-            if (fh < 1 && ((cargaPend.get(k) || 0) + m2) > capTurno * fh) return false; // 2) ventana
+            const efectiva = (cargaPend.get(k) || 0) + (cargaCurso.get(k) || 0) * fh;
+            if (efectiva + m2 > capTurno * fh) return false;
         }
         const capG = grupo ? (capsGrupo.get(String(grupo)) || 0) : 0;
         if (capG > 0) {
             const gk = fecha + '|' + turno + '|' + grupo;
             const capGTurno = configTurnos.capacidadTurno(capG, turno, cfgTurnos);
-            if (((cargaGrupo.get(gk) || 0) + (Number(kg) || 0)) > capGTurno) return false;
-            if (fh < 1 && ((cargaPendGrupo.get(gk) || 0) + (Number(kg) || 0)) > capGTurno * fh) return false;
+            const kgEfectivo = (cargaPendGrupo.get(gk) || 0) + (cargaCursoGrupo.get(gk) || 0) * fh;
+            if (kgEfectivo + (Number(kg) || 0) > capGTurno * fh) return false;
         }
         return true;
     };
     const turnoActual = (() => {
-        const h = new Date().getHours();
+        const h = ahoraCL().getHours();   // hora de CHILE, no del servidor (UTC)
         return (h >= 6 && h < 22) ? 'dia' : 'noche';
     })();
     // REGLA DE TURNOS (acreditación al día en que TERMINA): el TURNO 1 del día
@@ -478,19 +483,18 @@ async function reprogramarPorAvance({ fechaMinima, soloSinFecha, turnosHoy } = {
             const kgOrden = kgHecho ? 0 : (o.kilos_orden || p.kg || 0);
             if (enCola.has(o.orden_id)) {
                 // se va a re-fecha: solo lo EN CURSO ocupa capacidad de hoy.
-                // esPendiente=FALSE: su m² ya pagó la mañana transcurrida, no
-                // debe descontarse dos veces de la ventana restante de hoy.
+                // tipo='curso': consume solo la parte RESTANTE del turno (si no,
+                // su m² completo contra la ventana dejaba imposible programar
+                // hoy y todo se iba a mañana).
                 if (p.estado === 'EN_PROCESO' || p.estado === 'PAUSADO') {
-                    agregarCarga(p.estacion_id, p.grupo, hoy, p.turno || turnoActual, p.m2, kgOrden, false);
+                    agregarCarga(p.estacion_id, p.grupo, hoy, p.turno || turnoActual, p.m2, kgOrden, 'curso');
                     kgHecho = true;
                 }
             } else if (!esHecho(p.estado) && p.fecha_paso) {
                 // fuera de la cola (modo Auto-Asignar): su carga YA asignada
-                // ocupa capacidad real en su fecha — no se puede doble-reservar.
-                // Lo EN CURSO de esas órdenes tampoco entra a la ventana (ya
-                // pagó su parte del turno); solo lo PENDIENTE la consume.
+                // ocupa capacidad real en su fecha — no se puede doble-reservar
                 agregarCarga(p.estacion_id, p.grupo, p.fecha_paso, p.turno || 'dia', p.m2, kgOrden,
-                    p.estado === 'PENDIENTE');
+                    p.estado === 'PENDIENTE' ? 'pend' : 'curso');
                 kgHecho = true;
             }
         }

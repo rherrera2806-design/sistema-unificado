@@ -21,6 +21,10 @@ const { query } = require('../config/database');
 
 const fmtL = (d) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 const mismoDia = (a, b) => fmtL(a) === fmtL(b);
+// "Ahora" SIEMPRE en hora de CHILE: el servidor (Railway) corre en UTC — sin
+// esta conversión, a las 10:38 de Chile el servidor calculaba con 13:38 y el
+// % restante de cada turno salía más bajo de lo real.
+const ahoraChile = () => new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Santiago' }));
 
 // Sin configuración del mes: 06:00-22:00 día / 22:00-06:00 noche (mismo
 // respaldo que taller.getTurnoActual).
@@ -89,7 +93,7 @@ function calcularTurnosRestantes(filas, ahora = new Date()) {
 
 /** Lee turnos_semanales del mes actual (con fallback al mes anterior para
  *  turnos que cruzan medianoche entre meses) y calcula los restantes de hoy. */
-async function getTurnosRestantesHoy(ahora = new Date()) {
+async function getTurnosRestantesHoy(ahora = ahoraChile()) {
     let filas = [];
     try {
         const r = await query(
