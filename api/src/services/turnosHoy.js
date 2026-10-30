@@ -13,9 +13,9 @@
 // al tiempo que falta (decisión de planta): 14:00 con turno día 08:00→18:00
 // = 40% restante.
 //
-// Usado por: modales de Auto-Asignar / Reprogramar por Avance (preguntar al
-// planificador qué turnos de hoy aplican) y por los motores
-// planificacionAuto.js / reprogramarService.js (recortar la capacidad de hoy).
+// Usado por: el modal único de Programación (preguntar al planificador qué
+// turnos de hoy aplican) y por el motor unificado
+// planificacionMotor.js (recortar la capacidad de hoy).
 // ============================================================================
 const { query } = require('../config/database');
 

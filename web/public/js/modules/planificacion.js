@@ -113,8 +113,7 @@ App.modules.planificacion = {
                             <button class="pln-navbtn" onclick="App.modules.planificacion.cambiarFechaGrupo(1)">▶</button>
                             ${puedeEditar ? `
                             <button class="pln-btn ghost sm" onclick="App.modules.planificacion.showCapacidadGrupo()" title="Configurar capacidad">⚙ Capacidad</button>
-                            <button class="pln-btn primary sm" onclick="App.modules.planificacion.showAutoAsignarGrupo()" title="Repartir pendientes respetando capacidad">⚡ Auto-Asignar</button>
-                            <button class="pln-btn warn sm" onclick="App.modules.planificacion.showReprogramarAvance()" title="Re-programa SOLO lo pendiente respetando lo avanzado">🔔 Por Avance</button>` : ''}
+                            <button class="pln-btn primary sm" onclick="App.modules.planificacion.showProgramar()" title="Un solo motor: inserta lo pendiente o reprograma el plan completo">⚡ Programar</button>` : ''}
                         </div>
                     </div>
                     <div class="pln-p-body">
@@ -222,7 +221,7 @@ App.modules.planificacion = {
                         ${venc ? `<span class="pln-prio p-reposicion">🔴 ${venc} VENCIDAS</span>` : ''}
                         ${porv ? `<span class="pln-prio p-express">🟡 ${porv} POR VENCER</span>` : ''}
                     </div>
-                    <button class="pln-btn warn" style="margin-left:auto" onclick="App.modules.planificacion.showReprogramarAvance()">🔔 Ver y Reprogramar por Avance</button>
+                    <button class="pln-btn warn" style="margin-left:auto" onclick="App.modules.planificacion.showProgramar()">⚡ Ver y Programar</button>
                 </div>`;
         } catch (e) {
             el.innerHTML = '';
@@ -517,114 +516,39 @@ App.modules.planificacion = {
         return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
     },
 
-    showAutoAsignarGrupo() {
-        const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
-        if (!this._puedeEditar(user)) {
-            App.showAlert('Sin permiso para auto-asignar', 'danger'); return;
-        }
-        const html = `
-            <p style="font-size:13px;color:#64748b;margin-bottom:12px">Inserta las ordenes <strong>nuevas (sin fecha)</strong> con el mismo motor de "Por Avance": turnos, ventanas rigidas, cuellos de botella y capacidad dura. <strong>No toca</strong> el plan ya programado. Solo dias habiles.</p>
-            <div style="margin-bottom:12px"><label style="display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#475569;margin-bottom:5px">Desde</label>
-            <input type="date" id="planAutoGInicio" value="${this.fechaGrupo}" onchange="App.modules.planificacion._turnosHoyUI('planAutoGInicio','planAutoGTurnos')" style="width:100%;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px"></div>
-            <div id="planAutoGTurnos"></div>
-            <div><label style="display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#475569;margin-bottom:5px">Cantidad de días hábiles a buscar</label>
-            <input type="number" id="planAutoGDias" value="14" min="1" max="60" style="width:100%;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px"></div>
-            <div id="planAutoGResultado" style="margin-top:12px"></div>
-        `;
-        const footer = `
-            <button class="pln-btn ghost" onclick="App.hideModal()">Cerrar</button>
-            <button class="pln-btn primary" onclick="App.modules.planificacion.ejecutarAutoAsignarGrupo()">Asignar pendientes</button>
-        `;
-        App.showModalInv('⚡ Auto-Asignar Pendientes', html, footer);
-        this._turnosHoyUI('planAutoGInicio', 'planAutoGTurnos');
-    },
-
-    async ejecutarAutoAsignarGrupo() {
-        const inicio = document.getElementById('planAutoGInicio').value;
-        const dias = Number(document.getElementById('planAutoGDias').value) || 14;
-        const resEl = document.getElementById('planAutoGResultado');
-        resEl.innerHTML = '<div class="pln-loading">Asignando...</div>';
-        try {
-            const res = await fetch('/api/produccion/planificacion-grupo/auto-asignar', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ inicio, dias, turnos_hoy: inicio === this._hoyStr() ? (this._turnosHoySel('planAutoGTurnos') || undefined) : undefined })
-            });
-            const data = await res.json();
-            if (res.ok) {
-                let html = `<div class="pln-ok" style="margin-bottom:8px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#15803d" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> <strong>${data.mensaje || 'Asignación completada'}</strong></div>
-                    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;text-align:center">
-                        <div class="pln-stat"><div class="v" style="color:#b45309">${data.ordenes_reprogramadas || 0}</div><div class="k">Órdenes asignadas</div></div>
-                        <div class="pln-stat"><div class="v" style="color:#15803d">${data.pasos_fechados || 0}</div><div class="k">Pasos fechados</div></div>
-                        <div class="pln-stat"><div class="v" style="color:#2563eb">${data.rutas_actualizadas || 0}</div><div class="k">Rutas sincronizadas</div></div>
-                    </div>`;
-                const alertas = (data && data.alertas) || [];
-                const fuera = alertas.filter(a => a.fuera_de_ventana);
-                if (fuera.length) {
-                    html += `<div style="margin-top:10px;color:#7f1d1d;font-weight:800;font-size:12.5px">🔴 ${fuera.length} NO caben en su ventana rígida:</div>`;
-                    html += fuera.slice(0, 12).map(a =>
-                        `<div style="font-size:11px;color:#7f1d1d;padding:3px 0">• <strong>${a.pedido || ''}</strong> item ${a.item != null ? a.item : '-'}: ventana ${a.ventana_dias} días hábiles → límite ${String(a.fecha_limite || '').slice(5)} · estimada <strong>${String(a.fecha_nueva || '').slice(5)}</strong></div>`).join('');
-                }
-                resEl.innerHTML = html;
-                await this.refrescarTodo();
-                App.showAlert('Auto-asignación completada', 'success');
-            } else {
-                resEl.innerHTML = '<div class="pln-error">' + escText(data.error || 'Error') + '</div>';
-            }
-        } catch (e) {
-            resEl.innerHTML = '<div class="pln-error">Error: ' + escText(e.message) + '</div>';
-        }
-    },
-
-    // ---------------- Reprogramar ----------------
-    showReprogramar() {
-        const html = `
-            <div class="pln-warnbox">
-                <strong>Atención:</strong> esta acción liberará TODAS las órdenes que no estén EN PROCESO, TERMINADAS, MERMADAS ni CERRADAS (vuelven a PENDIENTE con sus pasos) y las re-asignará automáticamente respetando la prioridad:
-                <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">
-                    <span class="pln-prio p-reposicion">4. Reposición</span>
-                    <span class="pln-prio p-express">2. Express</span>
-                    <span class="pln-prio p-urgencia">3. Urgencia</span>
-                    <span class="pln-prio p-normal">1. Normal</span>
-                </div>
-                <div class="sub2" style="margin-top:8px"><strong>Protegidas:</strong> las órdenes EN PROCESO, MERMADAS y TERMINADAS no serán tocadas.</div>
-            </div>
-            <div style="margin-bottom:12px"><label style="display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#475569;margin-bottom:5px">Desde (fecha inicio búsqueda)</label>
-            <input type="date" id="reprogInicio" value="${this._mananaHabil()}" style="width:100%;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px"></div>
-            <div><label style="display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#475569;margin-bottom:5px">Días hábiles a buscar capacidad (se extiende sola hasta 365 para programar todo)</label>
-            <input type="number" id="reprogDias" value="21" min="1" max="60" style="width:100%;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px"></div>
-            <div id="reprogResultado" style="margin-top:12px"></div>
-        `;
-        const footer = `
-            <button class="pln-btn ghost" onclick="App.hideModal()">Cerrar</button>
-            <button class="pln-btn danger" onclick="App.modules.planificacion.ejecutarReprogramar()">Reprogramar Todo</button>
-        `;
-        App.showModalInv('↻ Reprogramar Pendientes', html, footer);
-    },
-
-    // ---------------- Reprogramar POR AVANCE (regla de planta) ----------------
-    // Reprograma SOLO lo pendiente respetando lo avanzado: una orden con el
-    // corte hecho NO vuelve a programar corte. Cola: primero los ATRASADOS
-    // (fecha pactada <= hoy) y despues lo nuevo; dentro de cada grupo
-    // Reposicion -> Express -> Urgencia -> Normal. Sin splits. Capacidad dura.
     // Día siguiente hábil (aprox. sáb/dom; el calendario de Configuración se
-    // valida en el servidor). Default de los selectores "Desde" al reprogramar.
+    // valida en el servidor). Default del selector "Desde".
     _mananaHabil() {
         const d = new Date();
         do { d.setDate(d.getDate() + 1); } while (d.getDay() === 0 || d.getDay() === 6);
         return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
     },
 
-    async showReprogramarAvance() {
-        App.showModalInv('Reprogramar por Avance', '<div class="pln-loading">Cargando ordenes comprometidas...</div>', '<button class="pln-btn ghost" onclick="App.hideModal()">Cerrar</button>');
+    // ═════════════════════════════════════════════════════════════════════
+    // PROGRAMAR — UN SOLO BOTÓN, UN SOLO MOTOR
+    // Modal único con dos modos (ambos corren el MISMO motor en el servidor,
+    // services/planificacionMotor.js; solo cambia el alcance):
+    //   · SOLO PENDIENTES — inserta órdenes SIN fecha sin tocar el plan.
+    //   · REPROGRAMAR TODO — libera lo no iniciado y rehace el plan completo.
+    // Cola única: atrasados primero → 4 Reposición → 2 Express → 3 Urgencia
+    // → 1 Normal. Ventana rígida = RESTRICCIÓN (bloquea, no avisa).
+    // ═════════════════════════════════════════════════════════════════════
+    async showProgramar() {
+        const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
+        if (!this._puedeEditar(user)) {
+            App.showAlert('Sin permiso para programar la producción', 'danger'); return;
+        }
+        this._progModo = 'pendientes';
+        App.showModalInv('Programar Producción', '<div class="pln-loading">Cargando ordenes comprometidas...</div>',
+            '<button class="pln-btn ghost" onclick="App.hideModal()">Cerrar</button>');
+
+        // Desvío del programa (vencidas / por vencer) para dar contexto.
         let dv = {};
         try {
             const res = await fetch('/api/taller/dashboard', { headers: { 'Content-Type': 'application/json' } });
             const d = await res.json();
             dv = (d && d.desvio) || {};
-        } catch (e) {
-            dv = {};
-        }
+        } catch (_) { dv = {}; }
         const vencidas = dv.vencidas || [];
         const porVencer = dv.por_vencer || [];
         const fila = (o, venc) => `
@@ -643,46 +567,85 @@ App.modules.planificacion = {
                 </div>
             </div>`;
         const lista = [...vencidas.map(o => fila(o, true)), ...porVencer.map(o => fila(o, false))].slice(0, 8).join('');
+
         const html = `
-            <div class="pln-warnbox">
-                <strong>Reprogramacion POR AVANCE:</strong> se re-programa <strong>solo lo pendiente</strong> respetando lo ya fabricado (lo cortado NO se vuelve a programar), en la cola:
-                <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">
-                    <span class="pln-prio p-reposicion">1. Atrasados primero</span>
-                    <span class="pln-prio p-reposicion">4. Reposicion</span>
-                    <span class="pln-prio p-express">2. Express</span>
-                    <span class="pln-prio p-urgencia">3. Urgencia</span>
-                    <span class="pln-prio p-normal">1. Normal</span>
-                </div>
-                <div class="sub2" style="margin-top:8px"><strong>Sin splits:</strong> no fragmenta ordenes avanzadas. Los pasos terminados/mermados son historia y los EN PROCESO se mantienen hoy ocupando capacidad.</div>
+            <div style="display:flex;gap:8px;margin-bottom:12px">
+                <button class="pln-btn primary" id="plnModoPend" style="flex:1" title="Inserta lo nuevo sin tocar el plan existente" onclick="App.modules.planificacion._setModoProgramar('pendientes')">📥 Solo pendientes</button>
+                <button class="pln-btn ghost" id="plnModoTodo" style="flex:1" title="Libera lo no iniciado y rehace el plan completo" onclick="App.modules.planificacion._setModoProgramar('todo')">↻ Reprogramar todo</button>
             </div>
-            <div style="margin-bottom:12px"><label style="display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#475569;margin-bottom:5px">Desde (día de inicio de la re-programación — por defecto el día siguiente hábil; si eliges HOY se preguntan los turnos restantes)</label>
-            <input type="date" id="reprogAvanceInicio" value="${this._mananaHabil()}" onchange="App.modules.planificacion._turnosHoyUI('reprogAvanceInicio','reprogAvanceTurnos')" style="width:100%;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px"></div>
-            <div id="reprogAvanceTurnos"></div>
-            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#475569;margin:4px 0 8px">Ordenes comprometidas incumplidas (${vencidas.length} vencidas · ${porVencer.length} por vencer)</div>
-            <div style="max-height:38vh;overflow:auto">${lista || '<div class="pln-loading">Sin ordenes incumplidas</div>'}</div>
-            <div id="reprogAvanceResultado" style="margin-top:12px"></div>
+            <div id="plnModoDesc"></div>
+            <div style="margin-bottom:12px"><label style="display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#475569;margin-bottom:5px">Desde (por defecto el día siguiente hábil; si eliges HOY se preguntan los turnos restantes)</label>
+            <input type="date" id="progInicio" value="${this._mananaHabil()}" onchange="App.modules.planificacion._turnosHoyUI('progInicio','progTurnos')" style="width:100%;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px"></div>
+            <div id="progTurnos"></div>
+            <div style="margin-top:12px"><label style="display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#475569;margin-bottom:5px">Días hábiles a buscar cupo</label>
+            <input type="number" id="progDias" value="21" min="7" max="120" style="width:100%;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px"></div>
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#475569;margin:14px 0 8px">Órdenes comprometidas incumplidas (${vencidas.length} vencidas · ${porVencer.length} por vencer)</div>
+            <div style="max-height:28vh;overflow:auto">${lista || '<div class="pln-loading">Sin ordenes incumplidas</div>'}</div>
+            <div id="progResultado" style="margin-top:12px"></div>
         `;
         const footer = `
-            <button class="pln-btn ghost" style="margin-right:auto" title="Avanzado: libera TODO lo no iniciado y re-planifica desde cero (reinicio completo del plan)" onclick="App.modules.planificacion.showReprogramar()">⚙ Todo desde cero</button>
-            <button class="pln-btn ghost" id="reprogAvanceCerrar" onclick="App.hideModal()">Cerrar</button>
-            <button class="pln-btn warn" id="reprogAvanceRun" onclick="App.modules.planificacion.ejecutarReprogramarAvance()">Reprogramar por Avance</button>
+            <button class="pln-btn ghost" id="progCerrar" onclick="App.hideModal()">Cerrar</button>
+            <button class="pln-btn warn" id="progRun" onclick="App.modules.planificacion.ejecutarProgramar()">Programar</button>
         `;
-        App.showModalInv('Reprogramar por Avance', html, footer);
-        this._turnosHoyUI('reprogAvanceInicio', 'reprogAvanceTurnos');
+        App.showModalInv('Programar Producción', html, footer);
+        this._setModoProgramar('pendientes');
+        this._turnosHoyUI('progInicio', 'progTurnos');
     },
 
-    async ejecutarReprogramarAvance() {
-        const resEl = document.getElementById('reprogAvanceResultado');
-        const btnRun = document.getElementById('reprogAvanceRun');
-        const btnCerrar = document.getElementById('reprogAvanceCerrar');
+    // Alterna el modo y actualiza la descripción + el color del botón de acción.
+    _setModoProgramar(modo) {
+        this._progModo = modo === 'todo' ? 'todo' : 'pendientes';
+        const bP = document.getElementById('plnModoPend');
+        const bT = document.getElementById('plnModoTodo');
+        if (bP && bT) {
+            bP.className = 'pln-btn ' + (this._progModo === 'pendientes' ? 'primary' : 'ghost');
+            bT.className = 'pln-btn ' + (this._progModo === 'todo' ? 'danger' : 'ghost');
+        }
+        const cola = `
+            <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">
+                <span class="pln-prio p-reposicion">Atrasados primero</span>
+                <span class="pln-prio p-reposicion">4. Reposición</span>
+                <span class="pln-prio p-express">2. Express</span>
+                <span class="pln-prio p-urgencia">3. Urgencia</span>
+                <span class="pln-prio p-normal">1. Normal</span>
+            </div>`;
+        const d = document.getElementById('plnModoDesc');
+        if (!d) return;
+        d.innerHTML = this._progModo === 'todo'
+            ? `<div class="pln-warnbox">
+                <strong>Reprogramar TODO:</strong> libera todas las órdenes que no estén EN PROCESO, TERMINADAS, MERMADAS ni CERRADAS (vuelven a PENDIENTE) y rehace el plan completo.
+                ${cola}
+                <div class="sub2" style="margin-top:8px"><strong>Protegidas:</strong> EN PROCESO, TERMINADAS, MERMADAS y CERRADAS no se tocan. <strong>Ventana rígida:</strong> Reposición 2 · Express y Urgencia 3 días hábiles desde el ingreso — si no cabe, NO se agenda y sale como "sin cupo en ventana".</div>
+            </div>`
+            : `<div class="pln-warnbox">
+                <strong>Solo pendientes:</strong> inserta las órdenes <strong>nuevas (sin fecha)</strong> en el plan <strong>sin tocar</strong> lo ya programado, respetando turnos, cuellos de botella y capacidad por grupo.
+                ${cola}
+                <div class="sub2" style="margin-top:8px"><strong>Ventana rígida:</strong> Reposición 2 · Express y Urgencia 3 días hábiles desde el ingreso — si no cabe, NO se agenda y sale como "sin cupo en ventana".</div>
+            </div>`;
+    },
+
+    // ═════════════════════════════════════════════════════════════════════
+    // EJECUTOR ÚNICO — llama al motor con el modo elegido en el modal.
+    //   · 'pendientes' → POST .../planificacion-grupo/auto-asignar
+    //   · 'todo'       → POST .../reprogramar
+    // Ambos endpoints corren EL MISMO motor (planificacionMotor.js).
+    // ═════════════════════════════════════════════════════════════════════
+    async ejecutarProgramar() {
+        const modo = this._progModo === 'todo' ? 'todo' : 'pendientes';
+        const url = modo === 'todo'
+            ? '/api/produccion/reprogramar'
+            : '/api/produccion/planificacion-grupo/auto-asignar';
+        const resEl = document.getElementById('progResultado');
+        const btnRun = document.getElementById('progRun');
+        const btnCerrar = document.getElementById('progCerrar');
         // BLOQUEO de la operación: botones inactivos mientras corre, avance
-        // visible (spinner + segundos) y se sueltan SOLO al terminar
-        if (btnRun) { btnRun.disabled = true; btnRun.style.opacity = '.5'; btnRun.textContent = '⏳ Reprogramando…'; }
+        // visible (spinner + segundos) y se sueltan SOLO al terminar.
+        if (btnRun) { btnRun.disabled = true; btnRun.style.opacity = '.5'; btnRun.textContent = '⏳ Programando…'; }
         if (btnCerrar) { btnCerrar.disabled = true; btnCerrar.style.opacity = '.5'; }
         let seg = 0;
         const timer = setInterval(() => {
             seg++;
-            const t = document.getElementById('reprogAvanceTimer');
+            const t = document.getElementById('progTimer');
             if (t) t.textContent = seg + 's';
         }, 1000);
         if (resEl) resEl.innerHTML = `
@@ -690,101 +653,82 @@ App.modules.planificacion = {
             <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:14px 16px;display:flex;align-items:center;gap:12px">
                 <div style="width:22px;height:22px;border:3px solid #bfdbfe;border-top-color:#2563eb;border-radius:50%;animation:plnSpin .9s linear infinite"></div>
                 <div>
-                    <div style="font-size:13px;font-weight:700;color:#1e40af">Re-programando el plan… <span id="reprogAvanceTimer" style="font-variant-numeric:tabular-nums">0s</span></div>
+                    <div style="font-size:13px;font-weight:700;color:#1e40af">${modo === 'todo' ? 'Re-programando el plan completo…' : 'Asignando pendientes…'} <span id="progTimer" style="font-variant-numeric:tabular-nums">0s</span></div>
                     <div style="font-size:11px;color:#64748b;margin-top:2px">Respetando lo fabricado, la cola de prioridades y la capacidad diaria. <strong>No cierres esta ventana</strong> — se liberará al completarse.</div>
                 </div>
             </div>`;
         try {
-            const desde = (document.getElementById('reprogAvanceInicio') || {}).value || '';
-            const res = await fetch('/api/produccion/reprogramar/avance', {
+            const desde = (document.getElementById('progInicio') || {}).value || '';
+            const dias = Number((document.getElementById('progDias') || {}).value) || 21;
+            const res = await fetch(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    ...(desde ? { fecha_minima: desde } : {}),
-                    ...(desde === this._hoyStr() ? { turnos_hoy: this._turnosHoySel('reprogAvanceTurnos') || undefined } : {})
+                    inicio: desde || undefined,
+                    dias,
+                    turnos_hoy: desde === this._hoyStr() ? (this._turnosHoySel('progTurnos') || undefined) : undefined
                 })
             });
             const data = await res.json();
             clearInterval(timer);
-            // SOLTAR la operación: botones habilitados de nuevo
-            if (btnRun) { btnRun.disabled = false; btnRun.style.opacity = '1'; btnRun.textContent = 'Reprogramar por Avance'; }
+            if (btnRun) { btnRun.disabled = false; btnRun.style.opacity = '1'; btnRun.textContent = 'Programar'; }
             if (btnCerrar) { btnCerrar.disabled = false; btnCerrar.style.opacity = '1'; }
             if (res.ok) {
                 const alertas = data.alertas || [];
                 const exceden = alertas.filter(a => a.excede_pacto);
+                // VENCIDAS: la ventana rígida ya había vencido al planificar,
+                // así que se agendaron lo antes posible (NO están bloqueadas).
+                const vencidas = alertas.filter(a => a.vencida && !a.excede_pacto);
+                // BLOQUEADAS: ventana aún alcanzable pero sin cupo → NO se agendaron.
+                const bloqueadas = (data.noAsignados || []).filter(n => n.ventana_dias);
+                const noAsignados = data.noAsignados || [];
                 let html = `<div class="pln-ok" style="margin-bottom:8px;display:flex;align-items:center;gap:8px">
                         <span style="font-size:20px">✅</span>
                         <div><strong style="font-size:14px;color:#15803d">COMPLETADO en ${seg}s</strong>
-                        <div style="font-size:12px;color:#166534">${data.mensaje || 'Reprogramacion completada'}</div></div>
+                        <div style="font-size:12px;color:#166534">${escText(data.mensaje || 'Programación completada')}</div></div>
                     </div>
                     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;text-align:center">
-                        <div class="pln-stat"><div class="v" style="color:#b45309">${data.ordenes_reprogramadas || 0}</div><div class="k">Ordenes</div></div>
+                        <div class="pln-stat"><div class="v" style="color:#b45309">${data.ordenes_reprogramadas || 0}</div><div class="k">Órdenes</div></div>
                         <div class="pln-stat"><div class="v" style="color:#15803d">${data.pasos_fechados || 0}</div><div class="k">Pasos fechados</div></div>
-                        <div class="pln-stat"><div class="v" style="color:#2563eb">${data.pasos_en_curso_respetados || 0}</div><div class="k">En curso (hoy)</div></div>
+                        <div class="pln-stat"><div class="v" style="color:${noAsignados.length ? '#dc2626' : '#64748b'}">${noAsignados.length}</div><div class="k">Sin cupo</div></div>
                     </div>`;
-                if (exceden.length) {
-                    html += `<div style="margin-top:10px;color:#b91c1c;font-weight:700;font-size:12px">⚠ ${exceden.length} exceden la fecha calculada anteriormente:</div>`;
-                    html += exceden.slice(0, 12).map(a =>
-                        `<div style="font-size:11px;color:#7f1d1d;padding:3px 0">• <strong>${a.pedido || ''}</strong> item ${a.item != null ? a.item : '-'}: ${String(a.fecha_anterior || '').slice(5)} → nueva ${String(a.fecha_nueva || '').slice(5)}</div>`).join('');
+                if (modo === 'todo') {
+                    html += `<div style="margin-top:8px;text-align:center;font-size:11px;color:#64748b">Liberadas: <strong>${data.ordenes_liberadas || 0}</strong> · En curso respetadas: <strong>${data.pasos_en_curso_respetados || 0}</strong></div>`;
                 }
-                const fuera = alertas.filter(a => a.fuera_de_ventana);
-                if (fuera.length) {
-                    html += `<div style="margin-top:10px;color:#7f1d1d;font-weight:800;font-size:12.5px">🔴 ${fuera.length} NO caben en su ventana rígida (compromiso de prioridad incumplido):</div>`;
-                    html += fuera.slice(0, 12).map(a =>
-                        `<div style="font-size:11px;color:#7f1d1d;padding:3px 0">• <strong>${a.pedido || ''}</strong> item ${a.item != null ? a.item : '-'} (${({ 4: 'Reposición', 2: 'Express', 3: 'Urgencia', 1: 'Normal' })[a.prioridad] || ''}): ventana ${a.ventana_dias} días hábiles → límite ${String(a.fecha_limite || '').slice(5)} · estimada <strong>${String(a.fecha_nueva || '').slice(5)}</strong></div>`).join('');
+                if (exceden.length) {
+                    html += `<div style="margin-top:10px;color:#b91c1c;font-weight:700;font-size:12px">⚠ ${exceden.length} exceden la fecha pactada anterior:</div>`;
+                    html += exceden.slice(0, 12).map(a =>
+                        `<div style="font-size:11px;color:#7f1d1d;padding:3px 0">• <strong>${escText(a.pedido || '')}</strong> item ${a.item != null ? a.item : '-'}: ${String(a.fecha_anterior || '').slice(5)} → nueva ${String(a.fecha_nueva || '').slice(5)}</div>`).join('');
+                }
+                if (vencidas.length) {
+                    html += `<div style="margin-top:10px;color:#b45309;font-weight:800;font-size:12.5px">🟠 ${vencidas.length} con ventana rígida YA VENCIDA — programadas lo antes posible:</div>`;
+                    html += vencidas.slice(0, 12).map(a =>
+                        `<div style="font-size:11px;color:#92400e;padding:3px 0">• <strong>${escText(a.pedido || '')}</strong> item ${a.item != null ? a.item : '-'} (${escText(a.prioridad_nombre || '')}): ingreso ${String(a.fecha_ingreso || '').slice(5)} · límite ${String(a.fecha_limite || '').slice(5)} → nueva <strong>${String(a.fecha_nueva || '').slice(5)}</strong></div>`).join('');
+                }
+                if (bloqueadas.length) {
+                    html += `<div style="margin-top:10px;color:#7f1d1d;font-weight:800;font-size:12.5px">🔴 ${bloqueadas.length} NO caben en su ventana rígida (sin cupo → quedan SIN AGENDAR, requieren decisión):</div>`;
+                    html += bloqueadas.slice(0, 12).map(n =>
+                        `<div style="font-size:11px;color:#7f1d1d;padding:3px 0">• <strong>${escText(n.pedido || '')}</strong> item ${n.item != null ? n.item : '-'}: ventana ${n.ventana_dias} días hábiles → límite ${String(n.fecha_limite || '').slice(5)}</div>`).join('');
+                }
+                if (noAsignados.length) {
+                    html += `<div style="margin-top:10px;color:#b91c1c;font-weight:700;font-size:13px">Sin capacidad (${noAsignados.length}):</div>`;
+                    html += noAsignados.slice(0, 15).map(n =>
+                        `<div class="pln-sincupo"><strong>${escText(n.pedido || n.orden_id)}</strong> — ${escText(n.motivo)} (${escText(n.grupo || '?')})</div>`
+                    ).join('');
                 }
                 if (resEl) resEl.innerHTML = html;
-                if (window.App && App.toast) App.toast('✅ Reprogramación por avance completada (' + (data.ordenes_reprogramadas || 0) + ' órdenes)', 'success');
-                this.refrescarTodo();
+                if (window.App && App.toast) App.toast('✅ Programación completada (' + (data.ordenes_reprogramadas || 0) + ' órdenes)', 'success');
+                await this.refrescarTodo();
             } else {
-                if (resEl) resEl.innerHTML = `<div class="pln-ok" style="background:#fee2e2;border-color:#fecaca;margin-bottom:8px"><span style="font-size:20px">❌</span> <strong style="color:#b91c1c">ERROR:</strong> ${data.error || 'no se pudo reprogramar'}</div>`;
-                if (window.App && App.toast) App.toast('❌ La reprogramación falló', 'error');
+                if (resEl) resEl.innerHTML = `<div class="pln-ok" style="background:#fee2e2;border-color:#fecaca;margin-bottom:8px"><span style="font-size:20px">❌</span> <strong style="color:#b91c1c">ERROR:</strong> ${escText(data.error || 'no se pudo programar')}</div>`;
+                if (window.App && App.toast) App.toast('❌ La programación falló', 'error');
             }
         } catch (e) {
             clearInterval(timer);
-            if (btnRun) { btnRun.disabled = false; btnRun.style.opacity = '1'; btnRun.textContent = 'Reprogramar por Avance'; }
+            if (btnRun) { btnRun.disabled = false; btnRun.style.opacity = '1'; btnRun.textContent = 'Programar'; }
             if (btnCerrar) { btnCerrar.disabled = false; btnCerrar.style.opacity = '1'; }
             if (resEl) resEl.innerHTML = '<div class="pln-ok" style="background:#fee2e2;border-color:#fecaca;margin-bottom:8px"><span style="font-size:20px">❌</span> <strong style="color:#b91c1c">ERROR DE CONEXIÓN</strong> — no se pudo completar. Reintenta.</div>';
-            if (window.App && App.toast) App.toast('❌ Error de conexión al reprogramar', 'error');
-        }
-    },
-
-    async ejecutarReprogramar() {
-        const inicio = document.getElementById('reprogInicio').value;
-        const dias = Number(document.getElementById('reprogDias').value) || 21;
-        const resEl = document.getElementById('reprogResultado');
-        resEl.innerHTML = '<div class="pln-loading">Reprogramando: liberando y re-asignando por prioridad...</div>';
-        try {
-            const res = await fetch('/api/produccion/reprogramar', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ inicio, dias })
-            });
-            const data = await res.json();
-            if (res.ok) {
-                const numLiberadas = data.ordenes_liberadas || 0;
-                const numAsignados = Array.isArray(data.asignados) ? data.asignados.length : 0;
-                const numNoAsignados = Array.isArray(data.noAsignados) ? data.noAsignados.length : 0;
-                let html = `<div class="pln-ok" style="margin-bottom:8px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#15803d" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> <strong>Reprogramación completada</strong></div>
-                    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;text-align:center">
-                        <div class="pln-stat"><div class="v" style="color:#b45309">${numLiberadas}</div><div class="k">Liberadas</div></div>
-                        <div class="pln-stat"><div class="v" style="color:#15803d">${numAsignados}</div><div class="k">Re-asignadas</div></div>
-                        <div class="pln-stat"><div class="v" style="color:#dc2626">${numNoAsignados}</div><div class="k">Sin cupo</div></div>
-                    </div>`;
-                if (numNoAsignados > 0) {
-                    html += `<div style="margin-top:10px;color:#b91c1c;font-weight:700;font-size:13px">Sin capacidad (${numNoAsignados}):</div>`;
-                    html += data.noAsignados.slice(0, 15).map(n =>
-                        `<div class="pln-sincupo"><strong>${escapeHtml(n.pedido || n.orden_id)}</strong> — ${escapeHtml(n.motivo)} (${escapeHtml(n.grupo || '?')})</div>`
-                    ).join('');
-                }
-                resEl.innerHTML = html;
-                await this.refrescarTodo();
-                App.showAlert('Reprogramación completada', 'success');
-            } else {
-                resEl.innerHTML = '<div class="pln-error">' + escText(data.error || 'Error') + '</div>';
-            }
-        } catch (e) {
-            resEl.innerHTML = '<div class="pln-error">Error: ' + escText(e.message) + '</div>';
+            if (window.App && App.toast) App.toast('❌ Error de conexión al programar', 'error');
         }
     },
 

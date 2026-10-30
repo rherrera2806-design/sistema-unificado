@@ -4,7 +4,7 @@ const taller = require('../services/taller');
 const eventos = require('../services/eventos');
 const produccionOrdenes = require('../services/produccionOrdenes');
 const backfills = require('../services/tallerBackfills');
-const { autoAsignarPendientes } = require('../services/planificacionAuto');
+const planificacionMotor = require('../services/planificacionMotor');
 const { requireAnyPerm } = require('../middleware/permisos');
 const { asyncHandler } = require('../middleware/asyncHandler');
 
@@ -125,10 +125,12 @@ router.post('/api/taller/merma', canCreate, asyncHandler(async (req, res) => {
         ? `Merma registrada. Reposicion #${result.nuevaOrdenId} por ${cantidadMermada} unidades.`
         : `Merma total. Reposicion #${result.nuevaOrdenId} creada.`;
 
+    // La reposicion creada queda PENDIENTE sin fecha: el motor unificado la
+    // inserta en el plan sin tocar lo ya programado (modo 'pendientes').
     let autoAsignados = 0;
     try {
-        const autoResult = await autoAsignarPendientes({ dias: 21, inicio: new Date().toISOString().split('T')[0] });
-        autoAsignados = Array.isArray(autoResult.asignados) ? autoResult.asignados.length : 0;
+        const planResult = await planificacionMotor.planificar({ modo: 'pendientes' });
+        autoAsignados = planResult.ordenes_reprogramadas || 0;
     } catch (autoErr) { console.error('[TALLER] Auto-asignar post-merma error:', autoErr.message); }
 
     res.json({ ok: true, ...result, mensaje: msg + (autoAsignados > 0 ? ` Auto-asignada: ${autoAsignados} orden(es).` : '') });

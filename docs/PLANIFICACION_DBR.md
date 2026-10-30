@@ -1,6 +1,16 @@
 # Planificación Auto-Asignar — Drum-Buffer-Rope (DBR)
 
-> **ARCHIVO CRÍTICO:** `api/src/services/planificacionAuto.js`
+> ⚠️ **DOCUMENTO SUPERADO (Octubre 2026).**
+> `planificacionAuto.js` (DBR) y `reprogramarService.js` (reprogramar por avance)
+> fueron **reemplazados por UN solo motor**: `api/src/services/planificacionMotor.js`.
+> Este documento queda como **historia de por qué el DBR se retiró**: con 5 cuellos
+> de botella marcados (Mecanizado, Ventana, Pintado, Templado, Armado) el concepto de
+> un "drum" único no aplica; el motor unificado camina la ruta **estación por
+> estación** y cada cuello valida su propio cupo, empujando la fecha la más cargada.
+> Ver `api/src/services/planificacionMotor.js` (cabecera con las reglas) y
+> `docs/PLANIFICACION_MOTOR_UNICO.md` si existe.
+
+> **ARCHIVO CRÍTICO:** `api/src/services/planificacionAuto.js` *(ya no existe)*
 > **Última revisión:** Agosto 2026
 > **No modificar sin leer esta documentación completa.**
 

@@ -2,8 +2,7 @@ const express = require('express');
 const router = express.Router();
 const planificacion = require('../services/planificacion');
 const planificacionGrupo = require('../services/planificacionGrupo');
-const { autoAsignarPendientes } = require('../services/planificacionAuto');
-const { reprogramarPendientes, reprogramarPorAvance } = require('../services/reprogramarService');
+const motor = require('../services/planificacionMotor');
 const { importarOrdenes } = require('../services/produccionImportar');
 const planificacionService = require('../services/produccionPlanificacionService');
 const { requireAnyPerm } = require('../middleware/permisos');
@@ -143,15 +142,23 @@ router.post('/api/produccion/planificacion-grupo/asignar', canCreate, asyncHandl
     res.json({ ok: true });
 }));
 
+// ═══════════════════════════════════════════════════════════════
+// PROGRAMACIÓN — MOTOR ÚNICO (services/planificacionMotor.js)
+// Un solo motor para ambos modos; las diferencias son SOLO de alcance:
+//   · 'pendientes' — inserta órdenes SIN fecha sin tocar el plan existente.
+//   · 'todo'       — libera lo no iniciado y rehace el plan completo.
+// ═══════════════════════════════════════════════════════════════
 router.post('/api/produccion/planificacion-grupo/auto-asignar', canCreate, asyncHandler(async (req, res) => {
-    // MOTOR UNIFICADO: mismas reglas que "Por Avance" (turnos, ventanas rígidas,
+    // MODO 'pendientes': mismas reglas del motor (turnos, ventana rígida,
     // cuellos de botella, capacidad dura) pero SOLO para órdenes SIN FECHA:
     // el plan ya programado NO se toca (su carga existente se respeta).
-    const inicio = req.body.inicio || (() => {
-        const h = new Date();
-        return h.getFullYear() + '-' + String(h.getMonth() + 1).padStart(2, '0') + '-' + String(h.getDate()).padStart(2, '0');
-    })();
-    res.json(await reprogramarPorAvance({ fechaMinima: inicio, soloSinFecha: true, turnosHoy: req.body.turnos_hoy }));
+    res.json(await motor.planificar({
+        modo: 'pendientes',
+        fechaMinima: req.body.inicio || undefined,
+        turnosHoy: req.body.turnos_hoy,
+        dias: req.body.dias,
+        permitirSplit: req.body.permitir_split !== false
+    }));
 }));
 
 // El dueno de la nota es el usuario de la SESION (req.user lo setea el middleware),
@@ -196,14 +203,18 @@ router.patch('/api/produccion/ordenes/:id/prioridad', canUpdate, asyncHandler(as
 }));
 
 // ═══════════════════════════════════════════════════════════════
-// REPROGRAMAR PENDIENTES — POST /api/produccion/reprogramar
-// Paso A: Liberar PROGRAMADO → PENDIENTE (sin tocar EN PROCESO/MERMADO/TERMINADO)
-// Paso B: Re-ejecutar auto-asignar con Priority Queue 4→1
+// REPROGRAMAR — POST /api/produccion/reprogramar
+// MODO 'todo': libera PROGRAMADO → PENDIENTE (sin tocar EN PROCESO / TERMINADO /
+// MERMADO / CERRADO) y rehace el plan completo por prioridad con el motor único.
 // ═══════════════════════════════════════════════════════════════
 router.post('/api/produccion/reprogramar', canCreate, asyncHandler(async (req, res) => {
-    const dias = Number(req.body.dias) || 21;
-    const inicio = req.body.inicio || new Date().toISOString().split('T')[0];
-    res.json(await reprogramarPendientes({ dias, inicio }));
+    res.json(await motor.planificar({
+        modo: 'todo',
+        fechaMinima: req.body.inicio || undefined,
+        turnosHoy: req.body.turnos_hoy,
+        dias: req.body.dias,
+        permitirSplit: req.body.permitir_split !== false
+    }));
 }));
 
 // ═══════════════════════════════════════════════════════════════
@@ -214,11 +225,17 @@ router.get('/api/produccion/reprogramar/pendientes', canView, asyncHandler(async
 }));
 
 // REPROGRAMACIÓN POR AVANCE — POST /api/produccion/reprogramar/avance
-// Reprograma SOLO lo pendiente respetando lo avanzado en piso (el corte hecho
-// no se vuelve a programar). Cola: atrasados primero y dentro de cada grupo
-// Reposición → Express → Urgencia → Normal. Ver reprogramarService.
+// Alias de compatibilidad: era el motor "Por Avance" separado. Hoy es el MISMO
+// motor unificado en modo 'pendientes' (reprograma SOLO lo pendiente respetando
+// lo avanzado en piso: el corte hecho no se vuelve a programar).
 router.post('/api/produccion/reprogramar/avance', canCreate, asyncHandler(async (req, res) => {
-    res.json(await reprogramarPorAvance({ fechaMinima: req.body.fecha_minima || undefined, turnosHoy: req.body.turnos_hoy }));
+    res.json(await motor.planificar({
+        modo: 'pendientes',
+        fechaMinima: req.body.fecha_minima || req.body.inicio || undefined,
+        turnosHoy: req.body.turnos_hoy,
+        dias: req.body.dias,
+        permitirSplit: req.body.permitir_split !== false
+    }));
 }));
 
 module.exports = router;

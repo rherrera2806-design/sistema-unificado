@@ -928,8 +928,10 @@ async function getDashboard() {
             total: Number(ordenesGlobales.rows[0] && ordenesGlobales.rows[0].total_ordenes) || 0
         },
         // KPI de CUMPLIMIENTO: % de órdenes rígidas terminadas dentro de su
-        // ventana (Repo 2 días / Express-Urgencia 3 días hábiles desde ingreso)
-        cumplimiento: await require('./reprogramarService').getCumplimiento(),
+        // ventana (Repo 2 días / Express-Urgencia 3 días hábiles desde ingreso).
+        // Vive en el motor unificado para que planificación y KPI usen las
+        // MISMAS reglas de ventana.
+        cumplimiento: await require('./planificacionMotor').getCumplimiento(),
         // Desvío del programa: VENCIDAS (pactada < hoy) y POR VENCER (pactada =
         // hoy) con avance por estación — la app avisa y ofrece reprogramar
         desvio: (() => {

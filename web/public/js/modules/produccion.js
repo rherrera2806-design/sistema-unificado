@@ -9,7 +9,9 @@
 //   · Colores de PRIORIDAD con el idioma de las etiquetas físicas:
 //     Normal azul · Express amarillo · Urgencia verde · Reposición rojo.
 //   · Números es-CL (coma decimal) · fechas dd-mm-yyyy · escala 20/15/13/11/10.
-//   · "Zona de mantenimiento" aparte: Reprogramar Todo / Limpiar Todo.
+//   · "Zona de mantenimiento" aparte: Resincronizar / Limpiar Todo.
+//     (La PROGRAMACIÓN vive en el módulo Planificación: UN solo botón
+//      "⚡ Programar" con un solo motor en el servidor.)
 // Mantiene TODO el flujo API del módulo original (importar SAP, pasos, BOM,
 // prioridades, reprogramación, cierre con motivo).
 // ============================================================================
@@ -64,10 +66,6 @@ App.registerModule('produccion', {
                             <span id="reprogBadge" class="po-reprog-badge">!</span>
                         </button>
                         <div class="po-mant-drop" id="poMantDrop">
-                            <div class="it" onclick="App.modules.produccion.reprogramarTodo()">
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-                                Reprogramar Todo (por prioridad)
-                            </div>
                             <div class="it" onclick="App.modules.produccion.resincronizarEstados()">
                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
                                 Resincronizar estados
@@ -1266,10 +1264,11 @@ App.registerModule('produccion', {
                 this.checkReprogramacionPendiente();
                 if (this._drawerId === id) await this.verDetalle(id);
                 // La nueva prioridad solo se refleja en FECHAS y FABRICACIÓN al
-                // reprogramar: se ofrece aquí mismo para que no se quede a medias.
+                // reprogramar: se abre el modal único de programación para que
+                // no se quede a medias (mismo motor, modo "Reprogramar todo").
                 this._confirmar('Prioridad actualizada',
                     'La nueva prioridad se aplicará a <strong>fechas y fabricación</strong> al reprogramar.<br><br>¿Deseas reprogramar ahora?',
-                    'Reprogramar ahora', false, () => this._ejecutarReprogramar());
+                    'Reprogramar ahora', false, () => this.abrirProgramacion());
             }
             else { const d = await res.json(); App.showAlert(d.error || 'Error al actualizar', 'danger'); }
         } catch (e) { App.showAlert('Error: ' + e.message, 'danger'); }
@@ -1405,30 +1404,16 @@ App.registerModule('produccion', {
         }
     },
 
-    reprogramarTodo() {
-        this._confirmar('Reprogramar Todo',
-            'Se liberarán <strong>todas las órdenes que no estén EN PROCESO, TERMINADAS, MERMADAS ni CERRADAS</strong> (vuelven a PENDIENTE) y se re-asignarán automáticamente por prioridad: <strong>Reposición → Express → Urgencia → Normal</strong>.<br><br>Las órdenes EN PROCESO, MERMADAS y TERMINADAS no serán tocadas.',
-            'Reprogramar todo', true, () => this._ejecutarReprogramar());
-    },
-
-    async _ejecutarReprogramar() {
-        try {
-            const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
-            App.toast('Reprogramando... espere', 'info');
-            const res = await fetch('/api/produccion/reprogramar', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-User-Email': user.email || '' },
-                body: JSON.stringify({ dias: 21, inicio: new Date().toISOString().split('T')[0] })
-            });
-            const data = await res.json();
-            if (res.ok) {
-                const lib = data.ordenes_liberadas || 0;
-                const asig = Array.isArray(data.asignados) ? data.asignados.length : 0;
-                App.showAlert(`Reprogramado: ${lib} liberadas, ${asig} re-asignadas por prioridad`, 'success');
-                await this.load();
-                this.checkReprogramacionPendiente();
-            } else { App.showAlert(data.error || 'Error al reprogramar', 'danger'); }
-        } catch (e) { App.showAlert('Error: ' + e.message, 'danger'); }
+    // ─── Programación: UN SOLO MOTOR / UN SOLO BOTÓN ─────────────────────
+    // El botón de programación vive en el módulo Planificación (modal único
+    // con dos modos: "Solo pendientes" y "Reprogramar todo"). Aquí solo se
+    // ABRE ese modal, para no tener dos caminos distintos al mismo motor.
+    abrirProgramacion() {
+        if (window.App && App.modules && App.modules.planificacion && App.modules.planificacion.showProgramar) {
+            App.modules.planificacion.showProgramar();
+        } else {
+            App.showAlert('Abre el módulo Planificación para programar', 'info');
+        }
     },
 
     // ---------------- Cerrar / eliminar ----------------
