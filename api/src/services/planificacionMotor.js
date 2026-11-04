@@ -148,6 +148,10 @@ async function planificar({ modo = 'pendientes', fechaMinima, turnosHoy, dias = 
             cap: Number(e.cap_max) || 0,
             esCuello: !!e.cuello_botella
         };
+        // OBLIGATORIO: sin este set, caps quedaba vacía y capDia era siempre
+        // 0 → el motor creía que TODAS las estaciones eran "sin tope" y
+        // amontonaba todo en el primer día (el grupo lo disimulaba antes).
+        caps.set(e.id, Number(e.cap_max) || 0);
     }
 
     // (Capacidad por GRUPO kg/día: fuera del motor — solo reporte.)
