@@ -76,10 +76,14 @@ const ESTADOS = ['pendiente', 'aprobado', 'rechazado'];
 const MOTIVOS_CANONICOS = [
     { canonico: 'No recibida fisicamente', alias: ['no recibida', 'no recibida fisicamente', 'no recibida fisic'] }
 ];
-/** Normaliza para COMPARAR: minúsculas, espacios colapsados, sin puntuación final. */
+/** Normaliza para COMPARAR: minúsculas, SIN ACENTOS, espacios colapsados,
+ *  sin puntuación final. Sin quitar acentos, 'físicamente' ≠ 'fisicamente'
+ *  y el mismo motivo seguía saliendo duplicado en el reporte. */
 const _normMotivo = (t) => String(t || '')
     .trim().replace(/\s+/g, ' ')
-    .toLowerCase().replace(/[.,;:¡!]+$/, '');
+    .toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')   // quita tildes
+    .replace(/[.,;:¡!¿?]+$/, '');
 /**
  * Devuelve el nombre canónico del motivo (o el texto tal cual si no es una
  * variante conocida). Se aplica al RECHAZAR (guarda el nombre único) y al
@@ -344,16 +348,19 @@ router.get('/api/pedidos/reporte', canView, async (req, res, next) => {
             FROM pedidos WHERE fecha_subida >= $1::date AND fecha_subida < $2::date${visWhere}${cliWhere.replace('p.cliente', 'cliente')} AND estado = 'rechazado' AND motivo_rechazo IS NOT NULL AND motivo_rechazo != ''
             GROUP BY motivo_rechazo ORDER BY total DESC LIMIT 16
         `, [desde, hasta, ...visParams, ...cliParams]);
-        // UNIFICACIÓN de variantes: 'No recibida' y 'No recibida fisicamente'
-        // son el mismo motivo (redacción libre) → UNA sola barra en el reporte.
-        // Se agrupa en JS con canonicalMotivoRechazo y recién ahí se corta a 8.
-        const motivosMap = new Map();
+        // UNIFICACIÓN de variantes: 'No recibida', 'No recibida fisicamente' y
+        // 'No recibida físamente' (con/sin tilde, mayúsculas, espacios) son el
+        // MISMO motivo → UNA sola barra en el reporte. Se agrupa por la clave
+        // normalizada (sin acentos) y recién ahí se corta a 8.
+        const motivosMap = new Map();   // clave normalizada -> { motivo visible, total }
         for (const r of motivoResult.rows) {
-            const m = canonicalMotivoRechazo(r.motivo) || 'Sin motivo';
-            motivosMap.set(m, (motivosMap.get(m) || 0) + (r.total || 0));
+            const visible = canonicalMotivoRechazo(r.motivo) || 'Sin motivo';
+            const k = _normMotivo(visible);
+            const cur = motivosMap.get(k);
+            if (cur) cur.total += (r.total || 0);
+            else motivosMap.set(k, { motivo: visible, total: r.total || 0 });
         }
-        const motivos = [...motivosMap.entries()]
-            .map(([motivo, total]) => ({ motivo, total }))
+        const motivos = [...motivosMap.values()]
             .sort((a, b) => b.total - a.total)
             .slice(0, 8);
 
