@@ -15,8 +15,11 @@
 //     Urgencia 3 días hábiles desde el ingreso. Si no cabe, NO se agenda y sale
 //     como "sin cupo en ventana". Si la ventana ya venció, se agenda lo antes
 //     posible y se marca VENCIDA.
-//   · CAPACIDAD ESTACIÓN (m²) por TURNO (día/noche).
-//   · CAPACIDAD GRUPO (kg) por DÍA completo — no se divide entre turnos.
+//   · CAPACIDAD ESTACIÓN (m²) por TURNO (día/noche) — ÚNICA limitación de
+//     fechas. La capacidad por GRUPO (kg/día) ya NO restringe: la familia
+//     tiene su propia estación con cap_max (Pintado Arq, Laminado VM, …) y
+//     el kg se cobraba por paso, inflando el consumo 2×-5×. La vista
+//     "Carga por Grupo" queda solo como REPORTE.
 //   · SPLIT: un pedido que no cabe en un turno de la estación más restrictiva
 //     se divide en 2 (A/B) SOLO si no tiene avance. Nunca se parte algo fabricado.
 //   · HERMANOS BOM: las partes de un mismo compuesto se agendan juntas (mismo
@@ -147,10 +150,7 @@ async function planificar({ modo = 'pendientes', fechaMinima, turnosHoy, dias = 
         };
     }
 
-    // Capacidad por GRUPO (kg/día) — POR DÍA completo.
-    const capGruposRes = await query('SELECT grupo, capacidad_kg_dia FROM produccion_capacidad_grupo WHERE activo = TRUE');
-    const capsGrupo = new Map();
-    for (const g of capGruposRes.rows) capsGrupo.set(String(g.grupo || ''), Number(g.capacidad_kg_dia) || 0);
+    // (Capacidad por GRUPO kg/día: fuera del motor — solo reporte.)
 
     // ═══ 7. TURNOS DE HOY ═════════════════════════════════════════════════
     // HOY NO ES DÍA COMPLETO: si el inicio es hoy, la capacidad se recorta a
@@ -239,22 +239,13 @@ async function planificar({ modo = 'pendientes', fechaMinima, turnosHoy, dias = 
     const carga = new Map();         // 'fecha|turno|estId' -> m²
     const cargaPend = new Map();     // 'fecha|turno|estId' -> m² SOLO pasos PENDIENTE
     const cargaCurso = new Map();    // 'fecha|turno|estId' -> m² SOLO pasos EN PROCESO
-    const cargaGrupoDia = new Map();     // 'fecha|grupo' -> kg  (POR DÍA)
-    const cargaPendGrupoDia = new Map(); // 'fecha|grupo' -> kg pendiente
-    const cargaCursoGrupoDia = new Map();// 'fecha|grupo' -> kg en curso
 
-    const agregarCarga = (estId, grupo, fecha, turno, m2, kg, tipo = 'pend') => {
+    const agregarCarga = (estId, fecha, turno, m2, tipo = 'pend') => {
         if (!estId || !fecha || !turno) return;
         const k = fecha + '|' + turno + '|' + estId;
         carga.set(k, (carga.get(k) || 0) + m2);
         if (tipo === 'pend') cargaPend.set(k, (cargaPend.get(k) || 0) + m2);
         else if (tipo === 'curso') cargaCurso.set(k, (cargaCurso.get(k) || 0) + m2);
-        if (grupo) {
-            const gk = fecha + '|' + String(grupo);   // POR DÍA completo
-            cargaGrupoDia.set(gk, (cargaGrupoDia.get(gk) || 0) + (Number(kg) || 0));
-            if (tipo === 'pend') cargaPendGrupoDia.set(gk, (cargaPendGrupoDia.get(gk) || 0) + (Number(kg) || 0));
-            else if (tipo === 'curso') cargaCursoGrupoDia.set(gk, (cargaCursoGrupoDia.get(gk) || 0) + (Number(kg) || 0));
-        }
     };
 
     // Carga inicial: órdenes FUERA de la cola (ya programadas en modo
@@ -275,17 +266,15 @@ async function planificar({ modo = 'pendientes', fechaMinima, turnosHoy, dias = 
         if (esHecho(r.estado)) continue;
         const fs = r.fecha_programada ? fmtL(new Date(r.fecha_programada)) : null;
         const m2 = Number(r.m2_asignados) > 0 ? Number(r.m2_asignados) : (Number(r.metros_cuadrados) || 0);
-        const m2o = Number(r.metros_cuadrados) || 0;
-        const kg = m2o > 0 ? Number(r.kilos || 0) * m2 / m2o : Number(r.kilos || 0);
         if (pendIds.has(r.orden_id) && (r.estado === 'EN_PROCESO' || r.estado === 'PAUSADO')) {
             // Pasos en curso de una orden en la cola: ocupan HOY con su turno.
-            agregarCarga(r.estacion_id, r.grupo, hoyCL, r.turno || turnoActual, m2, kg, 'curso');
+            agregarCarga(r.estacion_id, hoyCL, r.turno || turnoActual, m2, 'curso');
         } else if (!pendIds.has(r.orden_id) && fs) {
             // Plan ya programado: su carga existe y no se puede doble-reservar.
             const dedup = fs + '|' + r.estacion_id + '|' + r.orden_id;
             if (vistoCarga.has(dedup)) continue;
             vistoCarga.add(dedup);
-            agregarCarga(r.estacion_id, r.grupo, fs, r.turno || 'dia', m2, kg,
+            agregarCarga(r.estacion_id, fs, r.turno || 'dia', m2,
                 r.estado === 'PENDIENTE' ? 'pend' : 'curso');
         }
     }
@@ -302,9 +291,9 @@ async function planificar({ modo = 'pendientes', fechaMinima, turnosHoy, dias = 
      * BLOQUEO DURO — sin tolerancia. Versión GLOBAL pura (solo los mapas de
      * carga ya confirmados). La usan la selección del ancla BOM y el overlay.
      *   ESTACIÓN por TURNO (m²):  pend + curso×fh + nuevo ≤ capTurno×fh
-     *   GRUPO   por DÍA   (kg):  pend + curso×fh + nuevo ≤ capDía×fh
+     * (La capacidad por GRUPO kg/día ya no valida fechas: es solo reporte.)
      */
-    const cabeSlotGlobal = (estId, grupo, fecha, turno, m2, kg) => {
+    const cabeSlotGlobal = (estId, fecha, turno, m2) => {
         const fh = factorHoy(fecha, turno);
         if (fh <= 0) return false;   // turno agotado de hoy
         const capDia = caps.get(estId) || 0;
@@ -313,12 +302,6 @@ async function planificar({ modo = 'pendientes', fechaMinima, turnosHoy, dias = 
             const capTurno = configTurnos.capacidadTurno(capDia, turno, cfgTurnos);
             const efectiva = (cargaPend.get(k) || 0) + (cargaCurso.get(k) || 0) * fh;
             if (efectiva + m2 > capTurno * fh) return false;
-        }
-        const capG = grupo ? (capsGrupo.get(String(grupo)) || 0) : 0;
-        if (capG > 0) {
-            const gk = fecha + '|' + String(grupo);   // POR DÍA completo
-            const kgEfectivo = (cargaPendGrupoDia.get(gk) || 0) + (cargaCursoGrupoDia.get(gk) || 0) * fh;
-            if (kgEfectivo + (Number(kg) || 0) > capG * fh) return false;
         }
         return true;
     };
@@ -337,8 +320,8 @@ async function planificar({ modo = 'pendientes', fechaMinima, turnosHoy, dias = 
     // ubican sus pasos. Sin esto, dos pasos de la misma orden se servían el
     // mismo cupo (el segundo veía el mapa global todavía sin el primero).
     // Se confirma contra los mapas globales recién cuando TODA la ruta encaja.
-    const nuevoOverlay = () => ({ m2: new Map(), kg: new Map() });
-    const cabeConOverlay = (estId, grupo, fecha, turno, m2, kg, ov) => {
+    const nuevoOverlay = () => ({ m2: new Map() });
+    const cabeConOverlay = (estId, fecha, turno, m2, ov) => {
         const fh = factorHoy(fecha, turno);
         if (fh <= 0) return false;
         const capDia = caps.get(estId) || 0;
@@ -348,34 +331,24 @@ async function planificar({ modo = 'pendientes', fechaMinima, turnosHoy, dias = 
             const efectiva = (cargaPend.get(k) || 0) + (cargaCurso.get(k) || 0) * fh + (ov.m2.get(k) || 0);
             if (efectiva + m2 > capTurno * fh) return false;
         }
-        const capG = grupo ? (capsGrupo.get(String(grupo)) || 0) : 0;
-        if (capG > 0) {
-            const gk = fecha + '|' + String(grupo);
-            const kgEfectivo = (cargaPendGrupoDia.get(gk) || 0) + (cargaCursoGrupoDia.get(gk) || 0) * fh + (ov.kg.get(gk) || 0);
-            if (kgEfectivo + (Number(kg) || 0) > capG * fh) return false;
-        }
         return true;
     };
     // Marca la reserva en el overlay (solo memoria, se descarta si no encaja).
-    const marcarOverlay = (estId, grupo, fecha, turno, m2, kg, ov) => {
+    const marcarOverlay = (estId, fecha, turno, m2, ov) => {
         const k = fecha + '|' + turno + '|' + estId;
         ov.m2.set(k, (ov.m2.get(k) || 0) + m2);
-        if (grupo && kg > 0) {
-            const gk = fecha + '|' + String(grupo);
-            ov.kg.set(gk, (ov.kg.get(gk) || 0) + Number(kg));
-        }
     };
     /**
      * Busca el primer slot con cupo (global + overlay) desde `desdeSlot`.
      * @param {string|null} fechaMax  tope superior (ventana rígida). Si se pasa
      *        y no hay cupo antes, devuelve null → NO se agenda (bloqueo).
      */
-    const buscarSlot = async (estId, grupo, m2, kg, desdeSlot, fechaMax, ov) => {
+    const buscarSlot = async (estId, m2, desdeSlot, fechaMax, ov) => {
         let slot = desdeSlot;
         const maxIter = dias * 4;   // grano de turno dentro del horizonte hábil
         for (let i = 0; i < maxIter; i++) {
             if (fechaMax && slot.fecha > fechaMax) return null;   // ventana agotada
-            if (cabeConOverlay(estId, grupo, slot.fecha, slot.turno, m2, kg, ov)) return slot;
+            if (cabeConOverlay(estId, slot.fecha, slot.turno, m2, ov)) return slot;
             slot = await siguienteSlot(slot);
         }
         return null;
@@ -557,7 +530,6 @@ async function planificar({ modo = 'pendientes', fechaMinima, turnosHoy, dias = 
         const pC = pend[idx];
         // El paso del constraint ya está trabajándose → no tiene sentido anclar.
         if (pC.estado === 'EN_PROCESO' || pC.estado === 'PAUSADO') return null;
-        const kgC = (pC.paso_id === pend[0].paso_id) ? o.kilos_orden : 0;
         const fechaMax = o.restriccion ? o.fecha_limite : null;
         // El constraint no puede ir antes que un paso previo ya EN PROCESO
         // (ese trabajo ocupa hoy y es imposible físicamente ir antes).
@@ -570,7 +542,7 @@ async function planificar({ modo = 'pendientes', fechaMinima, turnosHoy, dias = 
         }
         for (let k = 0; k < dias * 4; k++) {
             if (fechaMax && s.fecha > fechaMax) return null;   // ventana agotada
-            if (cabeSlotGlobal(constraint.estacion_id, o.grupo, s.fecha, s.turno, pC.m2, kgC)) {
+            if (cabeSlotGlobal(constraint.estacion_id, s.fecha, s.turno, pC.m2)) {
                 return { estId: constraint.estacion_id, slot: s };
             }
             s = await siguienteSlot(s);
@@ -581,10 +553,6 @@ async function planificar({ modo = 'pendientes', fechaMinima, turnosHoy, dias = 
     const _programarRuta = async (o, anchor = null) => {
         const pendientes = o.pasos.filter(p => !esHecho(p.estado));
         if (!pendientes.length) return null;
-
-        // El kg consume capacidad del GRUPO una sola vez: en el primer paso
-        // pendiente por SECUENCIA (no por dirección de programación).
-        const kgPasoId = pendientes[0].paso_id;
 
         // Overlay: las reservas de ESTA ruta viven en memoria. Si un paso
         // posterior no cabe, se descarta todo y la agenda queda intacta.
@@ -614,26 +582,24 @@ async function planificar({ modo = 'pendientes', fechaMinima, turnosHoy, dias = 
                     cursor = { fecha: hoyCL, turno: p.turno || turnoActual };
                     continue;
                 }
-                const kgPaso = (p.paso_id === kgPasoId) ? o.kilos_orden : 0;
                 const fechaMax = o.restriccion ? o.fecha_limite : null;
                 let s = await anteriorSlot(cursor);
                 let slotPaso = null;
                 for (let k = 0; k < dias * 4; k++) {
                     if (fechaMax && s.fecha > fechaMax) break;
                     if (s.fecha < desde) break;                        // REGLA 1: piso de fecha
-                    if (cabeConOverlay(p.estacion_id, o.grupo, s.fecha, s.turno, p.m2, kgPaso, ov)) { slotPaso = s; break; }
+                    if (cabeConOverlay(p.estacion_id, s.fecha, s.turno, p.m2, ov)) { slotPaso = s; break; }
                     s = await anteriorSlot(s);
                 }
                 if (!slotPaso) return null;   // sin hueco hacia atrás → se descarta
                 slotsAtras.set(p.paso_id, slotPaso);
-                marcarOverlay(p.estacion_id, o.grupo, slotPaso.fecha, slotPaso.turno, p.m2, kgPaso, ov);
+                marcarOverlay(p.estacion_id, slotPaso.fecha, slotPaso.turno, p.m2, ov);
                 cursor = slotPaso;
             }
         }
 
         for (let i = 0; i < pendientes.length; i++) {
             const p = pendientes[i];
-            const kgPaso = (p.paso_id === kgPasoId) ? o.kilos_orden : 0;
             const fechaMax = o.restriccion ? o.fecha_limite : null;
 
             // Pasos EN PROCESO/PAUSADO quedan anclados a HOY y ocupan capacidad
@@ -658,13 +624,13 @@ async function planificar({ modo = 'pendientes', fechaMinima, turnosHoy, dias = 
                 yaReservado = true;
             } else {
                 // Cascada normal hacia adelante.
-                slotPaso = await buscarSlot(p.estacion_id, o.grupo, p.m2, kgPaso, slot, fechaMax, ov);
+                slotPaso = await buscarSlot(p.estacion_id, p.m2, slot, fechaMax, ov);
             }
 
             if (!slotPaso) return null;   // no cabe → bloqueo, sin reservas
 
             estFechas[p.paso_id] = { fecha: slotPaso.fecha, turno: slotPaso.turno, m2: p.m2 };
-            if (!yaReservado) marcarOverlay(p.estacion_id, o.grupo, slotPaso.fecha, slotPaso.turno, p.m2, kgPaso, ov);
+            if (!yaReservado) marcarOverlay(p.estacion_id, slotPaso.fecha, slotPaso.turno, p.m2, ov);
             fechadosLocal++;
             // Un paso por TURNO: el siguiente va al turno siguiente.
             slot = await siguienteSlot(slotPaso);
@@ -675,8 +641,7 @@ async function planificar({ modo = 'pendientes', fechaMinima, turnosHoy, dias = 
         // orden entera se descarta y estos contadores no deben avanzar).
         for (const [k, m2] of ov.m2) {
             const [fecha, turno, estId] = k.split('|');
-            const gk = fecha + '|' + String(o.grupo);
-            agregarCarga(Number(estId), o.grupo, fecha, turno, m2, ov.kg.get(gk) || 0);
+            agregarCarga(Number(estId), fecha, turno, m2);
         }
         pasosFechados += fechadosLocal;
         pasosEnCurso += enCursoLocal;
@@ -692,7 +657,7 @@ async function planificar({ modo = 'pendientes', fechaMinima, turnosHoy, dias = 
     // ─── 13a. Hermanos BOM: agendar juntos ────────────────────────────────
     // Las partes de un mismo compuesto se ensamblan juntas, así que todas
     // deben llegar a Armado el mismo día. Se busca el primer día donde Armado
-    // tenga cupo para el TOTAL del grupo (m² sumados, kg sumados).
+    // tenga cupo para el TOTAL del grupo (m² sumados).
     const bomGroups = {};
     for (const o of cola) {
         if (o.es_compuesto && o.bom_padre_id) (bomGroups[o.bom_padre_id] = bomGroups[o.bom_padre_id] || []).push(o);
@@ -710,13 +675,12 @@ async function planificar({ modo = 'pendientes', fechaMinima, turnosHoy, dias = 
         const armadoEstId = ruta0[armadoIdx].estacion_id;
 
         const totalM2 = siblings.reduce((s, o) => s + o.m2_orden, 0);   // SUMA (antes solo el primero)
-        const totalKg = siblings.reduce((s, o) => s + o.kilos_orden, 0);
 
-        // Primer día con cupo en Armado para el total, respetando grupo por día.
+        // Primer día con cupo en Armado para el total del grupo.
         let anchorSlot = null;
         let s = await slotInicial();
         for (let k = 0; k < dias * 4; k++) {
-            if (cabeSlotGlobal(armadoEstId, siblings[0].grupo, s.fecha, s.turno, totalM2, totalKg)) { anchorSlot = s; break; }
+            if (cabeSlotGlobal(armadoEstId, s.fecha, s.turno, totalM2)) { anchorSlot = s; break; }
             s = await siguienteSlot(s);
         }
         if (!anchorSlot) continue;   // no cabe junto → cada hermano va normal
