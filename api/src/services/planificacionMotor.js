@@ -451,13 +451,51 @@ async function planificar({ modo = 'pendientes', fechaMinima, turnosHoy, dias = 
     }
 
     const cola = [...ordenes.values()].filter(o => o.pasos.some(p => !esHecho(p.estado)));
+
+    // ─── CONSTRAINT DINÁMICO (el cuello REAL de ESTE plan) ──────────────────
+    // El flag estático `cuello_botella` marca a Mecanizado (130 m²/día), pero
+    // los cuellos que de verdad saturan son Pintado y Armado (24 m²/día). Para
+    // no depender del dato manual, se calcula la estación con mayor demanda
+    // pendiente / capacidad en el horizonte y ELLA se usa como constraint del
+    // drum: cada orden que pasa por ella se ancla en su primer día con cupo y
+    // el resto de la ruta se amarra en torno a ese ancla (rope).
+    const HORIZONTE_DIAS = Math.max(1, Number(dias) || 1);
+    const demandaPorEstacion = new Map();   // estId -> m² pendientes en la cola
+    for (const o of cola) {
+        for (const p of o.pasos) {
+            if (esHecho(p.estado)) continue;
+            demandaPorEstacion.set(p.estacion_id, (demandaPorEstacion.get(p.estacion_id) || 0) + (Number(p.m2) || 0));
+        }
+    }
+    let constraint = null;   // { estacion_id, nombre, cap, demanda, ratio }
+    for (const [estId, demanda] of demandaPorEstacion.entries()) {
+        const e = estMap[estId];
+        if (!e || !(e.cap > 0)) continue;              // sin tope → nunca es cuello
+        const capacidad = e.cap * HORIZONTE_DIAS;
+        if (!(capacidad > 0)) continue;
+        const ratio = demanda / capacidad;
+        if (!constraint || ratio > constraint.ratio) {
+            constraint = { estacion_id: estId, nombre: e.nombre, cap: e.cap, demanda, ratio };
+        }
+    }
+    // Solo hay constraint si de verdad satura (demanda > capacidad del horizonte).
+    const hayConstraint = !!(constraint && constraint.ratio > 1);
+    if (!hayConstraint) constraint = null;
+
+    // ¿Esta orden pasa por el constraint (y todavía no está hecha)?
+    for (const o of cola) {
+        o.tocaConstraint = hayConstraint && o.pasos.some(
+            p => p.estacion_id === constraint.estacion_id && !esHecho(p.estado)
+        );
+    }
+
     cola.sort((a, b) => {
         const atA = esAtrasada(a) ? 0 : 1;
         const atB = esAtrasada(b) ? 0 : 1;
         return (atA - atB)
             || ((RANGO_PRIO[a.prioridad] ?? 3) - (RANGO_PRIO[b.prioridad] ?? 3))
             || ((a.listo ? 0 : 1) - (b.listo ? 0 : 1))
-            || ((a.tieneCuello ? 0 : 1) - (b.tieneCuello ? 0 : 1))
+            || ((a.tocaConstraint ? 0 : 1) - (b.tocaConstraint ? 0 : 1))
             || String(a.fecha_pactada || '9999').localeCompare(String(b.fecha_pactada || '9999'));
     });
 
@@ -488,8 +526,59 @@ async function planificar({ modo = 'pendientes', fechaMinima, turnosHoy, dias = 
      *        día de Armado y las estaciones previas/posteriores se encadenan.
      * @returns {Object|null} { estFechas, fechaPrimera, fechaUltima } o null si
      *          no cabe (bloqueo de ventana o sin cupo).
+     *
+     * SIN ancla BOM: si la orden pasa por el CONSTRAINT real del plan, se
+     * intenta primero anclarla en su primer día con cupo (rope: lo previo
+     * hacia atrás, lo posterior hacia adelante) — así el cuello se LLENA. Si
+     * esa geometría no encaja, se reintenta en cascada normal: el ancla
+     * nunca hace perder una orden que de otro modo cabría.
      */
     const programarOrden = async (o, anchor = null) => {
+        if (!anchor && hayConstraint) {
+            const ancla = await _anclaConstraint(o);
+            if (ancla) {
+                const rAncla = await _programarRuta(o, ancla);
+                if (rAncla) return rAncla;
+            }
+        }
+        return _programarRuta(o, anchor);
+    };
+
+    /**
+     * Primer turno con cupo en la estación CONSTRAINT para esta orden.
+     * Respeta la ventana rígida (fechaMax) y no se programa antes que un paso
+     * previo del mismo orden que ya está EN PROCESO.
+     * @returns {Object|null} { estId, slot } o null si no hay hueco.
+     */
+    const _anclaConstraint = async (o) => {
+        const pend = o.pasos.filter(p => !esHecho(p.estado));
+        const idx = pend.findIndex(p => p.estacion_id === constraint.estacion_id);
+        if (idx < 0) return null;
+        const pC = pend[idx];
+        // El paso del constraint ya está trabajándose → no tiene sentido anclar.
+        if (pC.estado === 'EN_PROCESO' || pC.estado === 'PAUSADO') return null;
+        const kgC = (pC.paso_id === pend[0].paso_id) ? o.kilos_orden : 0;
+        const fechaMax = o.restriccion ? o.fecha_limite : null;
+        // El constraint no puede ir antes que un paso previo ya EN PROCESO
+        // (ese trabajo ocupa hoy y es imposible físicamente ir antes).
+        let s = await slotInicial();
+        for (let i = 0; i < idx; i++) {
+            const pe = pend[i];
+            if (pe.estado === 'EN_PROCESO' || pe.estado === 'PAUSADO') {
+                s = await siguienteSlot({ fecha: hoyCL, turno: pe.turno || turnoActual });
+            }
+        }
+        for (let k = 0; k < dias * 4; k++) {
+            if (fechaMax && s.fecha > fechaMax) return null;   // ventana agotada
+            if (cabeSlotGlobal(constraint.estacion_id, o.grupo, s.fecha, s.turno, pC.m2, kgC)) {
+                return { estId: constraint.estacion_id, slot: s };
+            }
+            s = await siguienteSlot(s);
+        }
+        return null;
+    };
+
+    const _programarRuta = async (o, anchor = null) => {
         const pendientes = o.pasos.filter(p => !esHecho(p.estado));
         if (!pendientes.length) return null;
 
@@ -506,9 +595,41 @@ async function planificar({ modo = 'pendientes', fechaMinima, turnosHoy, dias = 
 
         let slot = await slotInicial();
 
-        // Con anchor (BOM): el paso de Armado se fija en anchor.slot y las
-        // estaciones previas van hacia ATRÁS, las posteriores hacia ADELANTE.
+        // Con anchor (BOM o constraint): el paso anclado se fija en anchor.slot
+        // y las estaciones previas van hacia ATRÁS, las posteriores hacia ADELANTE.
         const anchorIdx = anchor ? pendientes.findIndex(p => p.estacion_id === anchor.estId) : -1;
+
+        // ROPE HACIA ATRÁS encadenado: los pasos previos al ancla se resuelven
+        // en orden INVERSO (del más cercano al ancla hacia el inicio) para que
+        // cada uno quede ANTES del siguiente. Si cada uno arrancara desde el
+        // ancla, todos caerían en el mismo turno y se violaría la secuencia.
+        const slotsAtras = new Map();   // paso_id -> slot ya resuelto
+        if (anchor && anchorIdx > 0) {
+            let cursor = anchor.slot;
+            for (let i = anchorIdx - 1; i >= 0; i--) {
+                const p = pendientes[i];
+                // EN PROCESO lo fija el bucle principal (hoy); aquí solo sirve
+                // de tope para encadenar hacia atrás lo que vaya antes de él.
+                if (p.estado === 'EN_PROCESO' || p.estado === 'PAUSADO') {
+                    cursor = { fecha: hoyCL, turno: p.turno || turnoActual };
+                    continue;
+                }
+                const kgPaso = (p.paso_id === kgPasoId) ? o.kilos_orden : 0;
+                const fechaMax = o.restriccion ? o.fecha_limite : null;
+                let s = await anteriorSlot(cursor);
+                let slotPaso = null;
+                for (let k = 0; k < dias * 4; k++) {
+                    if (fechaMax && s.fecha > fechaMax) break;
+                    if (s.fecha < desde) break;                        // REGLA 1: piso de fecha
+                    if (cabeConOverlay(p.estacion_id, o.grupo, s.fecha, s.turno, p.m2, kgPaso, ov)) { slotPaso = s; break; }
+                    s = await anteriorSlot(s);
+                }
+                if (!slotPaso) return null;   // sin hueco hacia atrás → se descarta
+                slotsAtras.set(p.paso_id, slotPaso);
+                marcarOverlay(p.estacion_id, o.grupo, slotPaso.fecha, slotPaso.turno, p.m2, kgPaso, ov);
+                cursor = slotPaso;
+            }
+        }
 
         for (let i = 0; i < pendientes.length; i++) {
             const p = pendientes[i];
@@ -525,21 +646,16 @@ async function planificar({ modo = 'pendientes', fechaMinima, turnosHoy, dias = 
             }
 
             let slotPaso = null;
+            let yaReservado = false;   // ya marcado en el rope inverso
 
             if (anchor && i === anchorIdx) {
-                // Paso anclado (Armado del grupo BOM): su slot ya fue validado
-                // contra el total del grupo, así que se respeta tal cual.
+                // Paso anclado (Armado del grupo BOM o estación constraint):
+                // su slot ya fue validado contra la capacidad global.
                 slotPaso = anchor.slot;
             } else if (anchor && i < anchorIdx) {
-                // Antes del ancla: hacia ATRÁS desde el slot ancla, sin bajar
-                // del piso de fecha (`desde`).
-                let s = await anteriorSlot(anchor.slot);
-                for (let k = 0; k < dias * 4; k++) {
-                    if (fechaMax && s.fecha > fechaMax) break;
-                    if (s.fecha < desde) break;                        // REGLA 1: piso de fecha
-                    if (cabeConOverlay(p.estacion_id, o.grupo, s.fecha, s.turno, p.m2, kgPaso, ov)) { slotPaso = s; break; }
-                    s = await anteriorSlot(s);
-                }
+                // Resuelto en el rope inverso de arriba.
+                slotPaso = slotsAtras.get(p.paso_id) || null;
+                yaReservado = true;
             } else {
                 // Cascada normal hacia adelante.
                 slotPaso = await buscarSlot(p.estacion_id, o.grupo, p.m2, kgPaso, slot, fechaMax, ov);
@@ -548,7 +664,7 @@ async function planificar({ modo = 'pendientes', fechaMinima, turnosHoy, dias = 
             if (!slotPaso) return null;   // no cabe → bloqueo, sin reservas
 
             estFechas[p.paso_id] = { fecha: slotPaso.fecha, turno: slotPaso.turno, m2: p.m2 };
-            marcarOverlay(p.estacion_id, o.grupo, slotPaso.fecha, slotPaso.turno, p.m2, kgPaso, ov);
+            if (!yaReservado) marcarOverlay(p.estacion_id, o.grupo, slotPaso.fecha, slotPaso.turno, p.m2, kgPaso, ov);
             fechadosLocal++;
             // Un paso por TURNO: el siguiente va al turno siguiente.
             slot = await siguienteSlot(slotPaso);
@@ -739,11 +855,21 @@ async function planificar({ modo = 'pendientes', fechaMinima, turnosHoy, dias = 
         noAsignados,
         primera_fecha: primeraFechaGlobal,
         total_procesados: total,
+        // Cuello REAL de este plan (calculado, no el flag estático `cuello_botella`).
+        constraint: constraint ? {
+            estacion_id: constraint.estacion_id,
+            nombre: constraint.nombre,
+            cap_dia: constraint.cap,
+            demanda_m2: Math.round(constraint.demanda * 100) / 100,
+            horizonte_dias: HORIZONTE_DIAS,
+            ratio: constraint.ratio
+        } : null,
         mensaje: mensaje
             + (rutasActualizadas ? ` · ${rutasActualizadas} rutas sincronizadas` : '')
             + (avanceCerrado ? ` · ${avanceCerrado} pasos cerrados por avance implícito` : '')
             + (splits.length ? ` · ${splits.length} pedidos divididos` : '')
             + (noAsignados.length ? ` · ${noAsignados.length} sin cupo` : '')
+            + (constraint ? ` · cuello real: ${constraint.nombre} (${constraint.ratio}× demanda/capacidad)` : '')
     };
 }
 

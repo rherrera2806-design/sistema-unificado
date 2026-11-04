@@ -692,6 +692,10 @@ App.modules.planificacion = {
                         <div class="pln-stat"><div class="v" style="color:#15803d">${data.pasos_fechados || 0}</div><div class="k">Pasos fechados</div></div>
                         <div class="pln-stat"><div class="v" style="color:${noAsignados.length ? '#dc2626' : '#64748b'}">${noAsignados.length}</div><div class="k">Sin cupo</div></div>
                     </div>`;
+                if (data.constraint) {
+                    const c = data.constraint;
+                    html += `<div style="margin-top:8px;text-align:center;font-size:11px;color:#92400e;background:#fef3c7;border:1px solid #fcd34d;border-radius:6px;padding:4px 6px">🎯 Cuello real: <strong>${escText(c.nombre)}</strong> · ${c.demanda_m2} m² demanda vs ${c.cap_dia}×${c.horizonte_dias} d capacidad (${c.ratio}× saturado)</div>`;
+                }
                 if (modo === 'todo') {
                     html += `<div style="margin-top:8px;text-align:center;font-size:11px;color:#64748b">Liberadas: <strong>${data.ordenes_liberadas || 0}</strong> · En curso respetadas: <strong>${data.pasos_en_curso_respetados || 0}</strong></div>`;
                 }
