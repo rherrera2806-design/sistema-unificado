@@ -202,6 +202,11 @@ App.registerModule('pedidos_grafico_mes', {
     _color(tipo) {
         return this._ETIQUETAS[tipo] || this._ETIQUETAS_COLOR_FALLBACK;
     },
+    // Color del número DENTRO del segmento: fondo claro (Express) lleva texto
+    // oscuro; los fondos saturados (azul, morado, rojo, verde) llevan blanco.
+    _textoSeg(tipo) {
+        return tipo === 'Express' ? '#0f172a' : '#ffffff';
+    },
     _pintarStack(pedidos) {
         const diasEnMes = new Date(this.anio, this.mes + 1, 0).getDate();
         const tipos = this._tiposPresentes(pedidos);
@@ -214,15 +219,27 @@ App.registerModule('pedidos_grafico_mes', {
             porDia[d][t] = (porDia[d][t] || 0) + 1;
         });
         const maxDia = Math.max(1, ...Object.values(porDia).map(o => Object.values(o).reduce((s, v) => s + v, 0)));
+        // Altura en px de la zona de barras (.pgm-stack-row = 230px). Con eso
+        // se decide si el valor de cada etiqueta cabe DENTRO del segmento;
+        // si no cabe, queda el tooltip al pasar el mouse (nunca se pierde).
+        const PX_BARRA = 190;
 
         let html = '';
         for (let d = 1; d <= diasEnMes; d++) {
             const segs = porDia[d] || {};
             const total = Object.values(segs).reduce((s, v) => s + v, 0);
             const altura = total > 0 ? Math.max(3, Math.round((total / maxDia) * 100)) : 0;
-            const segmentos = tipos.map(t => segs[t]
-                ? '<div class="pgm-seg" style="height:' + ((segs[t] / (total || 1)) * 100) + '%;background:' + this._color(t) + '"></div>'
-                : '').join('');
+            const segmentos = tipos.map(t => {
+                const v = segs[t];
+                if (!v) return '';
+                const px = total > 0 ? (v / total) * (altura / 100) * PX_BARRA : 0;
+                const dentro = px >= 12
+                    ? '<span class="v" style="color:' + this._textoSeg(t) + '">' + this._fmtNum(v) + '</span>'
+                    : '';
+                return '<div class="pgm-seg" title="' + escText(t) + ': ' + this._fmtNum(v) + ' pedido' + (v === 1 ? '' : 's') + '"'
+                    + ' style="height:' + ((v / (total || 1)) * 100) + '%;background:' + this._color(t) + '">'
+                    + dentro + '</div>';
+            }).join('');
             html += '<div class="pgm-stack-col' + (total ? '' : ' vacio') + '">'
                 + (total ? '<div class="t">' + this._fmtNum(total) + '</div>' : '')
                 + '<div class="pgm-stack" style="height:' + altura + '%">' + segmentos + '</div>'
@@ -382,7 +399,8 @@ App.registerModule('pedidos_grafico_mes', {
             .pgm-stack-row{display:flex;align-items:flex-end;gap:5px;height:230px;padding-top:16px;min-width:640px}
             .pgm-stack-col{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;height:100%;position:relative}
             .pgm-stack{width:100%;max-width:30px;display:flex;flex-direction:column-reverse;border-radius:3px 3px 0 0;overflow:hidden}
-            .pgm-seg{width:100%}
+            .pgm-seg{width:100%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;line-height:1;overflow:hidden}
+            .pgm-seg .v{pointer-events:none;text-shadow:0 0 2px rgba(0,0,0,.25)}
             .pgm-stack-col .t{position:absolute;top:-15px;left:0;right:0;text-align:center;font-size:10px;font-weight:600;color:#475569}
             .pgm-stack-col .d{font-size:10px;color:#8494a8;margin-top:5px}
             .pgm-stack-col.vacio .d{color:#cbd5e1}

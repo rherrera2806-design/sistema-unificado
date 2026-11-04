@@ -68,6 +68,31 @@ const LIM = { numero_pedido: 50, cliente: 200, tipo_ov: 30, motivo_rechazo: 500 
 
 const ESTADOS = ['pendiente', 'aprobado', 'rechazado'];
 
+// ── Motivos de rechazo canónicos ─────────────────────────────────────────────
+// El motivo se escribe a mano en el modal, así que el MISMO motivo llega con
+// variantes ('No recibida', 'No recibida fisicamente', 'NO RECIBIDA'). Sin
+// esto, Reporte → Principales motivos agrupaba cada variante como una barra
+// aparte. Un solo nombre canónico: el que pidió la planta.
+const MOTIVOS_CANONICOS = [
+    { canonico: 'No recibida fisicamente', alias: ['no recibida', 'no recibida fisicamente', 'no recibida fisic'] }
+];
+/** Normaliza para COMPARAR: minúsculas, espacios colapsados, sin puntuación final. */
+const _normMotivo = (t) => String(t || '')
+    .trim().replace(/\s+/g, ' ')
+    .toLowerCase().replace(/[.,;:¡!]+$/, '');
+/**
+ * Devuelve el nombre canónico del motivo (o el texto tal cual si no es una
+ * variante conocida). Se aplica al RECHAZAR (guarda el nombre único) y al
+ * agrupar el reporte (une las variantes históricas).
+ */
+function canonicalMotivoRechazo(t) {
+    const s = String(t || '').trim().replace(/\s+/g, ' ');
+    if (!s) return s;
+    const k = _normMotivo(s);
+    const m = MOTIVOS_CANONICOS.find(x => x.alias.includes(k));
+    return m ? m.canonico : s;
+}
+
 // ── Máquina de estados de PUT /api/pedidos/:id ───────────────────────────────
 //   pendiente → pendiente   edición normal (sin cambio de estado)
 //   pendiente → aprobado    aprobar
@@ -317,8 +342,20 @@ router.get('/api/pedidos/reporte', canView, async (req, res, next) => {
         const motivoResult = await query(`
             SELECT COALESCE(NULLIF(motivo_rechazo,''), 'Sin motivo') as motivo, COUNT(*)::int as total
             FROM pedidos WHERE fecha_subida >= $1::date AND fecha_subida < $2::date${visWhere}${cliWhere.replace('p.cliente', 'cliente')} AND estado = 'rechazado' AND motivo_rechazo IS NOT NULL AND motivo_rechazo != ''
-            GROUP BY motivo_rechazo ORDER BY total DESC LIMIT 8
+            GROUP BY motivo_rechazo ORDER BY total DESC LIMIT 16
         `, [desde, hasta, ...visParams, ...cliParams]);
+        // UNIFICACIÓN de variantes: 'No recibida' y 'No recibida fisicamente'
+        // son el mismo motivo (redacción libre) → UNA sola barra en el reporte.
+        // Se agrupa en JS con canonicalMotivoRechazo y recién ahí se corta a 8.
+        const motivosMap = new Map();
+        for (const r of motivoResult.rows) {
+            const m = canonicalMotivoRechazo(r.motivo) || 'Sin motivo';
+            motivosMap.set(m, (motivosMap.get(m) || 0) + (r.total || 0));
+        }
+        const motivos = [...motivosMap.entries()]
+            .map(([motivo, total]) => ({ motivo, total }))
+            .sort((a, b) => b.total - a.total)
+            .slice(0, 8);
 
         const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
         const porMes = {};
@@ -359,7 +396,7 @@ router.get('/api/pedidos/reporte', canView, async (req, res, next) => {
             vendedores: Object.entries(porVendedor).map(([nombre, total]) => ({ nombre, total })).sort((a,b) => b.total - a.total),
             clientes: Object.entries(porCliente).map(([nombre, total]) => ({ nombre, total })).sort((a,b) => b.total - a.total).slice(0, 10),
             tipos: Object.entries(porTipo).map(([nombre, total]) => ({ nombre, total })).sort((a,b) => b.total - a.total),
-            motivos: motivoResult.rows,
+            motivos,
             totalGeneral,
             totalAprobados,
             totalRechazados
@@ -634,7 +671,9 @@ router.put('/api/pedidos/:id', canUpdate, async (req, res, next) => {
                     `UPDATE pedidos SET estado = 'rechazado', motivo_rechazo = $1, revisado_por = $2,
                         fecha_revision = CURRENT_TIMESTAMP, archivo_pdf = NULL, archivo_url = NULL
                      WHERE id = $3 RETURNING ${COLS_PEDIDO}`,
-                    [motivo.valor || null, user, id]
+                    // Canónico: aunque se tipee 'No recibida', se guarda
+                    // 'No recibida fisicamente' → un solo motivo en Reporte.
+                    [canonicalMotivoRechazo(motivo.valor) || null, user, id]
                 );
             } else if (destino === 'aprobado') {
                 // Aprobacion: igual que el rechazo, se ELIMINA el PDF (BYTEA y

@@ -731,6 +731,14 @@ async function faseColumnas({ q, safe }) {
     await safe(`ALTER TABLE pedidos ALTER COLUMN estado SET DEFAULT 'pendiente'`, 'pedidos.estado default');
     await safe(`UPDATE pedidos SET estado = 'pendiente' WHERE estado IS NULL`, 'pedidos.estado backfill NULL');
     await safe(`ALTER TABLE pedidos ALTER COLUMN estado SET NOT NULL`, 'pedidos.estado not null');
+    // Motivos de rechazo duplicados por redacción libre: 'No recibida' y
+    // 'No recibida fisicamente' son el MISMO motivo → un solo nombre (el que
+    // Reporte → Principales motivos usa). Case/espacios insensible. Idempotente:
+    // la segunda corrida no encuentra filas y no toca nada.
+    await safe(`UPDATE pedidos SET motivo_rechazo = 'No recibida fisicamente'
+                WHERE motivo_rechazo IS NOT NULL
+                  AND lower(regexp_replace(trim(motivo_rechazo), '\\s+', ' ', 'g')) = 'no recibida'`,
+        'pedidos.motivo_rechazo unifica No recibida');
     // CHECK de dominio SOLO si los datos existentes respetan el vocabulario
     // ('pendiente' | 'aprobado' | 'rechazado', ver cabecera). Se verifican los
     // valores ANTES de crearlo: si hay valores fuera del conjunto (o vacíos),
