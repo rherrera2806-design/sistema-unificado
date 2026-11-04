@@ -146,7 +146,7 @@ App.registerModule('prod_config', {
                 </p>
                 <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;margin-bottom:8px">
                     <span>🌞 Día: <span id="pcTurnoDia" style="color:#b45309">${cfg.pct_dia}%</span></span>
-                    <span>🌙 Noche: <span id="pcTurnoNoche" style="color:#1e40af">${cfg.pct_noche}%</span></span>
+                    <span>🌙 Noche: <span id="pcTurnoNoche" style="color:#b45309">${cfg.pct_noche}%</span></span>
                 </div>
                 <input type="range" min="10" max="90" step="5" value="${cfg.pct_dia}" id="pcTurnoSlider"
                     oninput="App.modules.prod_config.turnoPreview(this.value)"
