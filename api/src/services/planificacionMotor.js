@@ -712,7 +712,16 @@ async function planificar({ modo = 'pendientes', fechaMinima, turnosHoy, dias = 
             // queda PENDIENTE y se planifica en esta misma corrida).
             const split = _intentarSplit(o, estMap, cfgTurnos);
             if (split) {
-                const parteA = { ...o, cantidad: split.unitsA, m2_orden: split.m2A, kilos_orden: split.kgA };
+                const parteA = {
+                    ...o,
+                    cantidad: split.unitsA,
+                    m2_orden: split.m2A,
+                    kilos_orden: split.kgA,
+                    // OBLIGATORIO: la ruta se agenda por p.m2 (m² de cada paso).
+                    // Sin escalarlo, la parte A seguía reservando el m² COMPLETO
+                    // del pedido y tampoco cabía — el split no servía de nada.
+                    pasos: o.pasos.map(p => ({ ...p, m2: p.m2 * (split.unitsA / o.cantidad) }))
+                };
                 r = await programarOrden(parteA, null);
                 if (r) {
                     // La orden original queda como la parte A (pedido + 'A') y
@@ -730,13 +739,20 @@ async function planificar({ modo = 'pendientes', fechaMinima, turnosHoy, dias = 
         if (r) {
             _registrarAsignacion(o, r);
         } else {
+            const imp = _pasoImposible(o, estMap, cfgTurnos);
+            const m2u = o.cantidad > 0 ? (o.m2_orden / o.cantidad) : o.m2_orden;
+            const motivoImp = imp
+                ? `No cabe en ningún turno de ${imp.nombre} (${Math.round(imp.m2 * 100) / 100} m² por paso vs ${Math.round(imp.cap * 100) / 100} m² del mejor turno)`
+                    + (m2u <= imp.cap ? ' — requiere dividir el pedido' : ' — ni una unidad cabe: revisar cap_max de la estación')
+                : null;
             noAsignados.push({
                 orden_id: o.orden_id,
                 pedido: o.pedido,
                 item: o.item,
-                motivo: o.restriccion
-                    ? `No cabe en su ventana rígida de ${o.ventana} días hábiles (límite ${o.fecha_limite})`
-                    : `Sin capacidad en el horizonte de ${dias} días hábiles`,
+                motivo: motivoImp
+                    || (o.restriccion
+                        ? `No cabe en su ventana rígida de ${o.ventana} días hábiles (límite ${o.fecha_limite})`
+                        : `Sin capacidad en el horizonte de ${dias} días hábiles`),
                 grupo: o.grupo,
                 kg_total: o.kilos_orden,
                 m2_total: o.m2_orden,
@@ -851,15 +867,38 @@ function _sinAvance(o) {
 }
 
 /**
+ * Primer paso pendiente que no cabe NI en un turno vacío de su estación
+ * (p.m2 mayor que la capacidad del mejor turno). Sirve para distinguir el
+ * "sin cupo por saturación" del "estructuralmente imposible, requiere dividir".
+ */
+function _pasoImposible(o, estMap, cfgTurnos) {
+    for (const p of o.pasos) {
+        if (esHecho(p.estado)) continue;
+        const e = estMap[p.estacion_id];
+        if (!e || e.cap <= 0) continue;
+        const c = Math.max(
+            configTurnos.capacidadTurno(e.cap, 'dia', cfgTurnos),
+            configTurnos.capacidadTurno(e.cap, 'noche', cfgTurnos)
+        );
+        if (c > 0 && p.m2 > c) return { nombre: e.nombre, m2: p.m2, cap: c };
+    }
+    return null;
+}
+
+/**
  * ¿Cuántas unidades caben en un turno de la estación más restrictiva de la
  * ruta? Devuelve { unitsA, unitsB, m2A, kgA } o null si no conviene partir.
  */
 function _intentarSplit(o, estMap, cfgTurnos) {
     const m2PorUnidad = o.cantidad > 0 ? (o.m2_orden / o.cantidad) : o.m2_orden;
     if (!(m2PorUnidad > 0)) return null;
-    // Capacidad máxima de un turno entre todas las estaciones de la ruta
-    // (se usa la MAYOR para partir en el punto que más espacio da).
-    let capMaxTurno = 0;
+    // Capacidad del mejor turno de la estación MÁS RESTRICTIVA de la ruta:
+    // cada paso se agenda COMPLETO en un turno, así que la parte A debe caber
+    // en un turno de TODAS las estaciones y manda la que menos espacio da.
+    // (OJO: antes se comparaba contra la MAYOR capacidad —Corte 234 m²/turno—
+    // y "cabía todo": nunca se partía nada aunque el pedido no cupiera JAMÁS
+    // en la estación chica —p.ej. Ventana 24 m²/turno— y quedaba sin cupo.)
+    let capTurno = Infinity;
     for (const p of o.pasos) {
         const e = estMap[p.estacion_id];
         if (!e || e.cap <= 0) continue;   // sin tope → no limita
@@ -867,10 +906,10 @@ function _intentarSplit(o, estMap, cfgTurnos) {
             configTurnos.capacidadTurno(e.cap, 'dia', cfgTurnos),
             configTurnos.capacidadTurno(e.cap, 'noche', cfgTurnos)
         );
-        if (c > capMaxTurno) capMaxTurno = c;
+        if (c < capTurno) capTurno = c;
     }
-    if (capMaxTurno <= 0) return null;   // sin cuello definido → no partir
-    const unitsA = Math.floor(capMaxTurno / m2PorUnidad);
+    if (!isFinite(capTurno) || capTurno <= 0) return null;   // sin cuello definido → no partir
+    const unitsA = Math.floor(capTurno / m2PorUnidad);
     if (unitsA < 1 || unitsA >= o.cantidad) return null;   // no hace falta partir
     const unitsB = o.cantidad - unitsA;
     const kgPorUnidad = o.cantidad > 0 ? (o.kilos_orden / o.cantidad) : 0;
