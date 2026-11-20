@@ -569,6 +569,7 @@ App.registerModule('produccion', {
         if (ordenes.some(o => o.estado_programacion === 'CERRADO')) grupos.push({ e: 'CERRADO', cls: 's-cerr', t: 'Cerradas' });
         board.innerHTML = grupos.map(g => {
             const lista = ordenes.filter(o => o.estado_programacion === g.e);
+            const totalKg = lista.reduce((s, o) => s + Number(o.kilos || 0), 0);
             const cards = lista.map(o => {
                 const meta = g.e === 'EN_PROCESO' || g.e === 'TERMINADO'
                     ? (o.total_pasos > 0 ? o.pasos_terminados + '/' + o.total_pasos + ' pasos' : '')
@@ -580,7 +581,7 @@ App.registerModule('produccion', {
                     + '<span class="dim2">' + escText(meta || this._fmt(o.ancho, 0) + ' × ' + this._fmt(o.alto, 0)) + '</span></div>'
                     + '</div>';
             }).join('');
-            return '<div class="po-col"><div class="po-col-head"><span class="po-st ' + g.cls + '">●</span><span class="t">' + g.t + '</span><span class="c">' + lista.length + '</span></div>'
+            return '<div class="po-col"><div class="po-col-head"><span class="po-st ' + g.cls + '">●</span><span class="t">' + g.t + '</span><span class="kg" title="Total kilos de la columna">' + this._fmt(totalKg, 1) + ' kg</span><span class="c">' + lista.length + '</span></div>'
                 + (cards || '<div class="po-loading" style="padding:18px 6px">Sin órdenes</div>') + '</div>';
         }).join('');
     },
@@ -1604,7 +1605,8 @@ App.registerModule('produccion', {
             .po-col{background:#f8fafc;border:1px solid #e4e9f0;border-radius:12px;padding:10px}
             .po-col-head{display:flex;align-items:center;gap:8px;padding:4px 6px 10px}
             .po-col-head .t{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#334155}
-            .po-col-head .c{margin-left:auto;font-size:10px;font-weight:700;background:#fff;border:1px solid #e4e9f0;border-radius:20px;padding:2px 8px;color:#475569}
+            .po-col-head .c{margin-left:6px;font-size:10px;font-weight:700;background:#fff;border:1px solid #e4e9f0;border-radius:20px;padding:2px 8px;color:#475569}
+            .po-col-head .kg{margin-left:auto;font-size:10px;font-weight:700;background:#eff6ff;border:1px solid #dbeafe;border-radius:20px;padding:2px 8px;color:#1d4ed8;white-space:nowrap}
             .po-bcard{background:#fff;border:1px solid #e4e9f0;border-radius:10px;padding:11px 12px;margin-bottom:8px;cursor:pointer}
             .po-bcard:hover{box-shadow:0 4px 14px rgba(15,23,42,.08)}
             .po-bcard .t1{display:flex;justify-content:space-between;align-items:center;gap:6px}
