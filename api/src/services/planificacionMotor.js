@@ -14,7 +14,8 @@
 //   · VENTANA RÍGIDA = RESTRICCIÓN (bloquea), no aviso: Repo 2 · Express 3 ·
 //     Urgencia 3 días hábiles desde el ingreso. Si no cabe, NO se agenda y sale
 //     como "sin cupo en ventana". Si la ventana ya venció, se agenda lo antes
-//     posible y se marca VENCIDA.
+//     posible y se marca VENCIDA. Excepción por grupo: Express de Carroceros →
+//     7 días hábiles (VENTANA_DIAS_CARROCEROS).
 //   · CAPACIDAD ESTACIÓN (m²) por TURNO (día/noche) — ÚNICA limitación de
 //     fechas. La capacidad por GRUPO (kg/día) ya NO restringe: la familia
 //     tiene su propia estación con cap_max (Pintado Arq, Laminado VM, …) y
@@ -49,6 +50,12 @@ const { cerrarPasosAtrasados } = require('./avanceImplicito');
 const RANGO_PRIO = { 4: 0, 2: 1, 3: 2, 1: 3 };
 // Días hábiles de ventana rígida desde el ingreso (created_at).
 const VENTANA_DIAS = { 4: 2, 2: 3, 3: 3 };
+// EXCEPCIÓN POR GRUPO: un Express del grupo Carroceros (piezas grandes, ruta
+// por Pintado Car) no cabe en la ventana estándar de 3 días — su ventana rígida
+// es de 7 días hábiles desde el ingreso. SOLO aplica a ese grupo; el resto de
+// los Express mantiene 3.
+const VENTANA_DIAS_CARROCEROS = { 2: 7 };
+const grupoEsCarroceros = (g) => String(g || '').trim().toLowerCase() === 'carroceros';
 const NOMBRE_PRIO = { 4: 'Reposición', 2: 'Express', 3: 'Urgencia', 1: 'Normal' };
 
 const fmtL = (d) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
@@ -433,8 +440,11 @@ async function planificar({ modo = 'pendientes', fechaMinima, turnosHoy, dias = 
         !!(o.fecha_pactada && o.fecha_pactada <= hoyCL) || o.ventanaVencida === true;
 
     // Ventana rígida: fecha límite = ingreso + N días hábiles.
+    // Excepción: Express del grupo Carroceros → 7 días hábiles (solo ese grupo).
     for (const o of ordenes.values()) {
-        const v = VENTANA_DIAS[o.prioridad];
+        const v = (grupoEsCarroceros(o.grupo) && VENTANA_DIAS_CARROCEROS[o.prioridad])
+            ? VENTANA_DIAS_CARROCEROS[o.prioridad]
+            : VENTANA_DIAS[o.prioridad];
         o.ventana = v || null;
         o.fecha_limite = null;
         if (v && o.fecha_ingreso) {
@@ -1073,19 +1083,26 @@ async function _sincronizarRutas() {
 async function getCumplimiento() {
     try {
         const res = await query(`
-            SELECT o.id, o.nivel_prioridad, o.created_at, MAX(p.hora_fin)::date as termino
+            SELECT o.id, o.nivel_prioridad, o.created_at, MAX(p.hora_fin)::date as termino,
+                   COALESCE((SELECT cc.grupo FROM produccion_codigos cc WHERE cc.codigo = o.codigo_padre),
+                            (SELECT cc2.grupo FROM recetas_bom rb JOIN produccion_codigos cc2 ON cc2.codigo = rb.codigo_sap_padre WHERE rb.id = o.bom_padre_id),
+                            (SELECT cc2.grupo FROM produccion_recetas_bom rb JOIN produccion_codigos cc2 ON cc2.codigo = rb.codigo_sap_padre WHERE rb.id = o.bom_padre_id),
+                            o.grupo) as grupo
             FROM produccion_ordenes o
             JOIN cola_produccion_pasos p ON p.orden_produccion_id = o.id
             WHERE o.estado_programacion = 'TERMINADO'
               AND o.nivel_prioridad IN (2, 3, 4)
-            GROUP BY o.id, o.nivel_prioridad, o.created_at
+            GROUP BY o.id, o.nivel_prioridad, o.created_at, o.grupo, o.codigo_padre, o.bom_padre_id
             HAVING MAX(p.hora_fin) >= NOW() - INTERVAL '30 days'
         `);
         const fFecha = (v) => v ? (typeof v === 'string' ? String(v).split('T')[0]
             : new Date(v).getFullYear() + '-' + String(new Date(v).getMonth() + 1).padStart(2, '0') + '-' + String(new Date(v).getDate()).padStart(2, '0')) : null;
         let cumplidas = 0;
         for (const r of res.rows) {
-            const ventana = VENTANA_DIAS[Number(r.nivel_prioridad)] || 0;
+            // Misma regla de ventana que el motor: Express de Carroceros → 7.
+            const ventana = (grupoEsCarroceros(r.grupo) && VENTANA_DIAS_CARROCEROS[Number(r.nivel_prioridad)])
+                ? VENTANA_DIAS_CARROCEROS[Number(r.nivel_prioridad)]
+                : (VENTANA_DIAS[Number(r.nivel_prioridad)] || 0);
             const ingreso = fFecha(r.created_at);
             const termino = fFecha(r.termino);
             if (!ventana || !ingreso || !termino) continue;

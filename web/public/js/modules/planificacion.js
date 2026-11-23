@@ -634,12 +634,12 @@ App.modules.planificacion = {
             ? `<div class="pln-warnbox">
                 <strong>Reprogramar TODO:</strong> libera todas las órdenes que no estén EN PROCESO, TERMINADAS, MERMADAS ni CERRADAS (vuelven a PENDIENTE) y rehace el plan completo.
                 ${cola}
-                <div class="sub2" style="margin-top:8px"><strong>Protegidas:</strong> TERMINADAS, MERMADAS y CERRADAS no se tocan. De EN PROCESO se protege el trabajo <strong>hecho</strong> y el paso <strong>en curso</strong> (anclado a hoy), pero sus <strong>pasos futuros se re-acomodan</strong> al nuevo plan — si la orden quedó atrasada, sus fechas viejas se corrigen solas. <strong>Ventana rígida:</strong> Reposición 2 · Express y Urgencia 3 días hábiles desde el ingreso — si no cabe, NO se agenda y sale como "sin cupo en ventana".</div>
+                <div class="sub2" style="margin-top:8px"><strong>Protegidas:</strong> TERMINADAS, MERMADAS y CERRADAS no se tocan. De EN PROCESO se protege el trabajo <strong>hecho</strong> y el paso <strong>en curso</strong> (anclado a hoy), pero sus <strong>pasos futuros se re-acomodan</strong> al nuevo plan — si la orden quedó atrasada, sus fechas viejas se corrigen solas. <strong>Ventana rígida:</strong> Reposición 2 · Express y Urgencia 3 días hábiles desde el ingreso (Express de Carroceros: 7) — si no cabe, NO se agenda y sale como "sin cupo en ventana".</div>
             </div>`
             : `<div class="pln-warnbox">
                 <strong>Solo pendientes:</strong> inserta las órdenes <strong>nuevas (sin fecha)</strong> en el plan <strong>sin tocar</strong> lo ya programado, respetando turnos, cuellos de botella y capacidad por grupo.
                 ${cola}
-                <div class="sub2" style="margin-top:8px"><strong>EN PROCESO:</strong> conservan su avance y su paso en máquina; solo se re-acomodan sus pasos futuros. <strong>Ventana rígida:</strong> Reposición 2 · Express y Urgencia 3 días hábiles desde el ingreso — si no cabe, NO se agenda y sale como "sin cupo en ventana".</div>
+                <div class="sub2" style="margin-top:8px"><strong>EN PROCESO:</strong> conservan su avance y su paso en máquina; solo se re-acomodan sus pasos futuros. <strong>Ventana rígida:</strong> Reposición 2 · Express y Urgencia 3 días hábiles desde el ingreso (Express de Carroceros: 7) — si no cabe, NO se agenda y sale como "sin cupo en ventana".</div>
             </div>`;
     },
 
