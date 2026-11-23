@@ -139,25 +139,33 @@ App.registerModule('prod_config', {
         } catch (e) { }
         if (token != null && token !== this._tabToken) return;
         container.innerHTML = `
-            <div class="pc-card" style="background:var(--glass);border:1px solid var(--glass-border);border-radius:var(--radius-lg);padding:20px;max-width:640px">
-                <h3 style="margin:0 0 6px;font-size:15px">Reparto de capacidad por turno</h3>
-                <p style="color:var(--text-light);font-size:12px;line-height:1.7;margin:0 0 16px">
-                    Un día tiene <strong>2 turnos</strong> (día y noche) y la capacidad diaria de cada estación
-                    se divide entre ellos según este reparto. La <strong>reprogramación por avance</strong>
-                    asigna los procesos turno a turno: <em>Pulido 🌞 lunes → Templado 🌙 lunes</em>.
-                </p>
-                <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;margin-bottom:8px">
-                    <span>🌞 Día: <span id="pcTurnoDia" style="color:#b45309">${cfg.pct_dia}%</span></span>
-                    <span>🌙 Noche: <span id="pcTurnoNoche" style="color:#b45309">${cfg.pct_noche}%</span></span>
+            <div class="m-page">
+                <div class="m-hero" style="padding:10px 14px">
+                    <div style="position:relative;z-index:1">
+                        <h2 style="margin:0;font-size:15px;font-weight:800;color:white">Reparto de capacidad por turno</h2>
+                        <p style="margin:2px 0 0;font-size:10px;color:rgba(255,255,255,0.7)">Un día tiene 2 turnos (día y noche) y la capacidad de cada estación se divide entre ellos</p>
+                    </div>
                 </div>
-                <input type="range" min="10" max="90" step="5" value="${cfg.pct_dia}" id="pcTurnoSlider"
-                    oninput="App.modules.prod_config.turnoPreview(this.value)"
-                    style="width:100%;accent-color:#b45309;height:28px">
-                <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-light);margin-top:2px">
-                    <span>10% día / 90% noche</span><span>50 / 50</span><span>90% día / 10% noche</span>
+                <div class="m-card" style="max-width:640px">
+                    <div class="m-card-body">
+                        <p style="color:#64748b;font-size:12px;line-height:1.7;margin:0 0 16px">
+                            La <strong>programación</strong> asigna los procesos turno a turno:
+                            <em>Pulido 🌞 lunes → Templado 🌙 lunes</em>.
+                        </p>
+                        <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;margin-bottom:8px">
+                            <span>🌞 Día: <span id="pcTurnoDia" style="color:#b45309">${cfg.pct_dia}%</span></span>
+                            <span>🌙 Noche: <span id="pcTurnoNoche" style="color:#b45309">${cfg.pct_noche}%</span></span>
+                        </div>
+                        <input type="range" min="10" max="90" step="5" value="${cfg.pct_dia}" id="pcTurnoSlider"
+                            oninput="App.modules.prod_config.turnoPreview(this.value)"
+                            style="width:100%;accent-color:#b45309;height:28px">
+                        <div style="display:flex;justify-content:space-between;font-size:10px;color:#94a3b8;margin-top:2px">
+                            <span>10% día / 90% noche</span><span>50 / 50</span><span>90% día / 10% noche</span>
+                        </div>
+                        <div id="pcTurnoEjemplo" style="margin:14px 0;font-size:12px;color:#64748b;background:#f8fafc;border:1px solid #e4e9f0;border-radius:10px;padding:10px 12px"></div>
+                        <button class="btn btn-primary" onclick="App.modules.prod_config.turnoGuardar()">Guardar reparto</button>
+                    </div>
                 </div>
-                <div id="pcTurnoEjemplo" style="margin:14px 0;font-size:12px;color:var(--text-light);background:var(--bg);border-radius:10px;padding:10px 12px"></div>
-                <button class="btn btn-primary" onclick="App.modules.prod_config.turnoGuardar()">Guardar reparto</button>
             </div>`;
         this.turnoPreview(cfg.pct_dia);
     },
