@@ -28,6 +28,7 @@ App.registerModule('prod_config', {
             { id: 'materias', label: 'Materias primas', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>' },
             { id: 'calendario', label: 'Calendario', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>' },
             { id: 'turnos', label: 'Turnos', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>' },
+            { id: 'ventanas', label: 'Ventanas', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><path d="M9 14l2 2 4-4"/></svg>' },
             { id: 'horarios', label: 'Horarios de Turno', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>' }
         ];
         el.innerHTML = '<style>'
@@ -121,6 +122,7 @@ App.registerModule('prod_config', {
             case 'reglas': await this.loadReglas(token); break;
             case 'calendario': await this.loadCalendario(token); break;
             case 'turnos': await this.loadTurnos(token); break;
+            case 'ventanas': await this.loadVentanas(token); break;
         }
     },
 
@@ -182,6 +184,124 @@ App.registerModule('prod_config', {
             if (res.ok) {
                 if (window.App && App.toast) App.toast(`Reparto guardado: día ${data.pct_dia}% / noche ${data.pct_noche}%`, 'success');
             } else if (window.App && App.toast) App.toast('Error: ' + (data.error || 'no se pudo guardar'), 'error');
+        } catch (e) {
+            if (window.App && App.toast) App.toast('Error de conexión', 'error');
+        }
+    },
+
+    // ---------------- VENTANAS: días hábiles por prioridad/grupo ----------------
+    // Reglas que el motor usa al programar: ventana rígida = ingreso + N días
+    // hábiles. La regla con grupo manda sobre la genérica; 0 días = sin ventana.
+    async loadVentanas(token) {
+        const container = document.getElementById('prodConfigContent');
+        let reglas = [];
+        try {
+            const res = await fetch('/api/produccion/ventanas', { cache: 'no-store' });
+            if (res.ok) reglas = await res.json();
+        } catch (e) { }
+        if (token != null && token !== this._tabToken) return;
+        const NOMBRES = { 4: '4 · Reposición', 2: '2 · Express', 3: '3 · Urgencia', 1: '1 · Normal' };
+        const filas = reglas.map(r => `
+            <tr>
+                <td style="padding:8px 10px;font-size:12px;font-weight:700">${escText(r.nombre)}</td>
+                <td style="padding:8px 10px;font-size:11px">${NOMBRES[r.nivel_prioridad] || r.nivel_prioridad}</td>
+                <td style="padding:8px 10px;font-size:11px">${r.grupo ? '🏷 ' + escText(r.grupo) : '<span style="color:#94a3b8">Todos</span>'}</td>
+                <td style="padding:8px 10px"><input type="number" min="0" max="60" value="${Number(r.dias) || 0}" id="pcVenDias${r.id}" style="width:70px;padding:5px 8px;border:1px solid #e4e9f0;border-radius:7px;font-size:12px"> <span style="font-size:11px;color:#64748b">días</span></td>
+                <td style="padding:8px 10px"><label style="font-size:11px;display:flex;align-items:center;gap:5px"><input type="checkbox" id="pcVenAct${r.id}" ${r.activa !== false ? 'checked' : ''}> activa</label></td>
+                <td style="padding:8px 10px;text-align:right;white-space:nowrap">
+                    <button class="btn btn-primary" style="padding:4px 10px;font-size:11px" onclick="App.modules.prod_config.ventanasGuardar(${r.id})">Guardar</button>
+                    <button class="btn btn-ghost" style="padding:4px 10px;font-size:11px;color:#dc2626" title="Eliminar regla (esa prioridad/grupo queda sin ventana)" onclick="App.modules.prod_config.ventanasEliminar(${r.id})">🗑</button>
+                </td>
+            </tr>`).join('');
+        container.innerHTML = `
+            <div class="pc-card" style="background:var(--glass);border:1px solid var(--glass-border);border-radius:var(--radius-lg);padding:20px;max-width:880px">
+                <h3 style="margin:0 0 6px;font-size:15px">Ventanas rígidas por prioridad</h3>
+                <p style="color:var(--text-light);font-size:12px;line-height:1.7;margin:0 0 16px">
+                    Días <strong>hábiles desde el ingreso</strong> que tiene cada prioridad para entrar al plan.
+                    Si un pedido no cabe dentro de su ventana <strong>NO se agenda</strong> y sale como
+                    "sin cupo en ventana". Una regla con <strong>grupo</strong> manda sobre la genérica de la
+                    misma prioridad (ej: Express de Carroceros). <strong>0 días = sin ventana rígida</strong>.
+                    Estos valores los toma el motor al programar.
+                </p>
+                <table style="width:100%;border-collapse:collapse">
+                    <thead><tr style="text-align:left;border-bottom:2px solid var(--glass-border)">
+                        <th style="padding:6px 10px;font-size:10px;color:#64748b">REGLA</th>
+                        <th style="padding:6px 10px;font-size:10px;color:#64748b">PRIORIDAD</th>
+                        <th style="padding:6px 10px;font-size:10px;color:#64748b">GRUPO</th>
+                        <th style="padding:6px 10px;font-size:10px;color:#64748b">DÍAS HÁBILES</th>
+                        <th style="padding:6px 10px;font-size:10px;color:#64748b">ESTADO</th>
+                        <th></th>
+                    </tr></thead>
+                    <tbody>${filas || '<tr><td colspan="6" style="padding:14px;color:#94a3b8;font-size:12px">Sin reglas configuradas</td></tr>'}</tbody>
+                </table>
+                <div style="margin-top:16px;border-top:1px solid var(--glass-border);padding-top:14px">
+                    <div style="font-size:11px;font-weight:700;color:#475569;margin-bottom:8px">➕ Nueva regla</div>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+                        <input id="pcVenNombre" placeholder="Nombre (ej: Express Laminado)" style="flex:1;min-width:180px;padding:6px 9px;border:1px solid #e4e9f0;border-radius:7px;font-size:12px">
+                        <select id="pcVenPrio" style="padding:6px 9px;border:1px solid #e4e9f0;border-radius:7px;font-size:12px">
+                            <option value="4">4 · Reposición</option>
+                            <option value="2" selected>2 · Express</option>
+                            <option value="3">3 · Urgencia</option>
+                            <option value="1">1 · Normal</option>
+                        </select>
+                        <input id="pcVenGrupo" placeholder="Grupo (vacío = todos)" style="width:170px;padding:6px 9px;border:1px solid #e4e9f0;border-radius:7px;font-size:12px">
+                        <input id="pcVenDiasNuevo" type="number" min="0" max="60" value="3" style="width:80px;padding:6px 9px;border:1px solid #e4e9f0;border-radius:7px;font-size:12px">
+                        <button class="btn btn-primary" onclick="App.modules.prod_config.ventanasCrear()">Agregar</button>
+                    </div>
+                </div>
+            </div>`;
+    },
+
+    async ventanasGuardar(id) {
+        const dias = Number((document.getElementById('pcVenDias' + id) || {}).value);
+        const activa = !!(document.getElementById('pcVenAct' + id) || {}).checked;
+        try {
+            const res = await fetch('/api/produccion/ventanas/' + id, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ dias, activa })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                if (window.App && App.toast) App.toast(`Regla guardada: ${data.nombre} = ${data.dias > 0 ? data.dias + ' días hábiles' : 'sin ventana'}`, 'success');
+            } else if (window.App && App.toast) App.toast('Error: ' + (data.error || 'no se pudo guardar'), 'error');
+        } catch (e) {
+            if (window.App && App.toast) App.toast('Error de conexión', 'error');
+        }
+    },
+
+    async ventanasCrear() {
+        const nombre = (document.getElementById('pcVenNombre') || {}).value || '';
+        const nivel_prioridad = Number((document.getElementById('pcVenPrio') || {}).value) || 2;
+        const grupo = (document.getElementById('pcVenGrupo') || {}).value || '';
+        const dias = Number((document.getElementById('pcVenDiasNuevo') || {}).value);
+        try {
+            const res = await fetch('/api/produccion/ventanas', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ nombre, nivel_prioridad, grupo, dias })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                if (window.App && App.toast) App.toast('Regla creada', 'success');
+                await this.loadVentanas();
+            } else if (window.App && App.toast) App.toast('Error: ' + (data.error || 'no se pudo crear'), 'error');
+        } catch (e) {
+            if (window.App && App.toast) App.toast('Error de conexión', 'error');
+        }
+    },
+
+    async ventanasEliminar(id) {
+        if (!confirm('¿Eliminar esta regla? Sin regla, esa prioridad/grupo queda SIN ventana rígida.')) return;
+        try {
+            const res = await fetch('/api/produccion/ventanas/' + id, { method: 'DELETE' });
+            if (res.ok) {
+                if (window.App && App.toast) App.toast('Regla eliminada', 'success');
+                await this.loadVentanas();
+            } else {
+                const data = await res.json().catch(() => ({}));
+                if (window.App && App.toast) App.toast('Error: ' + (data.error || 'no se pudo eliminar'), 'error');
+            }
         } catch (e) {
             if (window.App && App.toast) App.toast('Error de conexión', 'error');
         }

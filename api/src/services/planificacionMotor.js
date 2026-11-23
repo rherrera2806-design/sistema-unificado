@@ -11,11 +11,11 @@
 //   · CUELOS DE BOTELLA: TODOS los marcados en estaciones_maestras cuentan.
 //     La ruta se camina estación por estación y cada una valida su cupo; la más
 //     cargada empuja la fecha sola. NO hay un "drum" único.
-//   · VENTANA RÍGIDA = RESTRICCIÓN (bloquea), no aviso: Repo 2 · Express 3 ·
-//     Urgencia 3 días hábiles desde el ingreso. Si no cabe, NO se agenda y sale
-//     como "sin cupo en ventana". Si la ventana ya venció, se agenda lo antes
-//     posible y se marca VENCIDA. Excepción por grupo: Express de Carroceros →
-//     7 días hábiles (VENTANA_DIAS_CARROCEROS).
+//   · VENTANA RÍGIDA = RESTRICCIÓN (bloquea), no aviso: los días hábiles desde
+//     el ingreso se CONFIGURAN por prioridad/grupo en Configuración → Ventanas
+//     (por defecto: Repo 2 · Express 3 · Urgencia 3 · Express Carroceros 7).
+//     Si no cabe, NO se agenda y sale como "sin cupo en ventana". Si la ventana
+//     ya venció, se agenda lo antes posible y se marca VENCIDA.
 //   · CAPACIDAD ESTACIÓN (m²) por TURNO (día/noche) — ÚNICA limitación de
 //     fechas. La capacidad por GRUPO (kg/día) ya NO restringe: la familia
 //     tiene su propia estación con cap_max (Pintado Arq, Laminado VM, …) y
@@ -42,20 +42,16 @@ const { query } = require('../config/database');
 const { transaction } = require('../config/dbPool');
 const calendario = require('./calendario');
 const configTurnos = require('./configTurnos');
+const configVentanas = require('./configVentanas');
 const turnosHoySvc = require('./turnosHoy');
 const { cerrarPasosAtrasados } = require('./avanceImplicito');
 
 // Orden de cola por prioridad. 4 Reposición es lo más urgente; Express (2)
 // pasa antes que Urgencia (3) porque el cliente paga por Express.
 const RANGO_PRIO = { 4: 0, 2: 1, 3: 2, 1: 3 };
-// Días hábiles de ventana rígida desde el ingreso (created_at).
-const VENTANA_DIAS = { 4: 2, 2: 3, 3: 3 };
-// EXCEPCIÓN POR GRUPO: un Express del grupo Carroceros (piezas grandes, ruta
-// por Pintado Car) no cabe en la ventana estándar de 3 días — su ventana rígida
-// es de 7 días hábiles desde el ingreso. SOLO aplica a ese grupo; el resto de
-// los Express mantiene 3.
-const VENTANA_DIAS_CARROCEROS = { 2: 7 };
-const grupoEsCarroceros = (g) => String(g || '').trim().toLowerCase() === 'carroceros';
+// Días hábiles de ventana rígida desde el ingreso (created_at): CONFIGURABLES
+// en Configuración → Ventanas (servicio configVentanas). Hay reglas por
+// prioridad y, si hace falta, específicas de grupo (ej: Express de Carroceros).
 const NOMBRE_PRIO = { 4: 'Reposición', 2: 'Express', 3: 'Urgencia', 1: 'Normal' };
 
 const fmtL = (d) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
@@ -321,6 +317,9 @@ async function planificar({ modo = 'pendientes', fechaMinima, turnosHoy, dias = 
 
     // ═══ 11. HELPERS DE SLOTS Y CAPACIDAD ═════════════════════════════════
     const cfgTurnos = await configTurnos.getConfigTurnos();
+    // Reglas de ventana rígida (Configuración → Ventanas): los días que el
+    // motor permite a cada prioridad/grupo para entrar al plan.
+    const reglasVentana = await configVentanas.getConfigVentanas();
 
     // fh = % de turno RESTANTE (1 en días normales; en HOY aplica el recorte).
     // Los turnos no elegidos quedan en fh = 0 → bloqueados para hoy.
@@ -439,12 +438,11 @@ async function planificar({ modo = 'pendientes', fechaMinima, turnosHoy, dias = 
     const esAtrasada = (o) =>
         !!(o.fecha_pactada && o.fecha_pactada <= hoyCL) || o.ventanaVencida === true;
 
-    // Ventana rígida: fecha límite = ingreso + N días hábiles.
-    // Excepción: Express del grupo Carroceros → 7 días hábiles (solo ese grupo).
+    // Ventana rígida: fecha límite = ingreso + N días hábiles según las reglas
+    // de Configuración → Ventanas (la específica de grupo manda sobre la
+    // genérica de la prioridad; ej: Express de Carroceros).
     for (const o of ordenes.values()) {
-        const v = (grupoEsCarroceros(o.grupo) && VENTANA_DIAS_CARROCEROS[o.prioridad])
-            ? VENTANA_DIAS_CARROCEROS[o.prioridad]
-            : VENTANA_DIAS[o.prioridad];
+        const v = configVentanas.ventanaDias(reglasVentana, o.prioridad, o.grupo);
         o.ventana = v || null;
         o.fecha_limite = null;
         if (v && o.fecha_ingreso) {
@@ -1098,11 +1096,10 @@ async function getCumplimiento() {
         const fFecha = (v) => v ? (typeof v === 'string' ? String(v).split('T')[0]
             : new Date(v).getFullYear() + '-' + String(new Date(v).getMonth() + 1).padStart(2, '0') + '-' + String(new Date(v).getDate()).padStart(2, '0')) : null;
         let cumplidas = 0;
+        const reglasV = await configVentanas.getConfigVentanas();
         for (const r of res.rows) {
-            // Misma regla de ventana que el motor: Express de Carroceros → 7.
-            const ventana = (grupoEsCarroceros(r.grupo) && VENTANA_DIAS_CARROCEROS[Number(r.nivel_prioridad)])
-                ? VENTANA_DIAS_CARROCEROS[Number(r.nivel_prioridad)]
-                : (VENTANA_DIAS[Number(r.nivel_prioridad)] || 0);
+            // Misma regla de ventana que el motor (Configuración → Ventanas).
+            const ventana = configVentanas.ventanaDias(reglasV, Number(r.nivel_prioridad), r.grupo) || 0;
             const ingreso = fFecha(r.created_at);
             const termino = fFecha(r.termino);
             if (!ventana || !ingreso || !termino) continue;

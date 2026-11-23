@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const config = require('../services/produccionConfig');
 const configTurnos = require('../services/configTurnos');
+const configVentanas = require('../services/configVentanas');
 const catalogos = require('../services/produccionCatalogos');
 const procesosCarroceria = require('../services/procesosCarroceria');
 const { requireAnyPerm, requireAdmin } = require('../middleware/permisos');
@@ -222,6 +223,24 @@ router.post('/api/produccion/procesos-carroceria/importar', canCreate, asyncHand
     }
     const r = await procesosCarroceria.importarMasivo(filas);
     res.json(r);
+}));
+
+// ===== Ventanas rígidas por prioridad (Configuración → Ventanas) =====
+// Reglas de días hábiles que usa el motor para programar (incluye la excepción
+// por grupo, ej: Express de Carroceros).
+router.get('/api/produccion/ventanas', canView, asyncHandler(async (req, res) => {
+    res.json(await configVentanas.getConfigVentanas());
+}));
+router.post('/api/produccion/ventanas', canCreate, asyncHandler(async (req, res) => {
+    res.status(201).json(await configVentanas.crearRegla(req.body || {}));
+}));
+router.put('/api/produccion/ventanas/:id', canUpdate, asyncHandler(async (req, res) => {
+    const regla = await configVentanas.actualizarRegla(Number(req.params.id), req.body || {});
+    if (!regla) return res.status(404).json({ error: 'Regla no encontrada' });
+    res.json(regla);
+}));
+router.delete('/api/produccion/ventanas/:id', canDelete, asyncHandler(async (req, res) => {
+    res.json(await configVentanas.eliminarRegla(Number(req.params.id)));
 }));
 
 // ===== Reparto de capacidad por TURNO (Configuración → Turnos) =====
