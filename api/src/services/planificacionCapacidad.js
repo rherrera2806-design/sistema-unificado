@@ -175,8 +175,11 @@ const getCargaEstaciones = async (inicio, fin) => {
 
     const cargaRes = await query(`
         SELECT cp.estacion_id, to_char(cp.fecha_programada, 'YYYY-MM-DD') as fs,
-               COALESCE(SUM(cp.m2_asignados), 0) as m2_total, COUNT(*) as ordenes
+               COALESCE(SUM(cp.m2_asignados), 0) as m2_total,
+               COALESCE(SUM(o.kilos * COALESCE(NULLIF(cp.m2_asignados, 0), o.metros_cuadrados) / NULLIF(o.metros_cuadrados, 0)), 0) as kg_total,
+               COUNT(*) as ordenes
         FROM cola_produccion_pasos cp
+        JOIN produccion_ordenes o ON o.id = cp.orden_produccion_id
         WHERE cp.fecha_programada >= $1::date AND cp.fecha_programada <= $2::date
           AND cp.estado NOT IN ('TERMINADO','MERMADO')
         GROUP BY cp.estacion_id, cp.fecha_programada
@@ -198,6 +201,7 @@ const getCargaEstaciones = async (inicio, fin) => {
         const laboral = esLaboral(calendarioMap, r.fs);
         carga[r.fs][r.estacion_id] = {
             m2: laboral ? Number(r.m2_total) : 0,
+            kg: laboral ? Number(r.kg_total) : 0,
             ordenes: laboral ? Number(r.ordenes) : 0,
             es_laboral: laboral
         };

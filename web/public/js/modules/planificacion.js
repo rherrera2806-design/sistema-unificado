@@ -95,7 +95,7 @@ App.modules.planificacion = {
 
             <div id="plnAvisoIncumplidas"></div>
 
-            <div class="pln-kpis" id="plnKpis"></div>
+            <div class="pln-strip" id="plnKpis"></div>
 
             <div class="pln-tabs">
                 <div class="pln-tab on" id="plnTabGrupo" onclick="App.modules.planificacion.setVista('grupo')">⚖️ &nbsp;Vista por Grupo</div>
@@ -159,9 +159,13 @@ App.modules.planificacion = {
             <div id="plnPanelEstac" style="display:none">
                 <div class="pln-panel">
                     <div class="pln-p-head">
-                        <h3>Carga por estaciones (m²/día)</h3>
-                        <span class="sub">solo días hábiles · CB = cuello de botella</span>
+                        <h3>Carga por estaciones <span id="plnEstacUnidLbl" style="font-weight:500;color:#8494a8">(m²/día)</span></h3>
+                        <span class="sub">en el orden del flujo de planta · una pastilla = un día de producción · CB = cuello de botella</span>
                         <div class="pln-nav">
+                            <div class="pln-unit">
+                                <button id="plnUnM2" class="on" onclick="App.modules.planificacion.setUnidadEstaciones('m2')">m²</button>
+                                <button id="plnUnKg" onclick="App.modules.planificacion.setUnidadEstaciones('kg')">kg</button>
+                            </div>
                             <label class="pln-lbl">Días</label>
                             <input type="number" min="1" max="60" value="${this.diasEstaciones}" onchange="App.modules.planificacion.cambiarDiasEstaciones(this.value)">
                             <button class="pln-navbtn" onclick="App.modules.planificacion.cambiarSemanaEstaciones(-1)">◀</button>
@@ -252,8 +256,9 @@ App.modules.planificacion = {
         }
     },
 
-    // Stat cards del PLAN completo (antes medían solo el día elegido: salía
-    // "Kg asignados 474,6 / Ocupación 4%" mientras el plan real era ~39.900 kg).
+    // Barra de estado del PLAN completo (reemplaza las 5 stat cards: menos es
+    // más — lo normal se lee en una línea y solo las excepciones llaman la
+    // atención). "Ocupación del plan" vive aquí a la derecha de la barra.
     renderKpis() {
         const el = document.getElementById('plnKpis');
         if (!el) return;
@@ -261,33 +266,27 @@ App.modules.planificacion = {
         const abiertoKg = Number(r.abiertos_kg) || 0;
         const abiertoOrd = Number(r.abiertos_ord) || 0;
         const fechadoKg = Number(r.fechados_kg) || 0;
-        const fechadoOrd = Number(r.fechados_ord) || 0;
         const sinKg = Number(r.sin_fecha_kg) || 0;
         const sinOrd = Number(r.sin_fecha_ord) || 0;
-        const sinEnProceso = Number(r.sin_fecha_enproceso_ord) || 0;
-        const sinPend = Number(r.sin_fecha_pendientes_ord) || 0;
         const capDia = this.capacidadGrupo.reduce((s, c) => s + Number(c.capacidad_kg_dia), 0);
 
-        // Ocupación REAL del plan: todo el trabajo abierto vs la capacidad de
-        // los días hábiles del período del gráfico (no solo el día elegido).
         const data = this.chartModo === 'finales' ? this.cargaPorGrupoFinales : this.cargaPorGrupo;
         const diasPeriodo = (data && Array.isArray(data.fechas)) ? data.fechas.length : 0;
         const capPeriodo = capDia * diasPeriodo;
         const pctOcup = capPeriodo > 0 ? Math.round((abiertoKg / capPeriodo) * 100) : 0;
         const pctFech = abiertoKg > 0 ? Math.round((fechadoKg / abiertoKg) * 100) : 0;
-        const colorOcup = pctOcup > 100 ? '#dc2626' : pctOcup > 85 ? '#b45309' : '#15803d';
 
         el.innerHTML = ''
-            + this._kpi('Trabajo abierto', this._fmt(abiertoKg, 1), 'kg · ' + this._fmt(abiertoOrd, 0) + ' órdenes abiertas', '')
-            + this._kpi('Fechado', this._fmt(fechadoKg, 1), 'kg · ' + this._fmt(fechadoOrd, 0) + ' órdenes · ' + pctFech + '% del abierto', fechadoKg > 0 ? '#15803d' : '')
-            + this._kpi('Sin fecha', this._fmt(sinKg, 1), 'kg · ' + this._fmt(sinOrd, 0) + ' órdenes · ' + (100 - pctFech) + '% del abierto', sinKg > 0 ? '#b45309' : '#15803d')
-            + this._kpi('Ocupación del plan', diasPeriodo ? pctOcup + '%' : '—',
-                diasPeriodo ? 'de ' + this._fmt(capPeriodo, 0) + ' kg (' + diasPeriodo + ' días × ' + this._fmt(capDia, 0) + ' kg/día)' : 'cargando período del gráfico…',
-                diasPeriodo ? colorOcup : '')
-            + this._kpi('Sin programar', this._fmt(sinOrd, 0), 'órdenes · ' + this._fmt(sinEnProceso, 0) + ' en proceso, ' + this._fmt(sinPend, 0) + ' pendientes', sinOrd > 0 ? '#b45309' : '#15803d');
-    },
-    _kpi(k, v, s, color) {
-        return '<div class="pln-kpi"><div class="k">' + escText(k) + '</div><div class="v"' + (color ? ' style="color:' + color + '"' : '') + '>' + escText(v) + '</div><div class="s">' + escText(s) + '</div></div>';
+            + '<div class="st-big">' + this._fmt(abiertoOrd, 0) + ' órdenes abiertas <span>· ' + this._fmt(abiertoKg, 1) + ' kg</span></div>'
+            + '<div class="st-sep"></div>'
+            + '<div class="st-bar">'
+            + '<div class="track"><div class="fill" style="width:' + Math.min(pctFech, 100) + '%"></div></div>'
+            + '<div class="lbl"><span><b style="color:' + (fechadoKg > 0 ? '#15803d' : '#64748b') + '">' + pctFech + '% fechado</b> · ' + this._fmt(fechadoKg, 1) + ' kg</span>'
+            + '<span>' + (diasPeriodo ? this._fmt(capPeriodo, 0) + ' kg de capacidad · ' + pctOcup + '% ocupación' : '') + '</span></div>'
+            + '</div>'
+            + (sinOrd > 0
+                ? '<div class="pln-stchip warn">⚠ ' + this._fmt(sinOrd, 0) + ' sin fecha · ' + this._fmt(sinKg, 1) + ' kg</div>'
+                : '<div class="pln-stchip ok">✅ 0 sin fecha</div>');
     },
 
     renderGrupoCards() {
@@ -1054,6 +1053,7 @@ App.modules.planificacion = {
     renderEstaciones(data) {
         const el = document.getElementById('planEstaciones');
         if (!el) return;
+        this._estacData = data;
         const { estaciones, carga, calendario } = data;
 
         if (!estaciones || estaciones.length === 0) {
@@ -1072,32 +1072,73 @@ App.modules.planificacion = {
             if (esLaboral) todosDias.push(fs);
         }
 
+        const hoy = this.fmtDate(new Date());
+        const enKg = this.estacUnidad === 'kg';
         const pct = (usado, cap) => cap > 0 ? Math.round((usado / cap) * 100) : 0;
-        const barColor = (p) => p >= 100 ? '#dc2626' : p >= 85 ? '#d97706' : p >= 50 ? '#2563eb' : '#16a34a';
+        // Saturación SIEMPRE medida en m² contra cap_max (la capacidad real de
+        // la estación); el selector solo cambia la unidad que se MUESTRA.
+        const clase = (p) => p <= 0 ? 'z' : p < 50 ? 't1' : p < 75 ? 't2' : p < 90 ? 't3' : p < 100 ? 't4' : 't5';
+        const capTotal = estaciones.reduce((a, e) => a + (Number(e.capacidad_m2_dia) || 0), 0);
 
-        let html = '<table class="pln-matriz"><colgroup><col class="c-est"><col class="c-cap">';
+        let html = '<table class="pln-matriz"><colgroup><col class="c-est">';
         todosDias.forEach(() => { html += '<col>'; });
-        html += '</colgroup><thead><tr><th>Estación</th><th class="num">Cap.</th>';
+        html += '<col class="c-tope"></colgroup><thead><tr><th>Estación · flujo de planta</th>';
         todosDias.forEach(f => {
-            html += '<th>' + this._fechaCorta(f) + '</th>';
+            html += '<th' + (f === hoy ? ' class="hoy"' : '') + '>' + this._fechaCorta(f)
+                + '<span class="dow">' + (f === hoy ? 'HOY' : '') + '</span></th>';
         });
-        html += '</tr></thead><tbody>';
+        html += '<th class="c-tope">Días al tope</th></tr></thead><tbody>';
 
         estaciones.forEach(est => {
-            html += '<tr>';
-            html += '<td class="c-est">' + escText(est.nombre) + (est.cuello_botella ? ' <span class="pln-cb" title="Cuello de botella">CB</span>' : '') + '</td>';
-            html += '<td class="num cap">' + this._fmt(est.capacidad_m2_dia, 0) + '</td>';
+            const cap = Number(est.capacidad_m2_dia) || 100;
+            let tope = 0;
+            let cells = '';
             todosDias.forEach(f => {
-                const datos = (carga[f] && carga[f][est.id]) || { m2: 0, ordenes: 0 };
-                const p = pct(datos.m2, est.capacidad_m2_dia);
-                html += '<td><div class="m2" style="color:' + barColor(p) + '">' + this._fmt(datos.m2, 1) + '</div>'
-                    + '<div class="track"><div class="fill" style="width:' + Math.min(p, 100) + '%;background:' + barColor(p) + '"></div></div>'
-                    + '<div class="sub2">' + p + '% · ' + datos.ordenes + ' ord</div></td>';
+                const datos = (carga[f] && carga[f][est.id]) || { m2: 0, kg: 0, ordenes: 0 };
+                const p = pct(datos.m2, cap);
+                if (p >= 90) tope++;
+                const val = enKg ? this._fmt(datos.kg || 0, 0) : this._fmt(datos.m2, 1);
+                const title = escAttr(est.nombre + ' · ' + this._fechaCorta(f) + '\n'
+                    + this._fmt(datos.m2, 1) + ' de ' + this._fmt(cap, 0) + ' m² (' + p + '%)\n'
+                    + this._fmt(datos.kg || 0, 1) + ' kg · ' + (datos.ordenes || 0) + ' órdenes');
+                cells += '<td' + (f === hoy ? ' class="hoy"' : '') + '><div class="pln-tile ' + clase(p) + '" title="' + title + '">'
+                    + val + '<span class="pc">' + (p > 0 ? p + '%' : '') + '</span></div></td>';
             });
-            html += '</tr>';
+            html += '<tr' + (tope >= 3 ? ' class="hot"' : '') + '>'
+                + '<td class="c-est"><span class="dot"></span>' + escText(est.nombre)
+                + (est.cuello_botella ? ' <span class="pln-cb" title="Cuello de botella">CB</span>' : '')
+                + ' <span class="cap">' + this._fmt(cap, 0) + ' m²/día</span></td>'
+                + cells
+                + '<td class="tope">' + (tope || '–') + '<span class="sub2">de ' + todosDias.length + '</span></td></tr>';
         });
-        html += '</tbody></table>';
+
+        html += '</tbody><tfoot><tr><td class="c-est">Carga total del día</td>';
+        todosDias.forEach(f => {
+            let m2 = 0, kg = 0;
+            estaciones.forEach(e => {
+                const d = (carga[f] && carga[f][e.id]) || { m2: 0, kg: 0 };
+                m2 += Number(d.m2) || 0; kg += Number(d.kg) || 0;
+            });
+            const pTot = capTotal > 0 ? Math.round((m2 / capTotal) * 100) : 0;
+            html += '<td' + (f === hoy ? ' class="hoy"' : '') + '>'
+                + (enKg ? this._fmt(kg, 0) : this._fmt(m2, 1))
+                + ' <span class="sub2">' + pTot + '%</span></td>';
+        });
+        html += '<td>' + this._fmt(capTotal, 0) + '<span class="sub2">m²/día</span></td></tr></tfoot></table>';
         el.innerHTML = html;
+    },
+
+    // Unidad visible del tablero: m² o kg (la saturación siempre se mide en m²
+    // contra cap_max — solo cambia lo que muestran las pastillas y los totales).
+    setUnidadEstaciones(u) {
+        this.estacUnidad = (u === 'kg') ? 'kg' : 'm2';
+        const bM = document.getElementById('plnUnM2');
+        const bK = document.getElementById('plnUnKg');
+        if (bM) bM.className = this.estacUnidad === 'm2' ? 'on' : '';
+        if (bK) bK.className = this.estacUnidad === 'kg' ? 'on' : '';
+        const lbl = document.getElementById('plnEstacUnidLbl');
+        if (lbl) lbl.textContent = this.estacUnidad === 'kg' ? '(kg/día)' : '(m²/día)';
+        if (this._estacData) this.renderEstaciones(this._estacData);
     },
 
     // ---------------- Estilos (escala 20/15/13/11/10) ----------------
@@ -1108,11 +1149,17 @@ App.modules.planificacion = {
             .pln-hero h2{color:#fff;font-size:20px;font-weight:700;margin:0}
             .pln-hero p{color:rgba(255,255,255,.62);font-size:11px;margin:4px 0 0}
 
-            .pln-kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:14px}
-            .pln-kpi{background:#fff;border:1px solid #e4e9f0;border-radius:12px;padding:13px 16px}
-            .pln-kpi .k{font-size:10px;font-weight:600;letter-spacing:.7px;text-transform:uppercase;color:#8494a8}
-            .pln-kpi .v{font-size:20px;font-weight:700;margin-top:4px;color:#0f172a}
-            .pln-kpi .s{font-size:10px;color:#8494a8;margin-top:2px}
+            .pln-strip{background:#fff;border:1px solid #e4e9f0;border-radius:12px;padding:11px 16px;display:flex;align-items:center;gap:18px;flex-wrap:wrap;margin-bottom:14px}
+            .pln-strip .st-big{font-size:13px;font-weight:700;color:#0f172a}
+            .pln-strip .st-big span{color:#8494a8;font-weight:500;font-size:11px}
+            .pln-strip .st-sep{width:1px;height:26px;background:#e4e9f0}
+            .pln-strip .st-bar{flex:1;min-width:220px}
+            .pln-strip .st-bar .track{height:8px;border-radius:6px;background:#eef2f7;overflow:hidden}
+            .pln-strip .st-bar .fill{height:100%;background:linear-gradient(90deg,#22c55e,#16a34a);border-radius:6px}
+            .pln-strip .st-bar .lbl{display:flex;justify-content:space-between;font-size:10px;color:#8494a8;margin-top:5px;gap:10px}
+            .pln-stchip{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:5px 12px;border-radius:20px;white-space:nowrap}
+            .pln-stchip.ok{background:#dcfce7;color:#15803d}
+            .pln-stchip.warn{background:#fee2e2;color:#b91c1c}
 
             .pln-tabs{display:flex;gap:4px;background:#e2e8f0;padding:4px;border-radius:10px;width:max-content;margin-bottom:12px}
             .pln-tab{padding:8px 18px;border-radius:8px;font-size:11px;font-weight:700;color:#475569;cursor:pointer;white-space:nowrap}
@@ -1183,18 +1230,39 @@ App.modules.planificacion = {
             .pln-capinfo strong{color:#334155}
 
             .pln-matriz-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
-            .pln-matriz{width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed;min-width:900px}
-            .pln-matriz .c-est{width:190px}
-            .pln-matriz .c-cap{width:70px}
-            .pln-matriz th{padding:8px 10px;text-align:center;font-size:10px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#8494a8;background:#f8fafc;border-bottom:1px solid #e4e9f0;white-space:nowrap}
-            .pln-matriz th:first-child{text-align:left}
-            .pln-matriz td{padding:8px 10px;text-align:center;border-bottom:1px solid #f1f5f9}
-            .pln-matriz td.c-est{text-align:left;font-weight:600;white-space:nowrap}
-            .pln-matriz td.cap{color:#8494a8;font-size:11px}
-            .pln-matriz .m2{font-weight:700;margin-bottom:3px}
-            .pln-matriz .track{background:#e5e7eb;border-radius:4px;height:6px;overflow:hidden}
-            .pln-matriz .fill{height:100%;transition:width .3s}
+            .pln-matriz{width:100%;border-collapse:collapse;font-size:13px;min-width:900px}
+            .pln-matriz .c-est{width:230px;text-align:left}
+            .pln-matriz .c-tope{width:80px}
+            .pln-matriz th{padding:8px;text-align:center;font-size:10px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#8494a8;background:#f8fafc;border-bottom:1px solid #e4e9f0;white-space:nowrap}
+            .pln-matriz th:first-child{text-align:left;padding-left:18px}
+            .pln-matriz th.hoy{background:#eef2f7}
+            .pln-matriz th .dow{display:block;font-size:8px;color:#94a3b8;font-weight:600;min-height:10px}
+            .pln-matriz td{padding:4px 3px;text-align:center;border-bottom:1px solid #f8fafc}
+            .pln-matriz td.c-est{text-align:left;font-weight:600;white-space:nowrap;padding:7px 8px 7px 18px;position:relative}
+            .pln-matriz td.c-est::before{content:'';position:absolute;left:8px;top:0;bottom:0;width:2px;background:#e8edf5}
+            .pln-matriz tbody tr:first-child td.c-est::before{top:50%}
+            .pln-matriz tbody tr:last-child td.c-est::before{bottom:50%}
+            .pln-matriz td.c-est .dot{position:absolute;left:4.5px;top:50%;transform:translateY(-50%);width:9px;height:9px;border-radius:50%;background:#fff;border:2px solid #cbd5e1;z-index:1}
+            .pln-matriz tr.hot td.c-est .dot{border-color:#f59e0b;background:#f59e0b}
+            .pln-matriz td.c-est .cap{color:#8494a8;font-size:9px;font-weight:500;margin-left:2px}
+            .pln-matriz td.hoy{background:#f8fafc}
+            .pln-tile{border-radius:7px;padding:7px 4px;font-size:11px;font-weight:700;cursor:default}
+            .pln-tile.z{background:#f8fafc;color:#cbd5e1}
+            .pln-tile.t1{background:#dcfce7;color:#15803d}
+            .pln-tile.t2{background:#fef9c3;color:#854d0e}
+            .pln-tile.t3{background:#fed7aa;color:#9a3412}
+            .pln-tile.t4{background:#fecaca;color:#b91c1c}
+            .pln-tile.t5{background:#fca5a5;color:#7f1d1d}
+            .pln-tile .pc{display:block;font-size:8.5px;font-weight:600;opacity:.75}
+            .pln-matriz td.tope{font-size:11px;font-weight:800;padding:7px 8px}
+            .pln-matriz td.tope .sub2{display:block;font-size:8.5px;color:#8494a8;font-weight:500}
+            .pln-matriz tfoot td{border-top:2px solid #e4e9f0;padding:8px;text-align:center;font-size:10px;font-weight:700;color:#334155}
+            .pln-matriz tfoot td .sub2{font-weight:500;color:#94a3b8;margin-left:2px}
+            .pln-matriz tfoot td.c-est{text-align:left;font-size:9px;letter-spacing:.8px;text-transform:uppercase;color:#8494a8;padding-left:18px}
             .pln-cb{font-size:10px;font-weight:700;padding:1px 5px;border-radius:3px;background:#fee2e2;color:#dc2626;cursor:help}
+            .pln-unit{display:flex;border:1px solid #e4e9f0;border-radius:9px;overflow:hidden}
+            .pln-unit button{border:0;background:#fff;color:#8494a8;font-size:11px;font-weight:700;padding:6px 14px;cursor:pointer}
+            .pln-unit button.on{background:#1e40af;color:#fff}
 
             .pln-ok{background:#dcfce7;border:1px solid #bbf7d0;border-radius:9px;padding:11px 14px;font-size:13px;color:#166534;display:flex;align-items:center;gap:8px}
             .pln-error{background:#fee2e2;border:1px solid #fecaca;border-radius:9px;padding:11px 14px;font-size:13px;color:#991b1b}
@@ -1219,8 +1287,9 @@ App.modules.planificacion = {
             @media(max-width:768px){
                 .pln-hero{padding:16px}
                 .pln-hero h2{font-size:15px}
-                .pln-kpis{grid-template-columns:1fr 1fr;gap:8px}
-                .pln-kpi .v{font-size:15px}
+                .pln-strip{gap:10px}
+                .pln-strip .st-sep{display:none}
+                .pln-strip .st-bar{min-width:100%;order:3}
                 .pln-tabs{width:100%}
                 .pln-tab{flex:1;text-align:center;padding:8px 6px}
                 .pln-p-head{flex-direction:column;align-items:flex-start}
