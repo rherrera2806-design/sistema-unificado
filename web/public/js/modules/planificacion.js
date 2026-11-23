@@ -136,7 +136,7 @@ App.modules.planificacion = {
                 <div class="pln-panel">
                     <div class="pln-p-head">
                         <h3>Carga por grupo</h3>
-                        <span class="sub">kg por día · línea roja = capacidad de producción · click en una barra → detalle</span>
+                        <span class="sub">kg por día · números dentro de las barras · borde rojo = el grupo se pasa de SU capacidad · click en una barra → detalle</span>
                         <div class="pln-nav">
                             <button class="pln-navbtn" onclick="App.modules.planificacion.cambiarChart(-1)">◀</button>
                             <span class="pln-rango" id="plnChartRango"></span>
@@ -853,8 +853,11 @@ App.modules.planificacion = {
         const colores = data.familias.map((fam, i) => {
             const hex = findColor(fam) || fallbackColors[i % fallbackColors.length];
             const r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16);
-            return { bg: `rgba(${r},${g},${b},0.85)`, border: `rgba(${r},${g},${b},1)` };
+            return { bg: `rgba(${r},${g},${b},0.85)`, sf: `rgba(${r},${g},${b},0.40)`, border: `rgba(${r},${g},${b},1)` };
         });
+        // Capacidad DIARIA de cada grupo (Configuración → Grupos): con ella se
+        // marca el borde rojo cuando un grupo se pasa de SU capacidad.
+        const capFams = data.familias.map(fam => this._capGrupo(fam));
 
         // Columna extra "Sin fecha": trabajo abierto que nunca recibe fecha en
         // sus pasos (p.ej. órdenes EN_PROCESO trabajadas desde Bitácora). Sin
@@ -874,13 +877,26 @@ App.modules.planificacion = {
 
         const labels = fechasConData.map(f => this._fechaCorta(f));
         if (sinFecha) labels.push('Sin fecha' + (sinFechaOrd > 0 ? ' (' + sinFechaOrd + ')' : ''));
+        const esSF = (idx) => sinFecha && idx === fechasConData.length;
         const datasets = data.familias.map((fam, i) => ({
             label: fam,
             data: fechasConData.map(f => data.datos[fam][f] || 0)
                 .concat(sinFecha ? [Number(sinFecha.datos[fam]) || 0] : []),
-            backgroundColor: colores[i % colores.length].bg,
-            borderColor: colores[i % colores.length].border,
-            borderWidth: 1,
+            // "Sin fecha" se pinta translúcido: no es un día real
+            backgroundColor: (ctx) => (ctx.dataIndex == null || esSF(ctx.dataIndex))
+                ? colores[i % colores.length].sf : colores[i % colores.length].bg,
+            // BORDE ROJO cuando el grupo se pasa de SU capacidad ese día
+            borderColor: (ctx) => {
+                if (ctx.dataIndex == null) return colores[i % colores.length].border;
+                const v = Number(ctx.dataset.data[ctx.dataIndex]) || 0;
+                return (!esSF(ctx.dataIndex) && capFams[i] > 0 && v > capFams[i])
+                    ? '#dc2626' : colores[i % colores.length].border;
+            },
+            borderWidth: (ctx) => {
+                if (ctx.dataIndex == null) return 1;
+                const v = Number(ctx.dataset.data[ctx.dataIndex]) || 0;
+                return (!esSF(ctx.dataIndex) && capFams[i] > 0 && v > capFams[i]) ? 2.5 : 1;
+            },
             borderRadius: 2
         }));
 
@@ -910,6 +926,13 @@ App.modules.planificacion = {
         const totalFechado = totalesDia.reduce((a, b) => a + b, 0);
         if (sinFecha) totalesDia.push(sinFechaKg);
         const totalPeriodo = totalFechado + sinFechaKg;
+        // Color de calor del total del día (misma escala del tablero de estaciones)
+        const totColors = totalesDia.map((t, i) => {
+            if (sinFecha && i === totalesDia.length - 1) return '#b45309';
+            const capD = capacidades[i] || capacidadPromedio;
+            const p = capD > 0 ? Math.round((t / capD) * 100) : 0;
+            return p >= 90 ? '#7f1d1d' : p >= 75 ? '#9a3412' : p >= 50 ? '#854d0e' : '#15803d';
+        });
         const totalesPlugin = {
             id: 'totalesBarras',
             afterDatasetsDraw(chart) {
@@ -917,7 +940,6 @@ App.modules.planificacion = {
                 if (!scales || !scales.x || !scales.y) return;
                 ctx.save();
                 ctx.font = 'bold 11px sans-serif';
-                ctx.fillStyle = '#0f172a';
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'bottom';
                 totalesDia.forEach((t, i) => {
@@ -925,6 +947,7 @@ App.modules.planificacion = {
                     try {
                         const xPos = scales.x.getPixelForValue(i);
                         const yPos = scales.y.getPixelForValue(t) - 4;
+                        ctx.fillStyle = totColors[i] || '#0f172a';
                         ctx.fillText(fmtT(t), xPos, yPos);
                     } catch (e) { }
                 });
@@ -933,9 +956,21 @@ App.modules.planificacion = {
         };
 
         if (legend) {
-            legend.innerHTML = '<div class="ttl">Grupos</div>' + data.familias.map((fam, i) =>
-                '<span class="lg"><span class="dot" style="background:' + colores[i % colores.length].bg + '"></span>' + escText(fam) + '</span>'
-            ).join('');
+            // Chips por grupo: total del período + % de SU capacidad diaria,
+            // repartido en los días que se indiquen en el campo.
+            const N = Math.max(1, Math.min(60, Number(this.chartDiasReparto) || 10));
+            legend.innerHTML = '<div class="ttl">Grupos · período</div>'
+                + '<div class="reparto">repartir en <input type="number" min="1" max="60" value="' + N + '" onchange="App.modules.planificacion.setDiasReparto(this.value)"> días</div>'
+                + data.familias.map((fam, i) => {
+                    const tot = fechasConData.reduce((s, f) => s + (Number(data.datos[fam][f]) || 0), 0)
+                        + (sinFecha ? (Number(sinFecha.datos[fam]) || 0) : 0);
+                    const p = capFams[i] > 0 ? Math.round((tot / N / capFams[i]) * 100) : 0;
+                    const bg = p >= 90 ? '#fee2e2' : p >= 75 ? '#fed7aa' : p >= 50 ? '#fef9c3' : '#dcfce7';
+                    const fg = p >= 90 ? '#7f1d1d' : p >= 75 ? '#9a3412' : p >= 50 ? '#854d0e' : '#15803d';
+                    return '<div class="lgc"><span class="dot" style="background:' + colores[i % colores.length].border + '"></span>'
+                        + '<div class="nm">' + escText(fam) + '<small>' + this._fmt(tot, 0) + ' kg en ' + N + ' días</small></div>'
+                        + '<span class="pc" style="background:' + bg + ';color:' + fg + '">' + p + '%</span></div>';
+                }).join('');
         }
         if (capProm) {
             capProm.innerHTML = 'Capacidad promedio de producción: <strong>' + this._fmt(capacidadPromedio, 0) + ' kg/día</strong>'
@@ -994,7 +1029,11 @@ App.modules.planificacion = {
                     x: {
                         stacked: true,
                         grid: { color: 'rgba(148,163,184,0.15)' },
-                        ticks: { font: { size: 11 } }
+                        ticks: {
+                            font: { size: 11 },
+                            // "Sin fecha" en ámbar: no es un día real del período
+                            color: (ctx) => (sinFecha && ctx.index === labels.length - 1) ? '#b45309' : '#475569'
+                        }
                     },
                     y: {
                         stacked: true,
@@ -1009,6 +1048,27 @@ App.modules.planificacion = {
                 }
             }
         });
+    },
+
+    // Capacidad DIARIA de un grupo (Configuración → Grupos), con el mismo
+    // matching tolerante que usan los colores del gráfico.
+    _capGrupo(fam) {
+        const f = String(fam || '').trim().toLowerCase();
+        let g = this.capacidadGrupo.find(x => String(x.grupo || '').trim().toLowerCase() === f);
+        if (!g) {
+            g = this.capacidadGrupo.find(x => {
+                const k = String(x.grupo || '').trim().toLowerCase();
+                return k && (f.startsWith(k) || k.startsWith(f) || f.includes(k) || k.includes(f));
+            });
+        }
+        return Number(g && g.capacidad_kg_dia) || 0;
+    },
+
+    // Días para repartir el total del período en los chips de grupos: al
+    // cambiarlo se recalculan los % de capacidad diaria al toque.
+    setDiasReparto(v) {
+        this.chartDiasReparto = Math.max(1, Math.min(60, Number(v) || 10));
+        this.renderChart();
     },
 
     // ---------------- Carga por Estaciones (rango propio) ----------------
@@ -1221,10 +1281,16 @@ App.modules.planificacion = {
             .pln-hint-danger{font-size:11px;color:#dc2626;font-weight:600}
 
             .pln-chart-row{display:flex;gap:16px;align-items:stretch}
-            .pln-legend{display:flex;flex-direction:column;gap:6px;font-size:11px;color:#475569;min-width:130px}
+            .pln-legend{display:flex;flex-direction:column;gap:6px;font-size:11px;color:#475569;width:222px;flex-shrink:0}
             .pln-legend .ttl{font-size:10px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:#8494a8;margin-bottom:2px}
             .pln-legend .lg{display:flex;align-items:center;gap:6px}
             .pln-legend .dot{width:10px;height:10px;border-radius:50%;display:inline-block}
+            .pln-legend .reparto{font-size:10px;color:#8494a8;margin:2px 0 4px;line-height:1.9}
+            .pln-legend .reparto input{width:56px;padding:3px 6px;border:1px solid #e4e9f0;border-radius:6px;font-size:11px;font-weight:700;color:#0f172a}
+            .pln-legend .lgc{display:flex;align-items:center;gap:8px;border:1px solid #e4e9f0;border-radius:10px;padding:7px 10px}
+            .pln-legend .lgc .nm{flex:1;font-size:11px;font-weight:700;color:#0f172a;min-width:0}
+            .pln-legend .lgc .nm small{display:block;font-size:8.5px;color:#8494a8;font-weight:500}
+            .pln-legend .lgc .pc{font-size:10px;font-weight:800;padding:2px 8px;border-radius:12px;white-space:nowrap}
             .pln-chart-box{position:relative;height:320px;flex:1;min-width:0}
             .pln-capinfo{font-size:11px;color:#8494a8;margin-top:10px}
             .pln-capinfo strong{color:#334155}
