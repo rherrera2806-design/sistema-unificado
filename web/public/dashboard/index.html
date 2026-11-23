@@ -45,13 +45,13 @@
         @keyframes pulso { 0%, 100% { opacity: 1 } 50% { opacity: .3 } }
 
         /* ===== KPIs ===== */
-        .kpis { display: grid; grid-template-columns: repeat(6, 1fr); gap: 13px; padding: 6px 30px 15px; }
+        .kpis { display: grid; grid-template-columns: repeat(9, 1fr); gap: 13px; padding: 6px 30px 15px; }
         .kpi {
             background: var(--panel); border: 1px solid var(--border); border-radius: 18px;
             padding: 17px 22px;
         }
         .kpi .l { font-size: 12.5px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
-        .kpi .v { font-size: 44px; font-weight: 800; line-height: 1.15; font-variant-numeric: tabular-nums; }
+        .kpi .v { font-size: 36px; font-weight: 800; line-height: 1.15; font-variant-numeric: tabular-nums; }
         .kpi .u { font-size: 15px; color: var(--muted); font-weight: 600; }
 
         /* ===== Cuerpo ===== */
@@ -170,6 +170,9 @@
         <div class="kpi"><div class="l">Pasos terminados hoy</div><div class="v" id="kPasos">0</div></div>
         <div class="kpi"><div class="l">Unidades producidas</div><div class="v" id="kUnid">0</div></div>
         <div class="kpi"><div class="l">M² producidos</div><div class="v" id="kM2">0,00</div><div class="u">metros cuadrados</div></div>
+        <div class="kpi"><div class="l">Kg producidos</div><div class="v" id="kKg">0</div><div class="u">kilos del día</div></div>
+        <div class="kpi"><div class="l">M² por producir</div><div class="v" id="kM2Pend">0,00</div><div class="u">metros cuadrados en cola</div></div>
+        <div class="kpi"><div class="l">Kg por producir</div><div class="v" id="kKgPend">0</div><div class="u">kilos en cola</div></div>
         <div class="kpi"><div class="l" id="kColaLabel">Programa de hoy</div><div class="v" id="kCola">0</div><div class="u" id="kColaUnid">trabajos del día</div></div>
         <div class="kpi"><div class="l" id="kOrdLabel">Órdenes</div><div class="v" id="kOrd">0</div><div class="u" id="kOrdUnid">con trabajo pendiente</div></div>
         <div class="kpi"><div class="l">Cumplimiento</div><div class="v" id="kCump">—</div><div class="u" id="kCumpUnid">rígidos en su ventana (30 días)</div></div>
@@ -273,10 +276,14 @@
                     ? { pend: Number(e.venc_pendientes || 0), kg: Number(e.venc_kilos || 0), ord: Number(e.venc_ordenes || 0) }
                     : { pend: Number(e.total_unidades_pend || 0), kg: Number(e.total_kilos_pend || 0), ord: Number(e.total_ordenes || 0) };
 
-            const rh = d.resumen_hoy || { pasos: 0, unidades: 0, m2: 0 };
+            const rh = d.resumen_hoy || { pasos: 0, unidades: 0, m2: 0, kg: 0 };
+            const pp = d.por_producir || { m2: 0, kg: 0 };
             document.getElementById('kPasos').textContent = fmt(rh.pasos);
             document.getElementById('kUnid').textContent = fmt(rh.unidades);
             document.getElementById('kM2').textContent = fmt(rh.m2, 2);
+            document.getElementById('kKg').textContent = fmt(rh.kg);
+            document.getElementById('kM2Pend').textContent = fmt(pp.m2, 2);
+            document.getElementById('kKgPend').textContent = fmt(pp.kg);
             const cargaVista = ests.reduce((a, e) => a + de(e).pend, 0);
             const ordVista = ({ hoy: (d.ordenes || {}).hoy, vencido: (d.ordenes || {}).vencido, total: (d.ordenes || {}).total })[vista] || 0;
             document.getElementById('kCola').textContent = fmt(cargaVista);

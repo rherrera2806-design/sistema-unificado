@@ -756,17 +756,19 @@ async function getTurnoActual() {
 // y los trabajos urgentes/express/reposición en cola.
 
 async function getDashboard() {
-    const [estaciones, resumen, urgencias, enProceso, hoyPorEstacion, incumplidas, ordenesGlobales, produccion] = await Promise.all([
+    const [estaciones, resumen, urgencias, enProceso, hoyPorEstacion, incumplidas, ordenesGlobales, produccion, porProducir] = await Promise.all([
         getEstacionesConCarga(),
         query(`
             SELECT COUNT(*)::int as pasos,
-                   COALESCE(SUM(cantidad_real), 0)::int as unidades,
-                   COALESCE(SUM(m2_real), 0)::numeric as m2
-            FROM cola_produccion_pasos
-            WHERE estado = 'TERMINADO'
+                   COALESCE(SUM(p.cantidad_real), 0)::int as unidades,
+                   COALESCE(SUM(p.m2_real), 0)::numeric as m2,
+                   COALESCE(SUM(o.kilos * p.cantidad_real / NULLIF(o.cantidad, 0)), 0)::numeric as kg
+            FROM cola_produccion_pasos p
+            JOIN produccion_ordenes o ON o.id = p.orden_produccion_id
+            WHERE p.estado = 'TERMINADO'
               -- REGLA: todo se mide POR DÍA (2 turnos por día calendario); el
               -- turno nocturno se acredita al día en que termina (fecha_turno)
-              AND COALESCE(fecha_turno, hora_fin::date) = (NOW() AT TIME ZONE 'America/Santiago')::date
+              AND COALESCE(p.fecha_turno, p.hora_fin::date) = (NOW() AT TIME ZONE 'America/Santiago')::date
         `),
         query(`
             SELECT * FROM (
@@ -888,7 +890,18 @@ async function getDashboard() {
                 GROUP BY p.estacion_id
             `, [String(turnoActual).toLowerCase()]);
             return { turnoActual, rows: prod.rows };
-        })()
+        })(),
+        // POR PRODUCIR: m² y kg de las órdenes abiertas con trabajo pendiente,
+        // contadas UNA vez por orden (misma regla "1er paso" que los reportes).
+        query(`
+            SELECT COALESCE(SUM(o.metros_cuadrados), 0)::numeric as m2,
+                   COALESCE(SUM(o.kilos), 0)::numeric as kg
+            FROM produccion_ordenes o
+            WHERE o.estado_programacion NOT IN ('TERMINADO','CERRADO','MERMADO')
+              AND EXISTS (SELECT 1 FROM cola_produccion_pasos p
+                          WHERE p.orden_produccion_id = o.id
+                            AND p.estado NOT IN ('TERMINADO','MERMADO'))
+        `)
     ]);
     const prodMap = new Map((produccion.rows || []).map(r => [Number(r.estacion_id), r]));
     const hoyMap = new Map(hoyPorEstacion.rows.map(r => [Number(r.estacion_id), r]));
@@ -961,7 +974,8 @@ async function getDashboard() {
                 por_vencer: filas.filter(r => !r.vencida).map(arma)
             };
         })(),
-        resumen_hoy: resumen.rows[0] || { pasos: 0, unidades: 0, m2: 0 },
+        resumen_hoy: resumen.rows[0] || { pasos: 0, unidades: 0, m2: 0, kg: 0 },
+        por_producir: porProducir.rows[0] || { m2: 0, kg: 0 },
         urgencias: urgencias.rows,
         en_proceso: enProceso.rows,
         ts: Date.now()
