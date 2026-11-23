@@ -1040,30 +1040,44 @@ async function _crearParteB(o, split) {
 
 /** Sincroniza rutas con la receta actual (solo órdenes sin trabajar). */
 async function _sincronizarRutas() {
-    const recMap = {};
+    // Ruta por PIEZA (id de recetas_bom) y por código como respaldo. Cuando un
+    // compuesto tiene piezas con rutas distintas (729 → Corte, 819 → Corte
+    // Laminado), cada orden debe usar la ruta de SU fila de receta — no la de
+    // "lo que sea que haya quedado primero" para el código.
+    const recMapPieza = {};   // recetas_bom.id -> procesos
+    const recMap = {};        // codigo_sap_padre -> procesos (última fila = más nueva)
     for (const tabla of ['recetas_bom', 'produccion_recetas_bom']) {
         try {
-            const rr = await query(`SELECT codigo_sap_padre, procesos_especificos_json FROM ${tabla} WHERE procesos_especificos_json IS NOT NULL`);
+            const rr = await query(`SELECT id, codigo_sap_padre, procesos_especificos_json FROM ${tabla} WHERE procesos_especificos_json IS NOT NULL ORDER BY id`);
             for (const r of rr.rows) {
                 const k = String(r.codigo_sap_padre || '').trim().toLowerCase();
-                if (k && !recMap[k]) recMap[k] = r.procesos_especificos_json;
+                if (!k) continue;
+                if (tabla === 'recetas_bom') {
+                    recMapPieza[r.id] = r.procesos_especificos_json;
+                    recMap[k] = r.procesos_especificos_json;   // la última (más nueva) manda
+                } else if (!recMap[k]) {
+                    recMap[k] = r.procesos_especificos_json;   // legacy solo si no hay en la nueva
+                }
             }
         } catch (_) { }
     }
     const candRes = await query(`
-        SELECT o.id, COALESCE(o.codigo_padre, o.codigo_producto) as codigo
+        SELECT o.id, o.bom_padre_id, COALESCE(o.codigo_padre, o.codigo_producto) as codigo
         FROM produccion_ordenes o
         WHERE o.estado_programacion NOT IN ('EN_PROCESO','TERMINADO','MERMADO','CERRADO')`);
     let rutas = 0;
     for (const o of candRes.rows) {
-        const ruta = recMap[String(o.codigo || '').trim().toLowerCase()];
+        const ruta = (o.bom_padre_id && recMapPieza[o.bom_padre_id]) || recMap[String(o.codigo || '').trim().toLowerCase()];
         if (!Array.isArray(ruta) || !ruta.length) continue;
         const ids = ruta.map(x => Number(typeof x === 'object' ? (x.estacion_id || x.id) : x)).filter(Boolean);
         if (!ids.length) continue;
         const act = await query('SELECT estacion_id, estado, hora_inicio, hora_fin FROM cola_produccion_pasos WHERE orden_produccion_id = $1 ORDER BY orden_secuencia', [o.id]);
         if (act.rows.some(p => p.estado !== 'PENDIENTE' || p.hora_inicio || p.hora_fin)) continue;
         const actuales = act.rows.map(p => Number(p.estacion_id));
-        if (ids.every(id => actuales.includes(id))) continue;   // ya contemplada
+        // Solo se salta si la ruta coincide EXACTA (misma secuencia). Antes se
+        // saltaba si la receta "cabía" dentro de la ruta vieja y las estaciones
+        // de más (p.ej. un Corte Laminado indebido) quedaban pegadas para siempre.
+        if (ids.length === actuales.length && ids.every((id, i) => id === actuales[i])) continue;
         await query(`DELETE FROM cola_produccion_pasos WHERE orden_produccion_id = $1 AND estado = 'PENDIENTE' AND hora_inicio IS NULL AND hora_fin IS NULL`, [o.id]);
         for (let i = 0; i < ids.length; i++) {
             await query(`INSERT INTO cola_produccion_pasos (orden_produccion_id, estacion_id, orden_secuencia, estado) VALUES ($1,$2,$3,'PENDIENTE')`, [o.id, ids[i], i + 1]);

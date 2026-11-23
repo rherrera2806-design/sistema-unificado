@@ -367,9 +367,11 @@ const getExportarCorte = async () => {
                  FROM recetas_bom rb,
                       jsonb_array_elements(rb.procesos_especificos_json) WITH ORDINALITY AS u(est_id, ord)
                  JOIN estaciones_maestras em ON em.id = (u.est_id)::text::int
-                 WHERE rb.id = (SELECT MIN(rb2.id) FROM recetas_bom rb2
-                                WHERE LOWER(TRIM(rb2.codigo_sap_padre)) = LOWER(TRIM(COALESCE(o.codigo_padre, o.codigo_producto)))
-                                  AND rb2.procesos_especificos_json IS NOT NULL)),
+                 WHERE rb.id = COALESCE((SELECT rb3.id FROM recetas_bom rb3
+                                         WHERE rb3.id = o.bom_padre_id AND rb3.procesos_especificos_json IS NOT NULL),
+                                        (SELECT MAX(rb2.id) FROM recetas_bom rb2
+                                         WHERE LOWER(TRIM(rb2.codigo_sap_padre)) = LOWER(TRIM(COALESCE(o.codigo_padre, o.codigo_producto)))
+                                           AND rb2.procesos_especificos_json IS NOT NULL))),
                 (SELECT string_agg(COALESCE(NULLIF(UPPER(TRIM(em.letra)), ''), UPPER(SUBSTRING(em.nombre_estacion, 1, 1))), '-' ORDER BY em.orden_secuencia_defecto)
                  FROM familia_estaciones_base feb
                  JOIN estaciones_maestras em ON feb.estacion_id = em.id

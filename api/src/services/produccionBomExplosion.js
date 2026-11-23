@@ -1,5 +1,17 @@
 const { query } = require('../config/database');
 
+// Extrae los ids de estación de procesos_especificos_json (array de números,
+// array de objetos {estacion_id} o string JSON). null si no define ruta.
+const _idsProcesos = (raw) => {
+    try {
+        const arr = typeof raw === 'string' ? JSON.parse(raw) : raw;
+        if (!Array.isArray(arr)) return null;
+        const ids = arr.map(x => Number(typeof x === 'object' ? (x.estacion_id || x.id) : x))
+            .filter(n => Number.isFinite(n) && n > 0);
+        return ids.length ? ids : null;
+    } catch (_) { return null; }
+};
+
 const buildReglasExtras = (r) => {
     const flags = [];
     if (r.radio) flags.push('Radio');
@@ -56,8 +68,15 @@ const explosionBOM = async (r, recetaBomMap, materiaPrimaMap, materiasPrimas, fa
              JSON.stringify(reglasExtras), espesorMM, Number(r.nivel_prioridad) || 1]
         );
         const ordenId = result.rows[0].id;
-        for (let s = 0; s < estacionesFinales.length; s++) {
-            const estacionId = ordenToEstacionId ? (ordenToEstacionId[estacionesFinales[s]] || estacionesFinales[s]) : estacionesFinales[s];
+        // RUTA POR PIEZA: si la fila del BOM define sus propios procesos, manda
+        // ELLA — cada pieza de un compuesto puede tener ruta distinta (ej: la
+        // pieza 729 corta en Corte y la 819 laminada en Corte Laminado). Antes
+        // todas las piezas heredaban la ruta calculada por CÓDIGO y quedaban
+        // "pegadas" a la ruta de otra pieza. Solo si la pieza no define ruta,
+        // se cae a la calculada por código/familia.
+        const rutaPieza = _idsProcesos(comp.procesos_especificos_json) || estacionesFinales;
+        for (let s = 0; s < rutaPieza.length; s++) {
+            const estacionId = ordenToEstacionId ? (ordenToEstacionId[rutaPieza[s]] || rutaPieza[s]) : rutaPieza[s];
             if (!estacionId) continue;
             await query("INSERT INTO cola_produccion_pasos (orden_produccion_id, estacion_id, orden_secuencia, estado) VALUES ($1, $2, $3, 'PENDIENTE')",
                 [ordenId, estacionId, s + 1]);
