@@ -336,8 +336,9 @@ function _buildAvance(ordenIds, pasosMap, letraDe = _letraEstacion) {
 // de procesos como iniciales (C-M-F-T), para el Excel de corte de planta.
 // FILTRO: solo órdenes cuyo primer paso de corte (Corte, Corte Laminado, …)
 // siga PENDIENTE — lo ya cortado se cae de la lista sola.
-// ORDEN: por la fecha y el turno del paso de corte (T1 noche antes que T2 día,
-// igual que 'Prog. por Estación'), luego pedido/item. Sin fecha = al final.
+// ORDEN DE LA INFO (filas): fecha de corte → turno (T1 noche antes que T2 día)
+// → mprima1 → mprima2 → prioridad (Reposición, Express, Urgencia, Normal) →
+// OV → item. Sin fecha de corte = al final.
 const getExportarCorte = async () => {
     const result = await query(`
         SELECT
@@ -350,6 +351,8 @@ const getExportarCorte = async () => {
             o.item_numero AS item,
             o.pedido_sap_id AS ov,
             o.fecha_entrega_pactada::text AS f_termino,
+            corte.fecha_programada::text AS corte_fecha,
+            corte.turno AS corte_turno,
             COALESCE(o.codigo_padre, o.codigo_producto) AS id_sap,
             o.cliente,
             COALESCE(cod.descripcion, o.descripcion, '') AS detalle_sap,
@@ -403,6 +406,9 @@ const getExportarCorte = async () => {
         ORDER BY (corte.fecha_programada IS NULL),
                  corte.fecha_programada,
                  CASE corte.turno WHEN 'noche' THEN 0 WHEN 'dia' THEN 1 ELSE 2 END,
+                 LOWER(COALESCE(mp1.codigo_mp, '')),
+                 LOWER(COALESCE(mp2.codigo_mp, '')),
+                 CASE COALESCE(o.nivel_prioridad, 1) WHEN 4 THEN 0 WHEN 2 THEN 1 WHEN 3 THEN 2 ELSE 3 END,
                  o.pedido_sap_id, o.item_numero
     `);
     return result.rows;

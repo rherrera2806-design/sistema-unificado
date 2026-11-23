@@ -27,9 +27,12 @@ router.get('/api/produccion/exportar-corte', canView, async (req, res, next) => 
             const p = (x) => String(x).padStart(2, '0');
             return p(d.getDate()) + '/' + p(d.getMonth() + 1) + '/' + d.getFullYear();
         };
-        const header = ['Fabric', 'mprima1', 'mprima2', 'Ancho', 'Alto', 'Prioridad2', 'Item', 'OV',
+        // Columnas nuevas al COMIENSO para identificación rápida: Fecha corte y
+        // Turno. El resto conserva el orden exacto de Optiway 8.
+        const header = ['Fecha corte', 'Turno', 'Fabric', 'mprima1', 'mprima2', 'Ancho', 'Alto', 'Prioridad2', 'Item', 'OV',
             'FTermino', 'IdSap', 'Cliente', 'Detalle_Sap', 'Ruta', 'OC', 'Procesos', '', 'Nota2', 'Nota8', 'Nota9'];
         const f1 = (v) => Number(v || 0).toLocaleString('es-CL', { maximumFractionDigits: 1 });
+        const tLabel = (t) => t === 'noche' ? 'NOCHE' : (t === 'dia' ? 'DIA' : '');
         // Fecha con guiones para las notas (formato del archivo de ejemplo)
         const fGuion = (s) => { const t = fCorta(s); return t.split('/').join('-'); };
         const rows = filas.map((r) => {
@@ -45,6 +48,8 @@ router.get('/api/produccion/exportar-corte', canView, async (req, res, next) => 
             // Nota9: V4761|23-10-2026|111805-101|1.072 (al item se le antepone 10; M² con 3 decimales)
             const nota9 = `${r.id_sap || ''}|${fGuion(r.f_termino)}|${r.ov || ''}-10${Number(r.item) || 0}|${m2u.toFixed(3)}`;
             return [
+                fCorta(r.corte_fecha),
+                tLabel(r.corte_turno),
                 Number(r.fabric) || 0,
                 r.mp1_codigo || '-',
                 r.mp2_codigo || '-',
@@ -67,7 +72,7 @@ router.get('/api/produccion/exportar-corte', canView, async (req, res, next) => 
             ];
         });
         const ws = XLSX.utils.aoa_to_sheet([header, ...rows]);
-        ws['!cols'] = [8, 9, 9, 8, 8, 11, 6, 9, 11, 9, 16, 22, 10, 8, 12, 30, 11, 22, 30].map((w) => ({ wch: w }));
+        ws['!cols'] = [11, 7, 8, 9, 9, 8, 8, 11, 6, 9, 11, 9, 16, 22, 10, 8, 12, 30, 11, 22, 30].map((w) => ({ wch: w }));
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, 'Lista de Corte');
         const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xls' });
