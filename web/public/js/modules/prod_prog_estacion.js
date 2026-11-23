@@ -238,12 +238,13 @@ App.registerModule('prod_prog_estacion', {
                             }
                             const grp = { padre: f.p, hijos: f.hijos };
                             const p = grp.padre;
+                            const codMpGrupo = grp.hijos.map(h => String(h.codigo || '').trim()).filter(Boolean).join(' + ');
                             html += `<tr style="border-bottom:2px solid #e2e8f0">`;
                             html += `<td><strong>${this.esc(p.pedido || '-')}</strong></td>`;
                             html += `<td>${this.esc(p.item || '-')}</td>`;
                             html += `<td>${this._prioBadge(p.prioridad)}</td>`;
-                            html += `<td><strong style="color:#0369a1">${this.esc(p.codigo_ref)}</strong></td>`;
-                            html += `<td style="font-size:10px">${p.nombre_padre ? '<span style="color:#64748b">' + this.esc(p.nombre_padre) + '</span>' : ''}</td>`;
+                            html += `<td><strong style="color:#0369a1">${this.esc(p.codigo_ref)}</strong> <span style="font-size:10px;padding:1px 4px;border-radius:3px;background:#ede9fe;color:#7c3aed" title="Compuesto BOM — piezas según receta: ${escAttr(codMpGrupo || '-')}">BOM</span></td>`;
+                            html += `<td style="font-size:10px">${codMpGrupo ? '<strong style="color:#7c3aed">' + this.esc(codMpGrupo) + '</strong> · ' : ''}${p.nombre_padre ? '<span style="color:#64748b">' + this.esc(p.nombre_padre) + '</span>' : ''}</td>`;
                             html += `<td style="white-space:nowrap">${this._espesorFila(p) ? Number(this._espesorFila(p)).toLocaleString('es-CL',{maximumFractionDigits:2}) + ' mm' : '—'}</td>`;
                             html += `<td>${Number(p.ancho).toLocaleString('es-CL')}×${Number(p.alto).toLocaleString('es-CL')}</td>`;
                             const undTotal = grp.hijos[0] ? (Number(grp.hijos[0].cantidad) || 0) : 0;
@@ -453,7 +454,7 @@ App.registerModule('prod_prog_estacion', {
             </div>
             <div style="display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin-bottom:6px">
                 <strong style="color:#0369a1;font-size:11px">${this.esc(p.codigo_ref)}</strong>
-               
+                <span style="font-size:10px;padding:1px 4px;border-radius:3px;background:#ede9fe;color:#7c3aed">BOM</span>
                 ${p.nombre_padre ? '<span style="font-size:10px;color:#64748b">' + this.esc(p.nombre_padre) + '</span>' : ''}
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:11px;margin-bottom:4px">
