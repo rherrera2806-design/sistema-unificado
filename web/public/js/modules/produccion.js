@@ -51,7 +51,7 @@ App.registerModule('produccion', {
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
                         Precios SAP
                     </button>
-                    <button class="po-hbtn" onclick="window.open('/api/produccion/exportar-corte','_blank')" title="Exporta las órdenes ingresadas y programadas para corte (lista de corte en Excel)">
+                    <button class="po-hbtn" onclick="window.open('/api/produccion/exportar-corte','_blank')" title="Exporta SOLO lo pendiente por cortar, ordenado por día y turno del paso de corte (lista de corte en Excel para Optiway)">
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                         Exportar corte
                     </button>

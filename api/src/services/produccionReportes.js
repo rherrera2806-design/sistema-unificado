@@ -331,9 +331,13 @@ function _buildAvance(ordenIds, pasosMap, letraDe = _letraEstacion) {
         }));
 }
 
-// ===== Lista de corte: órdenes ingresadas y programadas para corte =====
+// ===== Lista de corte: SOLO lo pendiente por cortar, ordenado por día/turno =====
 // Cada línea trae sus materias primas (hasta 2, del BOM del código) y la ruta
 // de procesos como iniciales (C-M-F-T), para el Excel de corte de planta.
+// FILTRO: solo órdenes cuyo primer paso de corte (Corte, Corte Laminado, …)
+// siga PENDIENTE — lo ya cortado se cae de la lista sola.
+// ORDEN: por la fecha y el turno del paso de corte (T1 noche antes que T2 día,
+// igual que 'Prog. por Estación'), luego pedido/item. Sin fecha = al final.
 const getExportarCorte = async () => {
     const result = await query(`
         SELECT
@@ -369,6 +373,18 @@ const getExportarCorte = async () => {
                  WHERE feb.familia_id = o.familia_id)
             ) AS procesos
         FROM produccion_ordenes o
+        JOIN LATERAL (
+            -- PRIMER paso de corte sin terminar de la orden: da el "solo lo
+            -- pendiente por cortar" y el dia/turno del ordenamiento.
+            SELECT cp.fecha_programada, cp.turno
+            FROM cola_produccion_pasos cp
+            JOIN estaciones_maestras em ON cp.estacion_id = em.id
+            WHERE cp.orden_produccion_id = o.id
+              AND LOWER(TRIM(em.nombre_estacion)) LIKE 'corte%'
+              AND cp.estado NOT IN ('TERMINADO', 'MERMADO')
+            ORDER BY cp.orden_secuencia
+            LIMIT 1
+        ) corte ON TRUE
         LEFT JOIN produccion_codigos cod
             ON LOWER(TRIM(cod.codigo)) = LOWER(TRIM(COALESCE(o.codigo_padre, o.codigo_producto)))
         LEFT JOIN LATERAL (
@@ -384,7 +400,10 @@ const getExportarCorte = async () => {
             ORDER BY rb.id LIMIT 1 OFFSET 1
         ) mp2 ON TRUE
         WHERE o.estado_programacion IN ('PENDIENTE', 'PROGRAMADO', 'EN_PROCESO')
-        ORDER BY LOWER(COALESCE(mp1.codigo_mp, '')), o.pedido_sap_id, o.item_numero
+        ORDER BY (corte.fecha_programada IS NULL),
+                 corte.fecha_programada,
+                 CASE corte.turno WHEN 'noche' THEN 0 WHEN 'dia' THEN 1 ELSE 2 END,
+                 o.pedido_sap_id, o.item_numero
     `);
     return result.rows;
 };
