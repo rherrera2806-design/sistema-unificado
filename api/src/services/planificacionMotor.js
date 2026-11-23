@@ -21,7 +21,12 @@
 //     el kg se cobraba por paso, inflando el consumo 2×-5×. La vista
 //     "Carga por Grupo" queda solo como REPORTE.
 //   · SPLIT: un pedido que no cabe en un turno de la estación más restrictiva
-//     se divide en 2 (A/B) SOLO si no tiene avance. Nunca se parte algo fabricado.
+//     se divide en 2 (A/B) SOLO si no tiene avance. Nunca se parte algo
+//     fabricado ni algo que esté EN máquina.
+//   · EN PROCESO (reflujo): la regla de oro protege el trabajo HECHO y el paso
+//     EN CURSO (anclado a HOY), pero los pasos FUTUROS de una orden EN PROCESO
+//     se re-fluyen con el plan nuevo — si la orden quedó atrasada, sus fechas
+//     viejas eran ficción. Su estado NUNCA se toca.
 //   · HERMANOS BOM: las partes de un mismo compuesto se agendan juntas (mismo
 //     día de Armado), porque el ensamblaje necesita todas las piezas.
 //   · Un paso por TURNO: los procesos se encadenan de un turno al siguiente
@@ -88,6 +93,7 @@ async function planificar({ modo = 'pendientes', fechaMinima, turnosHoy, dias = 
 
     // ═══ 2. MODO 'todo' — LIBERAR LO NO INICIADO ══════════════════════════
     // REGLA DE ORO: NUNCA se tocan EN_PROCESO, TERMINADO, MERMADO ni CERRADO.
+    // (EN_PROCESO no se libera, pero sus pasos FUTUROS se re-fluyen: sección 5.)
     // fecha_entrega_pactada NO se limpia: puede ser un pacto cargado a mano.
     let ordenesLiberadas = 0;
     let idsLiberadas = [];
@@ -131,6 +137,24 @@ async function planificar({ modo = 'pendientes', fechaMinima, turnosHoy, dias = 
               AND estado = 'PENDIENTE'
               AND hora_inicio IS NULL AND hora_fin IS NULL
         `, [idsLiberadas]);
+    }
+    // REFLUJO EN PROCESO: la regla de oro protege el trabajo HECHO y el paso
+    // EN CURSO, pero los pasos FUTUROS de una orden EN PROCESO también son
+    // plan: si la orden quedó atrasada, sus fechas viejas eran ficción. Se
+    // re-fluyen con el resto (abajo entran a la cola sin liberarlas) y aquí se
+    // limpian sus pasos intactos, igual que los liberados.
+    const enProcRes = await query(`
+        SELECT id FROM produccion_ordenes WHERE estado_programacion = 'EN_PROCESO'
+    `);
+    const idsEnProceso = enProcRes.rows.map(r => r.id);
+    if (idsEnProceso.length > 0) {
+        await query(`
+            UPDATE cola_produccion_pasos
+            SET fecha_programada = NULL, m2_asignados = 0
+            WHERE orden_produccion_id = ANY($1)
+              AND estado = 'PENDIENTE'
+              AND hora_inicio IS NULL AND hora_fin IS NULL
+        `, [idsEnProceso]);
     }
 
     // ═══ 6. DATOS BASE ════════════════════════════════════════════════════
@@ -211,6 +235,8 @@ async function planificar({ modo = 'pendientes', fechaMinima, turnosHoy, dias = 
     // liberación del paso 2 dejó así a todo lo no fabricado; en 'pendientes'
     // el plan existente ya está fechado y su carga se cargó arriba (sección 10)
     // para no doble-reservar.
+    // EN PROCESO también entra (SIN liberarla): conserva su avance y su paso
+    // en máquina (anclado a HOY), pero sus pasos FUTUROS se re-fluyen.
     const pendRes = await query(`
         SELECT o.*,
                COALESCE(NULLIF(o.grupo, ''), '(sin grupo)') as grupo_nombre,
@@ -218,7 +244,8 @@ async function planificar({ modo = 'pendientes', fechaMinima, turnosHoy, dias = 
                         (SELECT cc2.grupo FROM recetas_bom rb JOIN produccion_codigos cc2 ON cc2.codigo = rb.codigo_sap_padre WHERE rb.id = o.bom_padre_id),
                         (SELECT cc2.grupo FROM produccion_recetas_bom rb JOIN produccion_codigos cc2 ON cc2.codigo = rb.codigo_sap_padre WHERE rb.id = o.bom_padre_id)) as grupo_padre
         FROM produccion_ordenes o
-        WHERE o.estado_programacion = 'PENDIENTE' AND o.fecha_programada IS NULL
+        WHERE (o.estado_programacion = 'PENDIENTE' AND o.fecha_programada IS NULL)
+           OR o.estado_programacion = 'EN_PROCESO'
         ORDER BY CASE COALESCE(o.nivel_prioridad, 1) WHEN 4 THEN 1 WHEN 2 THEN 2 WHEN 3 THEN 3 ELSE 4 END ASC,
                  COALESCE(CAST(NULLIF(REGEXP_REPLACE(o.pedido_sap_id, '[^0-9]', '', 'g'), '') AS INTEGER), 999999) ASC,
                  o.item_numero ASC
@@ -229,7 +256,9 @@ async function planificar({ modo = 'pendientes', fechaMinima, turnosHoy, dias = 
         SELECT p.orden_produccion_id, p.id as paso_id, p.estacion_id, p.orden_secuencia,
                p.estado, p.m2_asignados, p.fecha_programada, p.turno
         FROM cola_produccion_pasos p
-        WHERE p.orden_produccion_id IN (SELECT id FROM produccion_ordenes WHERE estado_programacion = 'PENDIENTE' AND fecha_programada IS NULL)
+        WHERE p.orden_produccion_id IN (SELECT id FROM produccion_ordenes
+             WHERE (estado_programacion = 'PENDIENTE' AND fecha_programada IS NULL)
+                OR estado_programacion = 'EN_PROCESO')
         ORDER BY p.orden_produccion_id, p.orden_secuencia
     `);
     const pasosPorOrden = {};
@@ -375,6 +404,7 @@ async function planificar({ modo = 'pendientes', fechaMinima, turnosHoy, dias = 
             orden_id: o.id,
             pedido: o.pedido_sap_id,
             item: o.item_numero,
+            estado_programacion: o.estado_programacion,
             cliente: o.cliente,
             vendedor: o.vendedor,
             codigo_producto: o.codigo_producto,
@@ -421,6 +451,9 @@ async function planificar({ modo = 'pendientes', fechaMinima, turnosHoy, dias = 
             o.restriccion = false;
         }
         o.listo = true;
+        // Orden con trabajo EN MAQUINA ahora: sus pasos futuros se re-fluyen
+        // pero con ventaja dentro de su prioridad (terminar lo empezado primero).
+        o.enCurso = o.pasos.some(p => p.estado === 'EN_PROCESO' || p.estado === 'PAUSADO');
         o.tieneCuello = o.pasos.some(p => {
             const e = estMap[p.estacion_id];
             return e && e.esCuello && !esHecho(p.estado);
@@ -471,6 +504,7 @@ async function planificar({ modo = 'pendientes', fechaMinima, turnosHoy, dias = 
         const atB = esAtrasada(b) ? 0 : 1;
         return (atA - atB)
             || ((RANGO_PRIO[a.prioridad] ?? 3) - (RANGO_PRIO[b.prioridad] ?? 3))
+            || ((a.enCurso ? 0 : 1) - (b.enCurso ? 0 : 1))
             || ((a.listo ? 0 : 1) - (b.listo ? 0 : 1))
             || ((a.tocaConstraint ? 0 : 1) - (b.tocaConstraint ? 0 : 1))
             || String(a.fecha_pactada || '9999').localeCompare(String(b.fecha_pactada || '9999'));
@@ -482,6 +516,7 @@ async function planificar({ modo = 'pendientes', fechaMinima, turnosHoy, dias = 
     const alertas = [];
     const noAsignados = [];
     const splits = [];
+    let reflujoEnProceso = 0;
     let pasosFechados = 0;
     let pasosEnCurso = 0;
     let primeraFechaGlobal = null;
@@ -776,7 +811,13 @@ async function planificar({ modo = 'pendientes', fechaMinima, turnosHoy, dias = 
     // Registra una orden ya planificada: acumula los UPDATE de pasos y de la
     // orden (sin tocar el estado si la orden ya tenía trabajo hecho).
     function _registrarAsignacion(o, r) {
-        const esAvanzada = o.pasos.some(p => esHecho(p.estado));
+        // "Sin tocar estado" si la orden ya tiene vida propia: trabajo hecho,
+        // algo EN CURSO o un estado distinto de PENDIENTE (una EN_PROCESO
+        // jamás se degrada a PROGRAMADO al re-fluir sus pasos futuros).
+        const esAvanzada = o.pasos.some(p => esHecho(p.estado))
+            || o.pasos.some(p => p.estado === 'EN_PROCESO' || p.estado === 'PAUSADO')
+            || !!(o.estado_programacion && o.estado_programacion !== 'PENDIENTE');
+        if (o.estado_programacion === 'EN_PROCESO') reflujoEnProceso++;
         const pactadaAnterior = o.fecha_pactada;
         updatesOrdenes.push([r.fechaPrimera, r.fechaUltima, o.orden_id, esAvanzada]);
         for (const [pasoId, f] of Object.entries(r.estFechas)) {
@@ -851,6 +892,7 @@ async function planificar({ modo = 'pendientes', fechaMinima, turnosHoy, dias = 
         mensaje: mensaje
             + (rutasActualizadas ? ` · ${rutasActualizadas} rutas sincronizadas` : '')
             + (avanceCerrado ? ` · ${avanceCerrado} pasos cerrados por avance implícito` : '')
+            + (reflujoEnProceso ? ` · ${reflujoEnProceso} EN PROCESO con pasos futuros re-fluidos` : '')
             + (splits.length ? ` · ${splits.length} pedidos divididos` : '')
             + (noAsignados.length ? ` · ${noAsignados.length} sin cupo` : '')
             + (constraint ? ` · cuello real: ${constraint.nombre} (${constraint.ratio}× demanda/capacidad)` : '')
@@ -861,9 +903,10 @@ async function planificar({ modo = 'pendientes', fechaMinima, turnosHoy, dias = 
 // HELPERS PRIVADOS
 // ═══════════════════════════════════════════════════════════════════════════
 
-/** ¿La orden no tiene ningún paso trabajado? (condición para poder dividirla) */
+/** ¿La orden no tiene ningún paso trabajado NI en curso? (condición para poder
+ *  dividirla — NUNCA se parte algo que ya está en máquina o terminado). */
 function _sinAvance(o) {
-    return !o.pasos.some(p => esHecho(p.estado));
+    return !o.pasos.some(p => esHecho(p.estado) || p.estado === 'EN_PROCESO' || p.estado === 'PAUSADO');
 }
 
 /**
