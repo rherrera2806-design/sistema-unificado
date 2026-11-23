@@ -203,50 +203,53 @@ App.registerModule('prod_config', {
         const NOMBRES = { 4: '4 · Reposición', 2: '2 · Express', 3: '3 · Urgencia', 1: '1 · Normal' };
         const filas = reglas.map(r => `
             <tr>
-                <td style="padding:8px 10px;font-size:12px;font-weight:700">${escText(r.nombre)}</td>
-                <td style="padding:8px 10px;font-size:11px">${NOMBRES[r.nivel_prioridad] || r.nivel_prioridad}</td>
-                <td style="padding:8px 10px;font-size:11px">${r.grupo ? '🏷 ' + escText(r.grupo) : '<span style="color:#94a3b8">Todos</span>'}</td>
-                <td style="padding:8px 10px"><input type="number" min="0" max="60" value="${Number(r.dias) || 0}" id="pcVenDias${r.id}" style="width:70px;padding:5px 8px;border:1px solid #e4e9f0;border-radius:7px;font-size:12px"> <span style="font-size:11px;color:#64748b">días</span></td>
-                <td style="padding:8px 10px"><label style="font-size:11px;display:flex;align-items:center;gap:5px"><input type="checkbox" id="pcVenAct${r.id}" ${r.activa !== false ? 'checked' : ''}> activa</label></td>
-                <td style="padding:8px 10px;text-align:right;white-space:nowrap">
+                <td><strong>${escText(r.nombre)}</strong></td>
+                <td>${NOMBRES[r.nivel_prioridad] || r.nivel_prioridad}</td>
+                <td>${r.grupo ? '🏷 ' + escText(r.grupo) : '<span style="color:#94a3b8">Todos</span>'}</td>
+                <td><input type="number" min="0" max="60" value="${Number(r.dias) || 0}" id="pcVenDias${r.id}" style="width:70px;padding:5px 8px;border:1px solid #e4e9f0;border-radius:7px;font-size:12px"> <span style="font-size:11px;color:#64748b">días</span></td>
+                <td><label style="font-size:11px;display:flex;align-items:center;gap:5px"><input type="checkbox" id="pcVenAct${r.id}" ${r.activa !== false ? 'checked' : ''}> activa</label></td>
+                <td style="text-align:right;white-space:nowrap">
                     <button class="btn btn-primary" style="padding:4px 10px;font-size:11px" onclick="App.modules.prod_config.ventanasGuardar(${r.id})">Guardar</button>
                     <button class="btn btn-ghost" style="padding:4px 10px;font-size:11px;color:#dc2626" title="Eliminar regla (esa prioridad/grupo queda sin ventana)" onclick="App.modules.prod_config.ventanasEliminar(${r.id})">🗑</button>
                 </td>
             </tr>`).join('');
         container.innerHTML = `
-            <div class="pc-card" style="background:var(--glass);border:1px solid var(--glass-border);border-radius:var(--radius-lg);padding:20px;max-width:880px">
-                <h3 style="margin:0 0 6px;font-size:15px">Ventanas rígidas por prioridad</h3>
-                <p style="color:var(--text-light);font-size:12px;line-height:1.7;margin:0 0 16px">
-                    Días <strong>hábiles desde el ingreso</strong> que tiene cada prioridad para entrar al plan.
-                    Si un pedido no cabe dentro de su ventana <strong>NO se agenda</strong> y sale como
-                    "sin cupo en ventana". Una regla con <strong>grupo</strong> manda sobre la genérica de la
-                    misma prioridad (ej: Express de Carroceros). <strong>0 días = sin ventana rígida</strong>.
-                    Estos valores los toma el motor al programar.
-                </p>
-                <table style="width:100%;border-collapse:collapse">
-                    <thead><tr style="text-align:left;border-bottom:2px solid var(--glass-border)">
-                        <th style="padding:6px 10px;font-size:10px;color:#64748b">REGLA</th>
-                        <th style="padding:6px 10px;font-size:10px;color:#64748b">PRIORIDAD</th>
-                        <th style="padding:6px 10px;font-size:10px;color:#64748b">GRUPO</th>
-                        <th style="padding:6px 10px;font-size:10px;color:#64748b">DÍAS HÁBILES</th>
-                        <th style="padding:6px 10px;font-size:10px;color:#64748b">ESTADO</th>
-                        <th></th>
-                    </tr></thead>
-                    <tbody>${filas || '<tr><td colspan="6" style="padding:14px;color:#94a3b8;font-size:12px">Sin reglas configuradas</td></tr>'}</tbody>
-                </table>
-                <div style="margin-top:16px;border-top:1px solid var(--glass-border);padding-top:14px">
-                    <div style="font-size:11px;font-weight:700;color:#475569;margin-bottom:8px">➕ Nueva regla</div>
-                    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-                        <input id="pcVenNombre" placeholder="Nombre (ej: Express Laminado)" style="flex:1;min-width:180px;padding:6px 9px;border:1px solid #e4e9f0;border-radius:7px;font-size:12px">
-                        <select id="pcVenPrio" style="padding:6px 9px;border:1px solid #e4e9f0;border-radius:7px;font-size:12px">
-                            <option value="4">4 · Reposición</option>
-                            <option value="2" selected>2 · Express</option>
-                            <option value="3">3 · Urgencia</option>
-                            <option value="1">1 · Normal</option>
-                        </select>
-                        <input id="pcVenGrupo" placeholder="Grupo (vacío = todos)" style="width:170px;padding:6px 9px;border:1px solid #e4e9f0;border-radius:7px;font-size:12px">
-                        <input id="pcVenDiasNuevo" type="number" min="0" max="60" value="3" style="width:80px;padding:6px 9px;border:1px solid #e4e9f0;border-radius:7px;font-size:12px">
-                        <button class="btn btn-primary" onclick="App.modules.prod_config.ventanasCrear()">Agregar</button>
+            <div class="m-page">
+                <div class="m-hero" style="padding:10px 14px">
+                    <div style="position:relative;z-index:1">
+                        <h2 style="margin:0;font-size:15px;font-weight:800;color:white">Ventanas rígidas por prioridad</h2>
+                        <p style="margin:2px 0 0;font-size:10px;color:rgba(255,255,255,0.7)">Días hábiles desde el ingreso que tiene cada prioridad para entrar al plan · 0 días = sin ventana</p>
+                    </div>
+                </div>
+                <div class="m-card">
+                    <div class="m-card-header">
+                        <h3 style="margin:0;font-size:13px">Reglas <span style="color:#64748b;font-weight:400">(${reglas.length})</span></h3>
+                    </div>
+                    <div class="m-card-body" style="padding:0">
+                        <div class="m-table-wrap">
+                            <table><thead><tr>
+                                <th>Regla</th><th>Prioridad</th><th>Grupo</th><th style="width:130px">Días hábiles</th><th>Estado</th><th>Acciones</th>
+                            </tr></thead>
+                            <tbody>${filas || '<tr><td colspan="6" style="color:#94a3b8">Sin reglas configuradas</td></tr>'}</tbody></table>
+                        </div>
+                    </div>
+                </div>
+                <div class="m-card">
+                    <div class="m-card-header"><h3 style="margin:0;font-size:13px">➕ Nueva regla</h3></div>
+                    <div class="m-card-body">
+                        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+                            <input id="pcVenNombre" placeholder="Nombre (ej: Express Laminado)" style="flex:1;min-width:180px;padding:6px 9px;border:1px solid #e4e9f0;border-radius:7px;font-size:12px">
+                            <select id="pcVenPrio" style="padding:6px 9px;border:1px solid #e4e9f0;border-radius:7px;font-size:12px">
+                                <option value="4">4 · Reposición</option>
+                                <option value="2" selected>2 · Express</option>
+                                <option value="3">3 · Urgencia</option>
+                                <option value="1">1 · Normal</option>
+                            </select>
+                            <input id="pcVenGrupo" placeholder="Grupo (vacío = todos)" style="width:170px;padding:6px 9px;border:1px solid #e4e9f0;border-radius:7px;font-size:12px">
+                            <input id="pcVenDiasNuevo" type="number" min="0" max="60" value="3" style="width:80px;padding:6px 9px;border:1px solid #e4e9f0;border-radius:7px;font-size:12px">
+                            <button class="btn btn-accent" style="white-space:nowrap;padding:8px 14px;font-size:11px" onclick="App.modules.prod_config.ventanasCrear()">Agregar</button>
+                        </div>
+                        <p style="margin:10px 0 0;font-size:10px;color:#94a3b8">Una regla con grupo manda sobre la genérica de la misma prioridad (ej: Express de Carroceros). Si una prioridad/grupo queda sin regla, no tiene ventana rígida.</p>
                     </div>
                 </div>
             </div>`;
