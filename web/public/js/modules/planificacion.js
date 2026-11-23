@@ -22,6 +22,7 @@ App.modules.planificacion = {
     capacidadGrupo: [],
     cargaGrupo: [],
     pendientesGrupo: [],
+    resumen: null,   // foto del PLAN completo (trabajo abierto, fechado vs sin fecha)
 
     // Gráfico de carga (rango propio)
     chartInicio: null,
@@ -240,6 +241,7 @@ App.modules.planificacion = {
             this.capacidadGrupo = data.capacidad || [];
             this.cargaGrupo = data.carga || [];
             this.pendientesGrupo = data.pendientes || [];
+            this.resumen = data.resumen || null;
             this.renderKpis();
             this.renderGrupoCards();
             this.renderGrupoPendientes();
@@ -250,22 +252,39 @@ App.modules.planificacion = {
         }
     },
 
+    // Stat cards del PLAN completo (antes medían solo el día elegido: salía
+    // "Kg asignados 474,6 / Ocupación 4%" mientras el plan real era ~39.900 kg).
     renderKpis() {
         const el = document.getElementById('plnKpis');
         if (!el) return;
-        const totalCap = this.capacidadGrupo.reduce((s, c) => s + Number(c.capacidad_kg_dia), 0);
-        const totalUsado = this.cargaGrupo.reduce((s, c) => s + Number(c.kg_total), 0);
-        const totalOrdenes = this.cargaGrupo.reduce((s, c) => s + Number(c.ordenes), 0);
-        const pct = totalCap > 0 ? Math.round((totalUsado / totalCap) * 100) : 0;
-        const pend = this.pendientesGrupo.length;
-        const kgPend = this.pendientesGrupo.reduce((s, o) => s + Number(o.kilos || 0), 0);
-        const color = pct > 100 ? '#dc2626' : pct > 85 ? '#b45309' : '#15803d';
+        const r = this.resumen || {};
+        const abiertoKg = Number(r.abiertos_kg) || 0;
+        const abiertoOrd = Number(r.abiertos_ord) || 0;
+        const fechadoKg = Number(r.fechados_kg) || 0;
+        const fechadoOrd = Number(r.fechados_ord) || 0;
+        const sinKg = Number(r.sin_fecha_kg) || 0;
+        const sinOrd = Number(r.sin_fecha_ord) || 0;
+        const sinEnProceso = Number(r.sin_fecha_enproceso_ord) || 0;
+        const sinPend = Number(r.sin_fecha_pendientes_ord) || 0;
+        const capDia = this.capacidadGrupo.reduce((s, c) => s + Number(c.capacidad_kg_dia), 0);
+
+        // Ocupación REAL del plan: todo el trabajo abierto vs la capacidad de
+        // los días hábiles del período del gráfico (no solo el día elegido).
+        const data = this.chartModo === 'finales' ? this.cargaPorGrupoFinales : this.cargaPorGrupo;
+        const diasPeriodo = (data && Array.isArray(data.fechas)) ? data.fechas.length : 0;
+        const capPeriodo = capDia * diasPeriodo;
+        const pctOcup = capPeriodo > 0 ? Math.round((abiertoKg / capPeriodo) * 100) : 0;
+        const pctFech = abiertoKg > 0 ? Math.round((fechadoKg / abiertoKg) * 100) : 0;
+        const colorOcup = pctOcup > 100 ? '#dc2626' : pctOcup > 85 ? '#b45309' : '#15803d';
+
         el.innerHTML = ''
-            + this._kpi('Capacidad', this._fmt(totalCap, 0), 'kg/día configurados', '')
-            + this._kpi('Kg asignados', this._fmt(totalUsado, 1), 'en ' + this._fecha(this.fechaGrupo), '')
-            + this._kpi('Ocupación', pct + '%', pct > 100 ? '¡sobre la capacidad!' : 'de la capacidad total', color)
-            + this._kpi('Órdenes asignadas', this._fmt(totalOrdenes, 0), 'programadas este día', '')
-            + this._kpi('Pendientes', this._fmt(pend, 0), this._fmt(kgPend, 1) + ' kg sin asignar', pend > 0 ? '#b45309' : '#15803d');
+            + this._kpi('Trabajo abierto', this._fmt(abiertoKg, 1), 'kg · ' + this._fmt(abiertoOrd, 0) + ' órdenes abiertas', '')
+            + this._kpi('Fechado', this._fmt(fechadoKg, 1), 'kg · ' + this._fmt(fechadoOrd, 0) + ' órdenes · ' + pctFech + '% del abierto', fechadoKg > 0 ? '#15803d' : '')
+            + this._kpi('Sin fecha', this._fmt(sinKg, 1), 'kg · ' + this._fmt(sinOrd, 0) + ' órdenes · ' + (100 - pctFech) + '% del abierto', sinKg > 0 ? '#b45309' : '#15803d')
+            + this._kpi('Ocupación del plan', diasPeriodo ? pctOcup + '%' : '—',
+                diasPeriodo ? 'de ' + this._fmt(capPeriodo, 0) + ' kg (' + diasPeriodo + ' días × ' + this._fmt(capDia, 0) + ' kg/día)' : 'cargando período del gráfico…',
+                diasPeriodo ? colorOcup : '')
+            + this._kpi('Sin programar', this._fmt(sinOrd, 0), 'órdenes · ' + this._fmt(sinEnProceso, 0) + ' en proceso, ' + this._fmt(sinPend, 0) + ' pendientes', sinOrd > 0 ? '#b45309' : '#15803d');
     },
     _kpi(k, v, s, color) {
         return '<div class="pln-kpi"><div class="k">' + escText(k) + '</div><div class="v"' + (color ? ' style="color:' + color + '"' : '') + '>' + escText(v) + '</div><div class="s">' + escText(s) + '</div></div>';
@@ -756,6 +775,9 @@ App.modules.planificacion = {
         }
         this._actualizarRangoChart();
         if (this._vista === 'chart') this.renderChart();
+        // La ocupación del plan depende de los días hábiles del período del
+        // gráfico: al mover ◀ ▶ hay que refrescar las stat cards también.
+        this.renderKpis();
     },
 
     _actualizarRangoChart() {
@@ -815,8 +837,16 @@ App.modules.planificacion = {
             return { bg: `rgba(${r},${g},${b},0.85)`, border: `rgba(${r},${g},${b},1)` };
         });
 
+        // Columna extra "Sin fecha": trabajo abierto que nunca recibe fecha en
+        // sus pasos (p.ej. órdenes EN_PROCESO trabajadas desde Bitácora). Sin
+        // ella la gráfica mostraba ~16.700 kg mientras el Tablero sumaba
+        // ~39.900 kg. No es un día: la línea de capacidad no la cubre.
+        const sinFecha = (data.sin_fecha && Number(data.sin_fecha.kg) > 0) ? data.sin_fecha : null;
+        const sinFechaKg = sinFecha ? Number(sinFecha.kg) : 0;
+        const sinFechaOrd = sinFecha ? Number(sinFecha.ordenes) : 0;
+
         const fechasConData = data.fechas.filter(f => data.familias.some(fam => (data.datos[fam][f] || 0) > 0));
-        if (fechasConData.length === 0) {
+        if (fechasConData.length === 0 && !sinFecha) {
             if (legend) legend.innerHTML = '';
             if (capProm) capProm.innerHTML = '';
             div.innerHTML = '<div class="pln-loading">Sin carga programada en este período. Use ◀ ▶ para moverse.</div>';
@@ -824,9 +854,11 @@ App.modules.planificacion = {
         }
 
         const labels = fechasConData.map(f => this._fechaCorta(f));
+        if (sinFecha) labels.push('Sin fecha' + (sinFechaOrd > 0 ? ' (' + sinFechaOrd + ')' : ''));
         const datasets = data.familias.map((fam, i) => ({
             label: fam,
-            data: fechasConData.map(f => data.datos[fam][f] || 0),
+            data: fechasConData.map(f => data.datos[fam][f] || 0)
+                .concat(sinFecha ? [Number(sinFecha.datos[fam]) || 0] : []),
             backgroundColor: colores[i % colores.length].bg,
             borderColor: colores[i % colores.length].border,
             borderWidth: 1,
@@ -834,25 +866,31 @@ App.modules.planificacion = {
         }));
 
         const capacidades = fechasConData.map(f => data.capacidad_por_dia[f] || 0);
-        const capacidadPromedio = capacidades.reduce((a, b) => a + b, 0) / capacidades.length;
-        datasets.push({
-            label: 'Capacidad Producción',
-            data: fechasConData.map(() => Math.round(capacidadPromedio * 100) / 100),
-            type: 'line',
-            borderColor: 'rgba(220,38,38,1)',
-            borderWidth: 2,
-            borderDash: [6, 3],
-            pointRadius: 0,
-            fill: false,
-            order: -1
-        });
+        const capacidadPromedio = capacidades.length ? capacidades.reduce((a, b) => a + b, 0) / capacidades.length : 0;
+        if (fechasConData.length > 0) {
+            datasets.push({
+                label: 'Capacidad Producción',
+                data: fechasConData.map(() => Math.round(capacidadPromedio * 100) / 100)
+                    .concat(sinFecha ? [null] : []),
+                type: 'line',
+                borderColor: 'rgba(220,38,38,1)',
+                borderWidth: 2,
+                borderDash: [6, 3],
+                pointRadius: 0,
+                fill: false,
+                order: -1
+            });
+        }
 
         // ===== TOTALES =====
         // Suma de todos los grupos por día (se dibuja sobre cada barra) y
-        // total del período — aplica a F. Inicio y F. Término
+        // total del período — aplica a F. Inicio y F. Término. El bloque
+        // "Sin fecha" también suma: el total cuadra con el Tablero.
         const fmtT = (n) => this._fmt(n, 0);
         const totalesDia = fechasConData.map(f => data.familias.reduce((s, fam) => s + (Number(data.datos[fam][f]) || 0), 0));
-        const totalPeriodo = totalesDia.reduce((a, b) => a + b, 0);
+        const totalFechado = totalesDia.reduce((a, b) => a + b, 0);
+        if (sinFecha) totalesDia.push(sinFechaKg);
+        const totalPeriodo = totalFechado + sinFechaKg;
         const totalesPlugin = {
             id: 'totalesBarras',
             afterDatasetsDraw(chart) {
@@ -883,7 +921,8 @@ App.modules.planificacion = {
         if (capProm) {
             capProm.innerHTML = 'Capacidad promedio de producción: <strong>' + this._fmt(capacidadPromedio, 0) + ' kg/día</strong>'
                 + ' · Total del período: <strong>' + this._fmt(totalPeriodo, 0) + ' kg</strong>'
-                + ' · Promedio por día: <strong>' + this._fmt(fechasConData.length ? totalPeriodo / fechasConData.length : 0, 0) + ' kg</strong>';
+                + (sinFecha ? ' (incluye <strong style="color:#b45309">' + this._fmt(sinFechaKg, 0) + ' kg sin fecha</strong> de ' + this._fmt(sinFechaOrd, 0) + ' órdenes)' : '')
+                + ' · Promedio por día: <strong>' + this._fmt(fechasConData.length ? totalFechado / fechasConData.length : 0, 0) + ' kg</strong>';
         }
 
         if (this._chartInstance) { this._chartInstance.destroy(); this._chartInstance = null; }
@@ -901,7 +940,9 @@ App.modules.planificacion = {
                     const el = elements[0];
                     const fam = chart.data.datasets[el.datasetIndex].label;
                     if (fam === 'Capacidad Producción') return;
-                    this.detalleGrupoDia(fam, fechasConData[el.index]);
+                    const fecha = fechasConData[el.index];
+                    if (!fecha) return; // columna "Sin fecha": sin detalle por día
+                    this.detalleGrupoDia(fam, fecha);
                 },
                 plugins: {
                     legend: { display: false },

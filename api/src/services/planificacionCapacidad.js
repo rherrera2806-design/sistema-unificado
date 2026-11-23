@@ -1,6 +1,18 @@
 const { query } = require('../config/database');
 const { getCalendarioMap, esLaboral } = require('./planificacionCalendario');
 
+// Grupo REAL de la orden (o.grupo puede venir NULL en lo importado): receta/
+// padre primero, mismo criterio que el resto del sistema.
+const SQL_GRUPO_ORDEN = `COALESCE(
+    o.grupo,
+    CASE WHEN o.es_compuesto AND o.bom_padre_id IS NOT NULL THEN COALESCE(
+        (SELECT cc.grupo FROM produccion_codigos cc WHERE cc.codigo = o.codigo_padre),
+        (SELECT cc2.grupo FROM recetas_bom rb JOIN produccion_codigos cc2 ON cc2.codigo = rb.codigo_sap_padre WHERE rb.id = o.bom_padre_id),
+        (SELECT cc2.grupo FROM produccion_recetas_bom rb JOIN produccion_codigos cc2 ON cc2.codigo = rb.codigo_sap_padre WHERE rb.id = o.bom_padre_id)) END,
+    (SELECT cc.grupo FROM produccion_codigos cc WHERE cc.codigo = o.codigo_producto),
+    (SELECT cc.grupo FROM produccion_codigos cc WHERE cc.codigo = o.codigo_padre),
+    '(sin grupo)')`;
+
 const getCargaSemanal = async (inicio, fin) => {
     const estRes = await query('SELECT id, nombre_estacion, orden_secuencia_defecto, cap_max FROM estaciones_maestras WHERE activa = TRUE ORDER BY orden_secuencia_defecto');
     const estaciones = estRes.rows || [];
@@ -109,11 +121,48 @@ const getCargaPorGrupo = async (inicio, fin) => {
         }
     }
 
+    // Trabajo ABIERTO sin fecha: órdenes PROGRAMADO/EN_PROCESO con pasos
+    // pendientes cuyos kilos NUNCA puede mostrar la gráfica (ningún paso que
+    // cargue sus kilos tiene fecha). Nunca aparecen en las barras por día, así
+    // que la gráfica mostraba ~16.700 kg mientras el Tablero sumaba ~39.900 kg.
+    // Se exponen aparte (columna "Sin fecha") para que el total del período
+    // cuadre con el Tablero. Ventana-independiente: siempre es la misma cifra.
+    const sinFechaRes = await query(`
+        SELECT ${SQL_GRUPO_ORDEN} as nombre_familia,
+               COALESCE(SUM(COALESCE(o.kilos, 0)), 0) as kilos,
+               COUNT(*) as ordenes
+        FROM produccion_ordenes o
+        WHERE o.estado_programacion IN ('PENDIENTE', 'PROGRAMADO', 'EN_PROCESO')
+          AND COALESCE(o.kilos, 0) > 0
+          AND NOT EXISTS (SELECT 1 FROM cola_produccion_pasos p
+                      WHERE p.orden_produccion_id = o.id
+                        AND p.estado NOT IN ('TERMINADO','MERMADO')
+                        AND p.fecha_programada IS NOT NULL
+                        AND (COALESCE(o.metros_cuadrados, 0) = 0
+                             OR p.id = (SELECT MIN(p2.id) FROM cola_produccion_pasos p2
+                                        WHERE p2.orden_produccion_id = o.id
+                                          AND p2.estado NOT IN ('TERMINADO','MERMADO'))))
+        GROUP BY 1
+    `);
+    const sinFechaDatos = {};
+    let sinFechaKg = 0, sinFechaOrd = 0;
+    for (const r of sinFechaRes.rows) {
+        sinFechaDatos[r.nombre_familia] = Number(r.kilos);
+        sinFechaKg += Number(r.kilos);
+        sinFechaOrd += Number(r.ordenes);
+        // familia que SOLO tiene trabajo sin fecha → también al eje/leyenda
+        if (!familiasMap[r.nombre_familia]) {
+            familiasMap[r.nombre_familia] = {};
+            for (const fs of fechasSet) familiasMap[r.nombre_familia][fs] = 0;
+        }
+    }
+
     return {
         familias: Object.keys(familiasMap),
         fechas: Array.from(fechasSet).sort(),
         datos: familiasMap,
-        capacidad_por_dia: capMap
+        capacidad_por_dia: capMap,
+        sin_fecha: { datos: sinFechaDatos, kg: sinFechaKg, ordenes: sinFechaOrd }
     };
 };
 
@@ -258,12 +307,76 @@ const getCargaPorGrupoFinales = async (inicio, fin) => {
         }
     }
 
+    // Trabajo ABIERTO sin fecha de ENTREGA: nunca aparece en las barras por día
+    // de este modo (F. Término). Mismo criterio de reconciliación con el Tablero
+    // que getCargaPorGrupo, pero mirando o.fecha_entrega_pactada (nivel orden).
+    const sinFechaRes = await query(`
+        SELECT ${SQL_GRUPO_ORDEN} as nombre_familia,
+               COALESCE(SUM(COALESCE(o.kilos, 0)), 0) as kilos,
+               COUNT(*) as ordenes
+        FROM produccion_ordenes o
+        WHERE o.estado_programacion IN ('PENDIENTE', 'PROGRAMADO', 'EN_PROCESO')
+          AND COALESCE(o.kilos, 0) > 0
+          AND (o.fecha_entrega_pactada IS NULL
+               OR NOT EXISTS (SELECT 1 FROM cola_produccion_pasos p
+                              WHERE p.orden_produccion_id = o.id
+                                AND p.estado NOT IN ('TERMINADO','MERMADO')))
+        GROUP BY 1
+    `);
+    const sinFechaDatos = {};
+    let sinFechaKg = 0, sinFechaOrd = 0;
+    for (const r of sinFechaRes.rows) {
+        sinFechaDatos[r.nombre_familia] = Number(r.kilos);
+        sinFechaKg += Number(r.kilos);
+        sinFechaOrd += Number(r.ordenes);
+        if (!familiasMap[r.nombre_familia]) {
+            familiasMap[r.nombre_familia] = {};
+            for (const fs of fechasSet) familiasMap[r.nombre_familia][fs] = 0;
+        }
+    }
+
     return {
         familias: Object.keys(familiasMap),
         fechas: Array.from(fechasSet).sort(),
         datos: familiasMap,
-        capacidad_por_dia: capMap
+        capacidad_por_dia: capMap,
+        sin_fecha: { datos: sinFechaDatos, kg: sinFechaKg, ordenes: sinFechaOrd }
     };
+};
+
+// Resumen del TRABAJO ABIERTO (PENDIENTE + PROGRAMADO + EN_PROCESO) para las
+// stat cards: kg/órdenes totales, cuánto está fechado y cuánto no.
+// "tiene_fecha" usa EXACTAMENTE la misma regla que las gráficas de arriba: los
+// kilos de la orden se cargan en su primer paso pendiente (o en cualquier paso
+// si la orden no tiene m²), así "sin fecha" = lo que la gráfica nunca dibuja.
+const getResumenAbierto = async () => {
+    const res = await query(`
+        WITH base AS (
+            SELECT o.id, COALESCE(o.kilos, 0) as kilos, o.estado_programacion,
+                   EXISTS (
+                       SELECT 1 FROM cola_produccion_pasos p
+                       WHERE p.orden_produccion_id = o.id
+                         AND p.estado NOT IN ('TERMINADO','MERMADO')
+                         AND p.fecha_programada IS NOT NULL
+                         AND (COALESCE(o.metros_cuadrados, 0) = 0
+                              OR p.id = (SELECT MIN(p2.id) FROM cola_produccion_pasos p2
+                                         WHERE p2.orden_produccion_id = o.id
+                                           AND p2.estado NOT IN ('TERMINADO','MERMADO')))
+                   ) as tiene_fecha
+            FROM produccion_ordenes o
+            WHERE o.estado_programacion IN ('PENDIENTE', 'PROGRAMADO', 'EN_PROCESO')
+        )
+        SELECT COUNT(*) as abiertos_ord,
+               COALESCE(SUM(kilos), 0) as abiertos_kg,
+               COUNT(*) FILTER (WHERE tiene_fecha) as fechados_ord,
+               COALESCE(SUM(kilos) FILTER (WHERE tiene_fecha), 0) as fechados_kg,
+               COUNT(*) FILTER (WHERE NOT tiene_fecha) as sin_fecha_ord,
+               COALESCE(SUM(kilos) FILTER (WHERE NOT tiene_fecha), 0) as sin_fecha_kg,
+               COUNT(*) FILTER (WHERE NOT tiene_fecha AND estado_programacion = 'EN_PROCESO') as sin_fecha_enproceso_ord,
+               COUNT(*) FILTER (WHERE NOT tiene_fecha AND estado_programacion = 'PENDIENTE') as sin_fecha_pendientes_ord
+        FROM base
+    `);
+    return res.rows[0] || {};
 };
 
 module.exports = {
@@ -273,5 +386,6 @@ module.exports = {
     getCargaEstaciones,
     getCapacidadGrupo,
     getAllCapacidadGrupo,
-    actualizarCapacidadGrupo
+    actualizarCapacidadGrupo,
+    getResumenAbierto
 };

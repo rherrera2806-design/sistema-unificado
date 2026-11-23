@@ -1,5 +1,6 @@
 const { query } = require('../config/database');
 const { getCalendarioMap } = require('./planificacion');
+const { getResumenAbierto } = require('./planificacionCapacidad');
 
 // Planificación simplificada por grupo (kg/día)
 
@@ -186,7 +187,13 @@ const getDiaGrupo = async (fecha) => {
         grupo: (o.es_compuesto && o.bom_padre_id) ? o.grupo_padre : (o.grupo || o.grupo_codigo)
     }));
 
-    return { capacidad: capacidadRes.rows, carga: cargaRes.rows, pendientes, fecha };
+    // Resumen del PLAN completo (no solo el día elegido): alimenta las stat
+    // cards con la foto real del trabajo abierto (Programadas + En proceso).
+    // "fechado" = la orden tiene pasos con fecha; "sin fecha" es el trabajo que
+    // se está ejecutando sin pasar por planificación (invisible en el gráfico).
+    const resumen = await getResumenAbierto();
+
+    return { capacidad: capacidadRes.rows, carga: cargaRes.rows, pendientes, fecha, resumen };
 };
 
 const asignarOrdenFecha = async (orden_id, fecha) => {
