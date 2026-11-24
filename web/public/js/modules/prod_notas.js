@@ -74,11 +74,7 @@ App.registerModule('prod_notas', {
             + '<div class="nota-hero-actions"><button class="nota-hbtn solid" onclick="App.modules.prod_notas.showForm()">＋ Nueva nota</button></div>'
             + '</div>'
 
-            + '<div class="pn-strip">'
-            + '<div class="top"><div class="big">' + this._data.length + ' notas <span>&middot; ' + totalPendientes + ' pendientes &middot; ' + totalRealizados + ' realizadas</span></div><div class="hint">' + (this._data.length ? Math.round(totalRealizados / this._data.length * 100) : 0) + '% resuelto</div></div>'
-            + '<div class="pn-pipe">' + (totalRealizados > 0 ? '<div class="seg" style="flex:' + totalRealizados + ';background:#22c55e">Realizadas ' + totalRealizados + '</div>' : '')
-            + (totalPendientes > 0 ? '<div class="seg" style="flex:' + totalPendientes + ';background:#f59e0b">Pendientes ' + totalPendientes + '</div>' : '') + '</div>'
-            + '</div>'
+            + '<div class="pn-strip" id="pnStrip">' + this._stripHtml() + '</div>'
 
             + '<div class="nota-toolbar">'
             + '<div class="nota-search"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8494a8" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" id="prodNotaSearch" placeholder="Buscar nota..." oninput="App.modules.prod_notas.filter()"></div>'
@@ -93,6 +89,15 @@ App.registerModule('prod_notas', {
         this.renderList(this._data);
     },
 
+    // Barra de estado recalculada (la usan render y refresh: sin datos viejos)
+    _stripHtml() {
+        const totalPendientes = this._data.filter(n => n.estado === 'pendiente').length;
+        const totalRealizados = this._data.filter(n => n.estado === 'realizado').length;
+        return '<div class="top"><div class="big">' + this._data.length + ' notas <span>&middot; ' + totalPendientes + ' pendientes &middot; ' + totalRealizados + ' realizadas</span></div><div class="hint">' + (this._data.length ? Math.round(totalRealizados / this._data.length * 100) : 0) + '% resuelto</div></div>'
+            + '<div class="pn-pipe">' + (totalRealizados > 0 ? '<div class="seg" style="flex:' + totalRealizados + ';background:#22c55e">Realizadas ' + totalRealizados + '</div>' : '')
+            + (totalPendientes > 0 ? '<div class="seg" style="flex:' + totalPendientes + ';background:#f59e0b">Pendientes ' + totalPendientes + '</div>' : '') + '</div>';
+    },
+
     filter() {
         const q = (document.getElementById('prodNotaSearch')?.value || '').toLowerCase().trim();
         if (!q) { this.renderList(this._data); return; }
@@ -105,7 +110,7 @@ App.registerModule('prod_notas', {
 
     // ── Menú de acciones (popover fijo, patrón del sistema) ──
     menuAcciones(n) {
-        return `<div class="nota-amenu"><button class="nota-amenu-btn" title="Acciones" onclick="App.modules.prod_notas.toggleAcciones(event)">⋯</button>
+        return `<div class="nota-amenu"><button class="nota-amenu-btn" title="Acciones" onclick="App.modules.prod_notas.toggleAcciones(this)">⋯</button>
         <div class="nota-amenu-drop">
             ${n.estado === 'pendiente'
                 ? '<div class="it" onclick="App.modules.prod_notas.marcarRealizado(' + n.id + ')">✅ Marcar como realizado</div>'
@@ -115,16 +120,17 @@ App.registerModule('prod_notas', {
             <div class="it danger" onclick="App.modules.prod_notas.delete(${n.id})">🗑 Eliminar nota</div>
         </div></div>`;
     },
-    toggleAcciones(e) {
-        e.stopPropagation();
+    // Recibe el BOTÓN (this) — no depende de event/currentTarget, que pueden no
+    // resolver en el contexto del SPA. Abre/cierra el menú de la tarjeta.
+    toggleAcciones(btn) {
         this._setupMenus();
-        const wrap = e.currentTarget.parentElement;
-        const menu = wrap.querySelector('.nota-amenu-drop');
+        const wrap = btn && btn.parentElement ? btn.parentElement : null;
+        const menu = wrap ? wrap.querySelector('.nota-amenu-drop') : null;
         if (!menu) return;
         const wasVisible = menu.style.display === 'block';
         this._cerrarMenus();
         if (wasVisible) return;
-        const rect = e.currentTarget.getBoundingClientRect();
+        const rect = btn.getBoundingClientRect();
         menu.style.display = 'block';
         menu.style.top = '0px';
         menu.style.left = '0px';
@@ -139,7 +145,12 @@ App.registerModule('prod_notas', {
     _setupMenus() {
         if (this._menusBound) return;
         this._menusBound = true;
-        document.addEventListener('click', () => this._cerrarMenus());
+        // Cierra con cualquier clic FUERA del menú/botón (sin depender de
+        // stopPropagation en el onclick del botón)
+        document.addEventListener('click', (ev) => {
+            if (ev.target && ev.target.closest && ev.target.closest('.nota-amenu')) return;
+            this._cerrarMenus();
+        });
         window.addEventListener('scroll', () => this._cerrarMenus(), true);
         window.addEventListener('resize', () => this._cerrarMenus());
     },
@@ -216,12 +227,9 @@ App.registerModule('prod_notas', {
             headers: { 'X-User-Email': user.email || '' }
         });
         this._data = await res.json();
-        const totalPendientes = this._data.filter(n => n.estado === 'pendiente').length;
-        const totalRealizados = this._data.filter(n => n.estado === 'realizado').length;
-        const el1 = document.getElementById('pnPendientes');
-        const el2 = document.getElementById('pnRealizados');
-        if (el1) el1.textContent = totalPendientes;
-        if (el2) el2.textContent = totalRealizados;
+        // Barra de estado siempre al día (antes actualizaba ids que ya no existían)
+        const strip = document.getElementById('pnStrip');
+        if (strip) strip.innerHTML = this._stripHtml();
         const searchVal = document.getElementById('prodNotaSearch')?.value || '';
         if (searchVal) this.filter();
         else this.renderList(this._data);
