@@ -80,12 +80,12 @@ App.registerModule('produccion', {
                 </div>` : ''}
             </div>
 
-            <div class="po-kpis">
-                <div class="po-kpi"><div class="k">Total órdenes</div><div class="v" id="prodTotal">0</div><div class="s" id="prodTotalSub">—</div></div>
-                <div class="po-kpi"><div class="k">Pendientes</div><div class="v c-pend" id="prodPendientes">0</div><div class="s">sin fecha asignada</div></div>
-                <div class="po-kpi"><div class="k">Programadas</div><div class="v c-prog" id="prodProgramadas">0</div><div class="s">con fecha asignada</div></div>
-                <div class="po-kpi"><div class="k">En proceso</div><div class="v c-proceso" id="prodProceso">0</div><div class="s">en estación ahora</div></div>
-                <div class="po-kpi"><div class="k">Terminadas</div><div class="v c-term" id="prodTerminadas">0</div><div class="s">este período</div></div>
+            <div class="po-strip">
+                <div class="top">
+                    <div class="big" id="prodStripTot">—</div>
+                    <div class="hint">clic en un estado de la barra → filtra la tabla</div>
+                </div>
+                <div class="po-pipe" id="prodPipe"></div>
             </div>
 
             <div class="po-toolbar">
@@ -413,15 +413,41 @@ App.registerModule('produccion', {
     renderStats() {
         const total = this.ordenes.length;
         const c = e => this.ordenes.filter(o => o.estado_programacion === e).length;
-        const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
-        set('prodTotal', total);
-        set('prodPendientes', c('PENDIENTE'));
-        set('prodProgramadas', c('PROGRAMADO'));
-        set('prodProceso', c('EN_PROCESO'));
-        set('prodTerminadas', c('TERMINADO'));
         const totalCant = this.ordenes.reduce((s, o) => s + Number(o.cantidad || 0), 0);
         const totalM2 = this.ordenes.reduce((s, o) => s + Number(o.metros_cuadrados || 0), 0);
-        set('prodTotalSub', this._fmt(totalCant, 0) + ' und · ' + this._fmt(totalM2, 2) + ' m²');
+        const totalKg = this.ordenes.reduce((s, o) => s + Number(o.kilos || 0), 0);
+        const tot = document.getElementById('prodStripTot');
+        if (tot) tot.innerHTML = this._fmt(total, 0) + ' órdenes <span>· ' + this._fmt(totalCant, 0)
+            + ' und · ' + this._fmt(totalM2, 2) + ' m² · ' + this._fmt(totalKg, 1) + ' kg</span>';
+        // PIPELINE: una barra segmentada por estado (los estados en 0 no compiten
+        // por atención) — clic en un segmento filtra la tabla por ese estado.
+        const pipe = document.getElementById('prodPipe');
+        if (!pipe) return;
+        const segs = [
+            { e: 'PENDIENTE', t: 'Pendientes', bg: '#f59e0b', n: c('PENDIENTE') },
+            { e: 'PROGRAMADO', t: 'Programadas', bg: '#3b82f6', n: c('PROGRAMADO') },
+            { e: 'EN_PROCESO', t: 'En proceso', bg: '#8b5cf6', n: c('EN_PROCESO') },
+            { e: 'TERMINADO', t: 'Terminadas', bg: '#22c55e', n: c('TERMINADO') },
+            { e: 'MERMADO', t: 'Mermadas', bg: '#dc2626', n: c('MERMADO') },
+            { e: 'CERRADO', t: 'Cerradas', bg: '#64748b', n: c('CERRADO') },
+        ];
+        const totalSeg = segs.reduce((s, g) => s + g.n, 0) || 1;
+        pipe.innerHTML = segs.map(g => {
+            const pct = Math.round((g.n / totalSeg) * 100);
+            return g.n
+                ? '<div class="seg" style="flex:' + g.n + ';background:' + g.bg + '"'
+                    + ' onclick="App.modules.produccion.filtrarEstado(\'' + g.e + '\')"'
+                    + ' title="Clic para filtrar por ' + escAttr(g.t) + '">'
+                    + escText(g.t) + ' ' + this._fmt(g.n, 0) + ' <small>' + pct + '%</small></div>'
+                : '<div class="seg z">' + escText(g.t) + ' 0</div>';
+        }).join('');
+    },
+
+    // Filtra por estado desde la barra pipeline (mantiene sincronizado el select)
+    filtrarEstado(e) {
+        const sel = document.getElementById('prodFilterEstado');
+        if (sel) sel.value = e;
+        this.filter();
     },
 
     filter() {
@@ -453,6 +479,25 @@ App.registerModule('produccion', {
     },
 
     // ---------------- Badges (idioma de etiquetas) ----------------
+    _rowClass(e) {
+        return { 'PENDIENTE': 'st-pend', 'PROGRAMADO': 'st-prog', 'EN_PROCESO': 'st-proceso',
+            'TERMINADO': 'st-term', 'MERMADO': 'st-merm', 'CERRADO': 'st-cerr' }[e] || '';
+    },
+    _estBg(e) {
+        return { 'PENDIENTE': '#f59e0b', 'PROGRAMADO': '#3b82f6', 'EN_PROCESO': '#8b5cf6',
+            'TERMINADO': '#22c55e', 'MERMADO': '#dc2626', 'CERRADO': '#64748b' }[e] || '#94a3b8';
+    },
+    // Avance de pasos como PUNTOS (●●○○○ 2/5): el punto morado marca el paso
+    // en curso — se lee de un vistazo, sin leer frases.
+    _dots(done, tot, estado) {
+        if (!tot) return '';
+        let h = '<div class="po-dots">';
+        for (let i = 0; i < tot; i++) {
+            const cls = i < done ? 'on' : (i === done && estado === 'EN_PROCESO' ? 'cur' : '');
+            h += '<i class="' + cls + '"></i>';
+        }
+        return h + '<small>' + done + '/' + tot + '</small></div>';
+    },
     _estadoBadge(e) {
         const map = {
             'PENDIENTE': ['s-pend', 'Pendiente'],
@@ -497,8 +542,7 @@ App.registerModule('produccion', {
             return;
         }
         tbody.innerHTML = ordenes.map(o => {
-            const progreso = o.total_pasos > 0 ? o.pasos_terminados + '/' + o.total_pasos : '';
-            return '<tr onclick="App.modules.produccion.verDetalle(' + o.id + ')">'
+            return '<tr class="' + this._rowClass(o.estado_programacion) + '" onclick="App.modules.produccion.verDetalle(' + o.id + ')">'
                 + '<td><strong>' + escText(o.pedido_sap_id || '-') + '</strong><div class="sub2">Item ' + escText(o.item_numero || '-') + (o.orden_compra ? ' · OC ' + escText(o.orden_compra) : '') + '</div></td>'
                 + '<td>' + escText((o.cliente || '-').toUpperCase()) + '</td>'
                 + '<td>' + escText(o.vendedor_nombre || '—') + '</td>'
@@ -510,9 +554,9 @@ App.registerModule('produccion', {
                 + '<td>' + this._fmt(o.ancho, 0) + ' × ' + this._fmt(o.alto, 0) + ' mm</td>'
                 + '<td class="num"><span class="po-cant" title="Click para editar" onclick="event.stopPropagation();App.modules.produccion.showEditCantidad(' + o.id + ')">' + this._fmt(o.cantidad || 1, 0) + '</span></td>'
                 + '<td onclick="event.stopPropagation()">' + this._prioBadge(o.nivel_prioridad, o.id, true) + '</td>'
-                + '<td>' + this._estadoBadge(o.estado_programacion) + (progreso ? '<div class="sub2">' + progreso + ' pasos</div>' : (o.total_pasos === 0 ? '<div class="sub2" style="color:#dc2626">Sin ruta</div>' : '')) + '</td>'
+                + '<td>' + this._estadoBadge(o.estado_programacion) + this._dots(o.pasos_terminados, o.total_pasos, o.estado_programacion) + (o.total_pasos === 0 ? '<div class="sub2" style="color:#dc2626">Sin ruta</div>' : '') + '</td>'
                 + '<td class="c-acc" onclick="event.stopPropagation()">'
-                + '<div class="po-amenu"><button class="po-amenu-btn" onclick="App.modules.produccion.toggleAcciones(event,' + o.id + ')">Acciones ▾</button>'
+                + '<div class="po-amenu"><button class="po-amenu-btn po-act" title="Acciones" onclick="App.modules.produccion.toggleAcciones(event,' + o.id + ')">⋯</button>'
                 + '<div class="po-amenu-drop" id="poAcc_' + o.id + '">'
                 + '<div class="it" onclick="App.modules.produccion.verDetalle(' + o.id + ')">👁 Ver detalle y pasos</div>'
                 + '<div class="it" onclick="App.modules.produccion.showEditCantidad(' + o.id + ')">✏️ Editar cantidad</div>'
@@ -572,13 +616,15 @@ App.registerModule('produccion', {
             const totalKg = lista.reduce((s, o) => s + Number(o.kilos || 0), 0);
             const cards = lista.map(o => {
                 const meta = g.e === 'EN_PROCESO' || g.e === 'TERMINADO'
-                    ? (o.total_pasos > 0 ? o.pasos_terminados + '/' + o.total_pasos + ' pasos' : '')
+                    ? ''
                     : this._fecha(o.fecha_programada);
-                return '<div class="po-bcard" onclick="App.modules.produccion.verDetalle(' + o.id + ')">'
+                return '<div class="po-bcard" style="border-left:3px solid ' + this._estBg(g.e) + '" onclick="App.modules.produccion.verDetalle(' + o.id + ')">'
                     + '<div class="t1"><span class="ped">' + escText(o.pedido_sap_id || '-') + ' · It ' + escText(o.item_numero || '-') + '</span>' + this._prioBadge(o.nivel_prioridad, o.id, false) + '</div>'
                     + '<div class="cli">' + escText((o.cliente || '-').toUpperCase()) + '</div>'
                     + '<div class="t2"><span class="cod">' + escText(o.codigo_producto) + ' · ' + this._fmt(o.cantidad || 1, 0) + ' und</span>'
                     + '<span class="dim2">' + escText(meta || this._fmt(o.ancho, 0) + ' × ' + this._fmt(o.alto, 0)) + '</span></div>'
+                    + ((o.total_pasos > 0 && (g.e === 'EN_PROCESO' || g.e === 'TERMINADO'))
+                        ? this._dots(o.pasos_terminados, o.total_pasos, o.estado_programacion) : '')
                     + '</div>';
             }).join('');
             return '<div class="po-col"><div class="po-col-head"><span class="po-st ' + g.cls + '">●</span><span class="t">' + g.t + '</span><span class="kg" title="Total kilos de la columna">' + this._fmt(totalKg, 1) + ' kg</span><span class="c">' + lista.length + '</span></div>'
@@ -1530,6 +1576,29 @@ App.registerModule('produccion', {
             .po-mant-drop .sep{height:1px;background:#e4e9f0;margin:5px 8px}
 
             .po-kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:14px}
+            .po-strip{background:#fff;border:1px solid #e4e9f0;border-radius:12px;padding:11px 16px;margin-bottom:12px}
+            .po-strip .top{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+            .po-strip .big{font-size:13px;font-weight:700;color:#0f172a}
+            .po-strip .big span{color:#8494a8;font-weight:500;font-size:11px}
+            .po-strip .hint{margin-left:auto;font-size:9.5px;color:#94a3b8}
+            .po-pipe{display:flex;height:26px;border-radius:8px;overflow:hidden;margin-top:10px}
+            .po-pipe .seg{display:flex;align-items:center;justify-content:center;gap:5px;font-size:10.5px;font-weight:800;color:#fff;cursor:pointer;white-space:nowrap;overflow:hidden;transition:filter .15s}
+            .po-pipe .seg:hover{filter:brightness(1.12)}
+            .po-pipe .seg small{font-weight:600;opacity:.85}
+            .po-pipe .seg.z{background:#eef2f7!important;color:#94a3b8;font-weight:600;cursor:default;flex:0.6}
+            .po-dots{display:inline-flex;gap:2.5px;align-items:center;margin-top:3px}
+            .po-dots i{width:6px;height:6px;border-radius:50%;background:#e2e8f0;display:inline-block}
+            .po-dots i.on{background:#22c55e}
+            .po-dots i.cur{background:#8b5cf6}
+            .po-dots small{font-size:8.5px;color:#94a3b8;margin-left:4px}
+            .po-act{width:28px;height:28px;padding:0;border-radius:8px;border:1px solid #e4e9f0;background:#fff;color:#64748b;cursor:pointer;font-size:14px;line-height:1}
+            .po-act:hover{background:#f1f5f9}
+            .po-table tbody tr.st-pend{border-left:3px solid #f59e0b}
+            .po-table tbody tr.st-prog{border-left:3px solid #3b82f6}
+            .po-table tbody tr.st-proceso{border-left:3px solid #8b5cf6}
+            .po-table tbody tr.st-term{border-left:3px solid #22c55e}
+            .po-table tbody tr.st-merm{border-left:3px solid #dc2626}
+            .po-table tbody tr.st-cerr{border-left:3px solid #64748b}
             .po-kpi{background:#fff;border:1px solid #e4e9f0;border-radius:12px;padding:13px 16px}
             .po-kpi .k{font-size:10px;font-weight:600;letter-spacing:.7px;text-transform:uppercase;color:#8494a8}
             .po-kpi .v{font-size:20px;font-weight:700;margin-top:4px;color:#0f172a}
@@ -1555,9 +1624,9 @@ App.registerModule('produccion', {
             .po-tot span{padding:3px 9px;border-radius:6px;font-size:10px;font-weight:700;background:#f1f5f9;color:#475569}
             .po-tot span strong{color:#0f172a}
 
-            .po-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+            .po-table-wrap{overflow:auto;max-height:72vh;-webkit-overflow-scrolling:touch}
             .po-table{width:100%;border-collapse:collapse;min-width:1040px}
-            .po-table th{padding:10px 14px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:#8494a8;background:#f8fafc;border-bottom:1px solid #e4e9f0;white-space:nowrap}
+            .po-table th{position:sticky;top:0;z-index:2;padding:10px 14px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:#8494a8;background:#f8fafc;border-bottom:1px solid #e4e9f0;white-space:nowrap}
             .po-table td{padding:11px 14px;font-size:13px;border-bottom:1px solid #f1f5f9;vertical-align:middle}
             .po-table tbody tr{cursor:pointer}
             .po-table tbody tr:hover{background:#f8fafc}
