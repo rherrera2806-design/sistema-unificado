@@ -204,7 +204,7 @@ App.registerModule('prod_notas', {
 
             const autor = String(n.usuario_email || '').split('@')[0];
             const quienCompleta = String(n.completado_por || '').split('@')[0];
-            html += '<div class="pn-card" style="padding:14px 18px;border-radius:12px;display:flex;gap:12px;align-items:flex-start;background:' + bgColor + ';border:1px solid ' + borderColor + '20;border-left:4px solid ' + borderColor + ';animation:pnFadeUp 0.4s ease both" id="prodnota-' + n.id + '">'
+            html += '<div class="pn-card" style="padding:14px 18px;border-radius:12px;display:flex;gap:12px;align-items:flex-start;background:' + bgColor + ';border:1px solid ' + borderColor + '20;border-left:4px solid ' + borderColor + ';animation:pnFadeUp 0.4s ease" id="prodnota-' + n.id + '">'
                 + '<div style="flex:1;min-width:0">'
                 + '<div style="display:flex;align-items:center;gap:7px;margin-bottom:6px;flex-wrap:wrap">'
                 + (esPendiente
@@ -245,7 +245,16 @@ App.registerModule('prod_notas', {
                     const wrap = btn.parentElement;
                     const menu = wrap && wrap.querySelector('.nota-amenu-drop');
                     if (menu && menu.style.display === 'block') {
-                        App.showAlert('✅ Diagnóstico: el clic llegó y el menú quedó abierto');
+                        // Diagnóstico: ¿el menú quedó dentro de la pantalla?
+                        const mr = menu.getBoundingClientRect();
+                        const visible = mr.width > 0 && mr.height > 0
+                            && mr.top < window.innerHeight && mr.left < window.innerWidth
+                            && mr.bottom > 0 && mr.right > 0;
+                        if (visible) {
+                            App.showAlert('✅ Diagnóstico: menú abierto y VISIBLE en pantalla');
+                        } else {
+                            App.showAlert('⚠ Diagnóstico: menú abierto pero FUERA de pantalla (top=' + Math.round(mr.top) + ', left=' + Math.round(mr.left) + ', alto=' + Math.round(mr.height) + ')', 'danger');
+                        }
                     } else {
                         App.showAlert('⚠ Diagnóstico: el clic llegó pero el menú NO quedó visible', 'danger');
                     }
