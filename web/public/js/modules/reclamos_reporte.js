@@ -62,10 +62,12 @@ App.registerModule('reclamos_reporte', {
                    absoluta dentro del cuerpo (altura definida) para que los
                    porcentajes de alto de las barras resuelvan siempre. */
                 .rq-p-body.rq-chart-body{position:relative;min-height:210px}
-                .rq-chart-body .rq-bars-row{position:absolute;inset:16px 18px 38px;display:flex;gap:8px;align-items:stretch}
+                .rq-chart-body .rq-bars-row{position:absolute;inset:16px 18px 52px;display:flex;gap:8px;align-items:stretch}
                 .rq-chart-body > .rq-bars{position:absolute;inset:16px 18px}
                 .rq-chart-body .rq-bars{flex:1;height:auto;display:flex;align-items:flex-end;gap:8px}
-                .rq-chart-body .rq-yaxis{height:auto;align-self:stretch}
+                .rq-chart-body .rq-yaxis{height:auto;align-self:stretch;width:26px;flex:none;align-items:flex-end}
+                .rq-chart-body .rq-months{position:absolute;left:18px;right:18px;bottom:30px;display:flex;gap:8px;padding-left:34px}
+                .rq-chart-body .rq-months span{flex:1;text-align:center;font-size:10px;color:var(--invp-muted,#8494a8)}
                 .rq-chart-body .rq-nota{position:absolute;left:18px;right:18px;bottom:12px;margin:0}
                 .rq-bars{display:flex;align-items:flex-end;gap:8px;height:170px;padding-top:14px;flex:1;min-width:0}
                 .rq-bar-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;justify-content:flex-end}
@@ -76,7 +78,7 @@ App.registerModule('reclamos_reporte', {
                 .rq-bar .n{position:absolute;top:-18px;left:0;right:0;text-align:center;font-size:10.5px;font-weight:800;color:#475569;font-variant-numeric:tabular-nums}
                 .rq-bar-col .m{font-size:10px;color:var(--invp-muted,#8494a8)}
                 .rq-bars-row{display:flex;gap:8px}
-                .rq-yaxis{display:flex;flex-direction:column;justify-content:space-between;font-size:10px;color:var(--invp-muted,#8494a8);height:184px;padding-top:14px}
+                .rq-yaxis{display:flex;flex-direction:column;justify-content:space-between;font-size:10px;color:var(--invp-muted,#8494a8);height:184px;padding-top:14px;line-height:1}
                 .rq-donut-wrap{display:flex;align-items:center;gap:22px;flex-wrap:wrap}
                 .rq-donut{width:150px;height:150px;border-radius:50%;position:relative;flex-shrink:0}
                 .rq-donut::after{content:'';position:absolute;inset:27px;background:#fff;border-radius:50%}
@@ -243,24 +245,30 @@ App.registerModule('reclamos_reporte', {
         const mesesCortos = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
         const totales = (d.meses || []).map(m => m.total || 0);
         const maxDato = Math.max(...totales, 1);
-        // Eje en unidades enteras: paso de 4 (o 1 si todo es pequeño)
-        const paso = maxDato <= 8 ? 2 : 4;
+        // Eje en unidades enteras: paso tal que el eje no pase de ~6 etiquetas
+        // (11 etiquetas amontonadas se traslapaban con los meses)
+        let paso = maxDato <= 8 ? 2 : 4;
+        while (Math.ceil(maxDato / paso) > 5) paso += 2;
         const maxEje = Math.ceil(maxDato / paso) * paso;
         const hoy = new Date();
         const esMesActual = (i) => (i === hoy.getMonth() && this.anio === hoy.getFullYear());
         let axis = '';
         for (let v = maxEje; v >= 0; v -= paso) axis += '<span>' + v + '</span>';
+        // Barras SIN etiqueta de mes (los meses van en su propia fila debajo,
+        // alineados por columna: si no, se traslapaban con el eje Y)
         const bars = totales.map((t, i) => {
             const h = Math.max(2, Math.round((t / maxEje) * 100));
             // Mes en curso en ámbar; meses sin reclamos en gris muy discreto
             const cls = esMesActual(i) ? ' oscuro' : (t === 0 ? ' cero' : '');
             return '<div class="rq-bar-col">'
                 + '<div class="rq-bar' + cls + '" style="height:' + h + '%">' + (t > 0 ? '<div class="n">' + t + '</div>' : '') + '</div>'
-                + '<div class="m">' + mesesCortos[i] + '</div></div>';
+                + '</div>';
         }).join('');
+        const months = mesesCortos.map(m => '<span>' + m + '</span>').join('');
         document.getElementById('rrChartMes').innerHTML = ''
             + '<div class="rq-bars-row"><div class="rq-yaxis">' + axis + '</div><div class="rq-bars">' + bars + '</div></div>'
-            + '<div class="rq-nota">Eje en unidades enteras (reclamos) · barra destacada = mes en curso</div>';
+            + '<div class="rq-months">' + months + '</div>'
+            + '<div class="rq-nota">Eje en unidades enteras (reclamos) · barra ámbar = mes en curso</div>';
     },
 
     // ---------------- Donut de estados (color = significado) ----------------
