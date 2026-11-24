@@ -310,9 +310,16 @@ const getReporte = async (anio) => {
 
     const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
     
+    // Clave de agrupación NORMALIZADA: sin tildes, sin mayúsculas, sin espacios
+    // dobles. "Juan Pérez", "juan perez " y "JUAN PEREZ" eran 3 barras distintas.
+    const normClave = (s) => String(s || '').trim().toLowerCase().replace(/\s+/g, ' ')
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
     const porMes = {};
     const porTecnico = {};
+    const tecnicoNombre = {};
     const porVendedor = {};
+    const vendedorNombre = {};
     const porTipo = { tipo_instalacion: 0, tipo_visita: 0, tipo_postventa: 0 };
 
     for (const row of result.rows) {
@@ -327,10 +334,12 @@ const getReporte = async (anio) => {
         porMes[mesIdx].novedades += parseInt(row.novedades);
         porMes[mesIdx].canceladas += parseInt(row.canceladas);
 
-        const tec = (row.tecnico || '').trim() || 'Sin asignar';
+        const tec = normClave(row.tecnico) || 'sin asignar';
+        if (!tecnicoNombre[tec]) tecnicoNombre[tec] = (String(row.tecnico || '').trim() || 'Sin asignar');
         porTecnico[tec] = (porTecnico[tec] || 0) + parseInt(row.total);
 
-        const vend = (row.vendedor || '').trim() || 'Sin asignar';
+        const vend = normClave(row.vendedor) || 'sin asignar';
+        if (!vendedorNombre[vend]) vendedorNombre[vend] = (String(row.vendedor || '').trim() || 'Sin asignar');
         porVendedor[vend] = (porVendedor[vend] || 0) + parseInt(row.total);
     }
 
@@ -341,8 +350,8 @@ const getReporte = async (anio) => {
         else porTipo.tipo_instalacion += parseInt(row.total);
     }
 
-    const tecnicoArr = Object.entries(porTecnico).map(([nombre, total]) => ({ nombre, total })).sort((a, b) => b.total - a.total);
-    const vendedorArr = Object.entries(porVendedor).map(([nombre, total]) => ({ nombre, total })).sort((a, b) => b.total - a.total);
+    const tecnicoArr = Object.entries(porTecnico).map(([clave, total]) => ({ nombre: tecnicoNombre[clave] || clave, total })).sort((a, b) => b.total - a.total);
+    const vendedorArr = Object.entries(porVendedor).map(([clave, total]) => ({ nombre: vendedorNombre[clave] || clave, total })).sort((a, b) => b.total - a.total);
 
     const mesesData = meses.map((nombre, i) => ({
         nombre,
