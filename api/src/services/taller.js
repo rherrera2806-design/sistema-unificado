@@ -23,7 +23,7 @@ const calcularProporcion = (cantidadTotal, cantidad, metrosCuadrados, kilos, anc
 
 async function getEstacionesConCarga() {
     const result = await query(`
-        SELECT e.id, e.nombre_estacion, e.orden_secuencia_defecto, e.cap_max,
+        SELECT e.id, e.nombre_estacion, e.orden_secuencia_defecto, e.cap_max, e.cuello_botella,
                COALESCE(t.pendientes, 0) as pendientes,
                COALESCE(t.en_proceso, 0) as en_proceso,
                COALESCE(t.total_kilos, 0) as total_kilos,
