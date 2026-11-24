@@ -759,7 +759,7 @@ router.get('/api/reclamos/reporte', perms.view, async (req, res, next) => {
             SELECT r.motivo as motivo, COUNT(*)::int as total
             FROM reclamos_devoluciones r
             WHERE ${rango} AND r.motivo != ''
-            GROUP BY r.motivo ORDER BY total DESC LIMIT 10
+            GROUP BY r.motivo ORDER BY total DESC
         `, params);
 
         const resolucionResult = await query(`
@@ -782,8 +782,14 @@ router.get('/api/reclamos/reporte', perms.view, async (req, res, next) => {
             FROM reclamos_devoluciones r
             WHERE ${rango}
         `, params);
+        // Clave de agrupación NORMALIZADA: sin tildes, sin mayúsculas, sin
+        // espacios dobles. "Ventas", "ventas " y "VENTAS" eran 3 barras distintas.
+        const normClave = (s) => String(s || '').trim().toLowerCase().replace(/\s+/g, ' ')
+            .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
         const costoPorMes = {};
         const costoPorResp = {};
+        const respNombre = {};
         let costoTotalNum = 0;
         for (const row of costoRows.rows) {
             const costo = Number(costoTotalDeItems(parseItems(row.items))) || 0;
@@ -791,7 +797,10 @@ router.get('/api/reclamos/reporte', perms.view, async (req, res, next) => {
             costoTotalNum += costo;
             const idx = (row.mes || 1) - 1;
             costoPorMes[idx] = (costoPorMes[idx] || 0) + costo;
-            const respCosto = (row.responsable || '').trim() || 'Sin asignar';
+            // Clave NORMALIZADA (sin tildes/mayúsculas/espacios dobles): si no,
+            // "Ventas" y "ventas " salían como dos barras separadas.
+            const respCosto = normClave(row.responsable) || 'sin asignar';
+            if (!respNombre[respCosto]) respNombre[respCosto] = (String(row.responsable || '').trim() || 'Sin asignar');
             costoPorResp[respCosto] = (costoPorResp[respCosto] || 0) + costo;
         }
 
@@ -830,7 +839,8 @@ router.get('/api/reclamos/reporte', perms.view, async (req, res, next) => {
             porMes[idx].reproceso += row.reproceso;
             porMes[idx].rechazadas += row.rechazadas;
 
-            const resp = (row.responsable || '').trim() || 'Sin asignar';
+            const resp = normClave(row.responsable) || 'sin asignar';
+            if (!respNombre[resp]) respNombre[resp] = (String(row.responsable || '').trim() || 'Sin asignar');
             porResponsable[resp] = (porResponsable[resp] || 0) + row.total;
         }
 
@@ -854,14 +864,29 @@ router.get('/api/reclamos/reporte', perms.view, async (req, res, next) => {
             return { nombre, total: found ? found.total : 0 };
         });
 
+        // Motivos NORMALIZADOS: "Defecto de fabricación" y "Defecto de fabricacion"
+        // eran dos barras distintas — se agrupa por clave sin tildes/mayúsculas.
+        const motivoMap = {};
+        const motivoNombre = {};
+        for (const row of motivoResult.rows) {
+            const k = normClave(row.motivo);
+            if (!k) continue;
+            if (!motivoNombre[k]) motivoNombre[k] = String(row.motivo || '').trim();
+            motivoMap[k] = (motivoMap[k] || 0) + row.total;
+        }
+        const motivosData = Object.entries(motivoMap)
+            .map(([k, total]) => ({ motivo: motivoNombre[k], total }))
+            .sort((a, b) => b.total - a.total)
+            .slice(0, 10);
+
         res.json({
             anio,
             meses: mesesData,
-            responsables: Object.entries(porResponsable).map(([nombre, total]) => ({ nombre, total })).sort((a,b) => b.total - a.total),
-            motivos: motivoResult.rows,
+            responsables: Object.entries(porResponsable).map(([clave, total]) => ({ nombre: respNombre[clave] || clave, total })).sort((a,b) => b.total - a.total),
+            motivos: motivosData,
             resoluciones: resolucionResult.rows,
             clientes: clienteResult.rows,
-            costoPorResponsable: Object.entries(costoPorResp).map(([nombre, total]) => ({ nombre, total })).sort((a, b) => b.total - a.total).slice(0, 8),
+            costoPorResponsable: Object.entries(costoPorResp).map(([clave, total]) => ({ nombre: respNombre[clave] || clave, total })).sort((a, b) => b.total - a.total).slice(0, 8),
             diasSemana: diasData,
             totalGeneral,
             totalFinalizados,
