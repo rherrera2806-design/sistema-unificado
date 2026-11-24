@@ -231,36 +231,10 @@ App.registerModule('prod_notas', {
     // Engancha los clics del menú de acciones por addEventListener (funciona
     // aunque los handlers inline no resuelvan en el entorno del SPA).
     _bindAcciones(container) {
-        // DIAGNÓSTICO TEMPORAL: qué elemento recibe realmente el clic
-        container.addEventListener('click', (ev) => {
-            const t = ev.target;
-            const cls = t && t.className ? '.' + String(t.className).split(' ')[0] : '';
-            App.showAlert('DIAG · clic recibido en: ' + (t && t.tagName ? t.tagName : '?') + cls);
-        });
         container.querySelectorAll('.nota-amenu-btn').forEach(btn => {
             btn.addEventListener('click', (ev) => {
                 ev.stopPropagation();
-                try {
-                    this.toggleAcciones(btn);
-                    const wrap = btn.parentElement;
-                    const menu = wrap && wrap.querySelector('.nota-amenu-drop');
-                    if (menu && menu.style.display === 'block') {
-                        // Diagnóstico: ¿el menú quedó dentro de la pantalla?
-                        const mr = menu.getBoundingClientRect();
-                        const visible = mr.width > 0 && mr.height > 0
-                            && mr.top < window.innerHeight && mr.left < window.innerWidth
-                            && mr.bottom > 0 && mr.right > 0;
-                        if (visible) {
-                            App.showAlert('✅ Diagnóstico: menú abierto y VISIBLE en pantalla');
-                        } else {
-                            App.showAlert('⚠ Diagnóstico: menú abierto pero FUERA de pantalla (top=' + Math.round(mr.top) + ', left=' + Math.round(mr.left) + ', alto=' + Math.round(mr.height) + ')', 'danger');
-                        }
-                    } else {
-                        App.showAlert('⚠ Diagnóstico: el clic llegó pero el menú NO quedó visible', 'danger');
-                    }
-                } catch (e) {
-                    App.showAlert('ERROR en el botón: ' + e.message, 'danger');
-                }
+                this.toggleAcciones(btn);
             });
         });
         container.querySelectorAll('.nota-amenu-drop .it').forEach(it => {
