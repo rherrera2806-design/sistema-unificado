@@ -23,7 +23,13 @@ App.registerModule('prod_prog_estacion', {
                 .ppe-table td{padding:6px 10px;border-bottom:1px solid #f1f5f9;color:#334155}
                 .ppe-table tbody tr{transition:background .15s}
                 .ppe-table tbody tr:hover{background:#f8fafc!important}
-                .ppe-date-header{background:linear-gradient(135deg,#0f172a,#1e3a5f);color:white;padding:10px 16px;font-weight:700;font-size:13px;display:flex;justify-content:space-between;align-items:center;border-radius:10px 10px 0 0;margin-top:16px}
+                .ppe-date-header{position:sticky;top:0;z-index:5;background:linear-gradient(120deg,#0f172a,#1e3a8a);color:white;padding:9px 16px;font-weight:700;font-size:12.5px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;border-radius:10px 10px 0 0;margin-top:16px;box-shadow:0 3px 10px rgba(15,23,42,.18)}
+                .ppe-date-header .dow{display:block;font-size:9px;font-weight:600;opacity:.7;letter-spacing:.8px;text-transform:uppercase}
+                .ppe-date-header .tots{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}
+                .ppe-date-header .chip{font-size:9.5px;font-weight:700;background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.16);padding:2px 9px;border-radius:20px;white-space:nowrap}
+                .ppe-date-header .chip b{font-weight:800}
+                .ppe-tchip{font-size:10px;font-weight:700;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.16);padding:3px 10px;border-radius:20px;white-space:nowrap}
+                .ppe-tchip b{font-weight:800}
                 .ppe-date-header:first-child{margin-top:0}
                 .ppe-badge{display:inline-block;padding:2px 8px;border-radius:6px;font-size:10px;font-weight:600}
                 .ppe-estado-PENDIENTE{background:#fef3c7;color:#92400e}
@@ -43,8 +49,16 @@ App.registerModule('prod_prog_estacion', {
                 .ppe-hero-actions{margin-left:auto;display:flex;gap:8px;align-items:center}
                 .ppe-hbtn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:8px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.1);color:#fff;cursor:pointer;font-size:11px;font-weight:600;white-space:nowrap}
                 .ppe-hbtn:hover{background:rgba(255,255,255,.2)}
-                .ppe-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px;width:100%}
-                .ppe-kpi{background:#fff;border:1px solid #e4e9f0;border-radius:12px;padding:11px 16px;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+                .ppe-strip{background:#fff;border:1px solid #e4e9f0;border-radius:12px;padding:11px 16px;margin-bottom:14px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;width:100%}
+                .ppe-strip .big{font-size:13px;font-weight:700;color:#0f172a;font-variant-numeric:tabular-nums}
+                .ppe-strip .big span{color:#64748b;font-weight:500;font-size:11px}
+                .ppe-strip .hint{margin-left:auto;font-size:9.5px;color:#94a3b8}
+                .ppe-table tbody tr.st-pend{border-left:3px solid #f59e0b}
+                .ppe-table tbody tr.st-prog{border-left:3px solid #3b82f6}
+                .ppe-table tbody tr.st-proceso{border-left:3px solid #8b5cf6}
+                .ppe-table tbody tr.st-term{border-left:3px solid #22c55e}
+                .ppe-table tbody tr.st-merm{border-left:3px solid #dc2626}
+                .ppe-table tbody tr.st-cerr{border-left:3px solid #64748b}
                 /* KPIs NEUTROS: color solo cuando significa algo (regla del sistema) */
                 .ppe-kpi .k{font-size:10px;font-weight:600;letter-spacing:.7px;text-transform:uppercase;color:#64748b}
                 .ppe-kpi .v{font-size:22px;font-weight:700;color:#0f172a;font-variant-numeric:tabular-nums;letter-spacing:-.2px}
@@ -170,12 +184,13 @@ App.registerModule('prod_prog_estacion', {
             totalM2 += e.total_m2;
             totalKg += e.total_kg;
         }
+        // Barra única de totales (menos es más): el detalle vive en las
+        // cabeceras sticky de cada estación/día.
+        const totalUnd = estaciones.reduce((s, e) => s + (e.fechas || []).reduce((s2, d) => s2 + this._unidadesDia(d), 0), 0);
         el.innerHTML = `
-            <div class="ppe-kpis">
-                <div class="ppe-kpi"><div class="k">Estaciones</div><div class="v">${totalEstaciones}</div><div class="s">con programación</div></div>
-                <div class="ppe-kpi"><div class="k">Órdenes</div><div class="v">${Number(totalOrd).toLocaleString('es-CL')}</div><div class="s">en el rango seleccionado</div></div>
-                <div class="ppe-kpi"><div class="k">Total m²</div><div class="v">${Number(totalM2).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1})}</div><div class="s">superficie total</div></div>
-                <div class="ppe-kpi"><div class="k">Total kg</div><div class="v">${Number(totalKg).toLocaleString('es-CL',{minimumFractionDigits:0,maximumFractionDigits:0})}</div><div class="s">peso total</div></div>
+            <div class="ppe-strip">
+                <div class="big">${totalEstaciones} ${totalEstaciones === 1 ? 'estación' : 'estaciones'} <span>· ${Number(totalOrd).toLocaleString('es-CL')} órdenes · ${totalUnd.toLocaleString('es-CL')} und · ${Number(totalM2).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1})} m² · ${Number(totalKg).toLocaleString('es-CL',{minimumFractionDigits:0,maximumFractionDigits:0})} kg</span></div>
+                <div class="hint">la cabecera de cada día queda fija al hacer scroll</div>
             </div>
         `;
     },
@@ -193,11 +208,16 @@ App.registerModule('prod_prog_estacion', {
         for (const est of estaciones) {
             const color = est.cuello_botella ? '#ef4444' : '#3b82f6';
             html += `<div style="background:white;border-radius:14px;border:1px solid #e2e8f0;overflow:hidden;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,.04)">`;
-            html += `<div style="background:linear-gradient(135deg,${color},${color}dd);color:white;padding:12px 16px;display:flex;justify-content:space-between;align-items:center">`;
+            html += `<div style="background:linear-gradient(135deg,${color},${color}dd);color:white;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">`;
             html += `<div><span style="font-size:15px;font-weight:800">${escText(est.orden)}° ${escText(est.nombre)}</span>`;
             if (est.cuello_botella) html += ` <span style="font-size:10px;padding:2px 6px;border-radius:4px;background:rgba(255,255,255,0.2);margin-left:6px">CUELLO DE BOTELLA</span>`;
             html += `</div>`;
-            html += `<div style="text-align:right;font-size:11px"><span>${est.total_ordenes} ord</span> · <span>${(est.fechas || []).reduce((s, d) => s + this._unidadesDia(d), 0).toLocaleString('es-CL')} und</span> · <span>${Number(est.total_m2).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1})} m²</span> · <span>${Number(est.total_kg).toLocaleString('es-CL',{minimumFractionDigits:0,maximumFractionDigits:0})} kg</span></div>`;
+            html += `<div style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap">`
+                + `<span class="ppe-tchip"><b>${est.total_ordenes}</b> ord</span>`
+                + `<span class="ppe-tchip"><b>${(est.fechas || []).reduce((s, d) => s + this._unidadesDia(d), 0).toLocaleString('es-CL')}</b> und</span>`
+                + `<span class="ppe-tchip"><b>${Number(est.total_m2).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1})}</b> m²</span>`
+                + `<span class="ppe-tchip"><b>${Number(est.total_kg).toLocaleString('es-CL',{minimumFractionDigits:0,maximumFractionDigits:0})}</b> kg</span>`
+                + `</div>`;
             html += `</div>`;
 
             if (!est.fechas || est.fechas.length === 0) {
@@ -208,9 +228,14 @@ App.registerModule('prod_prog_estacion', {
                     const _fd = new Date((esSinFecha ? '2000-01-01' : dia.fecha) + 'T12:00:00');
                     const fechaFmt = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'][_fd.getDay()] + ' ' + String(_fd.getDate()).padStart(2, '0') + '-' + String(_fd.getMonth() + 1).padStart(2, '0') + '-' + _fd.getFullYear();
                     const esHoy = dia.fecha === this._hoyLocal();
-                    html += `<div class="ppe-date-header" style="${esSinFecha ? 'background:linear-gradient(135deg,#b45309,#d97706)' : esHoy ? 'background:linear-gradient(135deg,#059669,#10b981)' : ''}">`;
-                    html += `<div>${esSinFecha ? 'SIN FECHA PROGRAMADA' : (esHoy ? 'HOY - ' : '') + fechaFmt}</div>`;
-                    html += `<div>${dia.total_ordenes} ord · ${this._unidadesDia(dia).toLocaleString('es-CL')} und · ${Number(dia.total_m2).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1})} m² · ${Number(dia.total_kg).toLocaleString('es-CL',{minimumFractionDigits:0,maximumFractionDigits:0})} kg</div>`;
+                    html += `<div class="ppe-date-header" style="${esSinFecha ? 'background:linear-gradient(135deg,#b45309,#d97706)' : esHoy ? 'background:linear-gradient(135deg,#047857,#10b981)' : ''}">`;
+                    html += `<div><span class="dow">${esSinFecha ? '⚠ Sin programar' : (esHoy ? 'Hoy · ' : '') + 'Fecha de entrega'}</span>${esSinFecha ? 'SIN FECHA PROGRAMADA' : '📅 ' + fechaFmt}</div>`;
+                    html += `<div class="tots">`
+                        + `<span class="chip"><b>${dia.total_ordenes}</b> ord</span>`
+                        + `<span class="chip"><b>${this._unidadesDia(dia).toLocaleString('es-CL')}</b> und</span>`
+                        + `<span class="chip"><b>${Number(dia.total_m2).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1})}</b> m²</span>`
+                        + `<span class="chip"><b>${Number(dia.total_kg).toLocaleString('es-CL',{minimumFractionDigits:0,maximumFractionDigits:0})}</b> kg</span>`
+                        + `</div>`;
                     html += `</div>`;
                     html += `<div class="m-table-wrap"><table class="ppe-table"><thead><tr>`;
                     html += `<th>Pedido</th><th>Item</th><th>Prioridad</th><th>Código</th><th>Ref/Padre</th><th>Espesor</th><th>Dim</th><th>Cant. pend.</th><th>M²</th><th>Kg</th><th>Cliente</th><th>Estado</th><th>Ruta</th><th>Grupo</th>`;
@@ -239,7 +264,7 @@ App.registerModule('prod_prog_estacion', {
                             const grp = { padre: f.p, hijos: f.hijos };
                             const p = grp.padre;
                             const codMpGrupo = grp.hijos.map(h => String(h.codigo || '').trim()).filter(Boolean).join(' + ');
-                            html += `<tr style="border-bottom:2px solid #e2e8f0">`;
+                            html += `<tr class="${this._rowClass(p.estado)}" style="border-bottom:2px solid #e2e8f0">`;
                             html += `<td><strong>${this.esc(p.pedido || '-')}</strong></td>`;
                             html += `<td>${this.esc(p.item || '-')}</td>`;
                             html += `<td>${this._prioBadge(p.prioridad)}</td>`;
@@ -323,6 +348,12 @@ App.registerModule('prod_prog_estacion', {
 
     // Escapeo de texto/atributo: delega al helper global (el metodo viejo no escapaba comillas)
     esc(s) { return escText(s); },
+
+    // Borde de color por estado en la fila (mismo lenguaje que Producción/Prog. General)
+    _rowClass(estado) {
+        return { 'PENDIENTE': 'st-pend', 'PROGRAMADO': 'st-prog', 'EN_PROCESO': 'st-proceso',
+            'TERMINADO': 'st-term', 'MERMADO': 'st-merm', 'CERRADO': 'st-cerr' }[estado] || '';
+    },
 
     // ── Regla de la receta BOM ─────────────────────────────────────────────
     // Cada código padre tiene su receta. En las estaciones de PROCESO cada
@@ -510,7 +541,7 @@ App.registerModule('prod_prog_estacion', {
     },
 
     _renderFila(o, estadoClass, esHijo) {
-        let html = '<tr>';
+        let html = '<tr class="' + this._rowClass(o.estado) + '">';
         html += `<td><strong>${this.esc(o.pedido || '-')}</strong></td>`;
         html += `<td>${this.esc(o.item || '-')}${o.turno ? (String(o.turno).toLowerCase() === 'noche' ? ' <span title="Turno noche">🌙</span>' : ' <span title="Turno día">🌞</span>') : ''}</td>`;
         html += `<td>${this._prioBadge(o.prioridad)}</td>`;
