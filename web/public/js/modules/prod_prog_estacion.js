@@ -456,7 +456,7 @@ App.registerModule('prod_prog_estacion', {
             </div>
             <div style="display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin-bottom:6px">
                 <strong style="font-size:10px;color:#0f172a">${this.esc(o.codigo)}</strong>${o.es_compuesto ? ' <span style="font-size:10px;padding:1px 4px;border-radius:3px;background:#ede9fe;color:#7c3aed">BOM</span>' : ''}
-                <span style="font-size:10px;color:#64748b">${this.esc(o.codigo_ref)}${o.nombre_padre ? ' · ' + this.esc(o.nombre_padre) : ''}</span>
+                <span style="font-size:10px;color:#64748b">${this.esc(o.codigo_ref)}${o.nombre_padre ? ' · ' + this.esc(o.nombre_padre) : ''}${o.mp_nombre ? ' · ' + this.esc(o.mp_nombre) : ''}</span>
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:11px">
                 <div><span style="color:#64748b">Espesor:</span> <span style="color:#475569">${this._espesorFila(o) ? Number(this._espesorFila(o)).toLocaleString('es-CL',{maximumFractionDigits:2}) + ' mm' : '—'}</span></div>
@@ -545,7 +545,8 @@ App.registerModule('prod_prog_estacion', {
         html += `<td><strong>${this.esc(o.pedido || '-')}</strong></td>`;
         html += `<td>${this.esc(o.item || '-')}${o.turno ? (String(o.turno).toLowerCase() === 'noche' ? ' <span title="Turno noche">🌙</span>' : ' <span title="Turno día">🌞</span>') : ''}</td>`;
         html += `<td>${this._prioBadge(o.prioridad)}</td>`;
-        html += `<td><strong>${this.esc(o.codigo)}</strong>${o.es_compuesto ? ' <span style="font-size:10px;padding:1px 4px;border-radius:3px;background:#ede9fe;color:#7c3aed">BOM</span>' : ''}</td>`;
+        const mpInfoFila = o.mp_nombre ? (this.esc(o.mp_nombre) + (o.mp_espesor ? ' ' + escText(o.mp_espesor) + 'mm' : '')) : '';
+        html += `<td><strong>${this.esc(o.codigo)}</strong>${o.es_compuesto ? ' <span style="font-size:10px;padding:1px 4px;border-radius:3px;background:#ede9fe;color:#7c3aed">BOM</span>' : ''}${mpInfoFila ? '<div style="font-size:9.5px;color:#64748b;margin-top:1px">' + mpInfoFila + '</div>' : ''}</td>`;
         html += `<td style="font-size:10px"><strong>${this.esc(o.codigo_ref)}</strong>${o.nombre_padre ? '<br><span style="color:#64748b">' + this.esc(o.nombre_padre) + '</span>' : ''}</td>`;
         html += `<td style="white-space:nowrap">${this._espesorFila(o) ? Number(this._espesorFila(o)).toLocaleString('es-CL',{maximumFractionDigits:2}) + ' mm' : '—'}</td>`;
         html += `<td>${Number(o.ancho).toLocaleString('es-CL')}×${Number(o.alto).toLocaleString('es-CL')}</td>`;
