@@ -107,42 +107,54 @@ App.registerModule('pedidos_grafico_mes', {
                 <span class="pgm-fhint" id="pgmFiltroInfo"></span>
             </div>
 
-            <div class="pgm-kpis" id="pgmKpis"></div>
+            <div class="pgm-blocks" id="pgmKpis"></div>
 
             <div class="pgm-panel" style="margin-bottom:14px">
                 <div class="pgm-p-head"><h3>Pedidos por día</h3><span class="sub" id="pgmSub"></span></div>
                 <div class="pgm-p-body">
                     <div class="pgm-legend" id="pgmLegend"></div>
-                    <div class="pgm-scroll"><div class="pgm-stack-row" id="pgmStack"></div></div>
+                    <div class="pgm-scroll">
+                        <div class="pgm-stack-row" id="pgmStack"></div>
+                        <div class="pgm-wbands" id="pgmWBands"></div>
+                    </div>
                 </div>
             </div>
 
             <div class="pgm-grid2">
                 <div class="pgm-panel">
-                    <div class="pgm-p-head"><h3>Comparativo por mes</h3><span class="sub">últimos 12 meses</span></div>
-                    <div class="pgm-p-body"><div class="pgm-cmp-row" id="pgmCmp"></div></div>
+                    <div class="pgm-p-head"><h3>Resumen por semana</h3><span class="sub" id="pgmSubSem"></span></div>
+                    <div class="pgm-p-body">
+                        <div class="pgm-weeks" id="pgmSemanas"></div>
+                        <div class="pgm-wfoot" id="pgmSemFoot"></div>
+                    </div>
                 </div>
                 <div class="pgm-panel">
                     <div class="pgm-p-head"><h3>Distribución por etiqueta</h3><span class="sub" id="pgmSubEt"></span></div>
                     <div class="pgm-p-body" id="pgmEtiquetas"></div>
                 </div>
+            </div>
+            <div class="pgm-panel">
+                <div class="pgm-p-head"><h3>Comparativo por mes</h3><span class="sub">últimos 12 meses · barra ámbar = mes seleccionado</span></div>
+                <div class="pgm-p-body"><div class="pgm-cmp-row" id="pgmCmp"></div></div>
             </div>`;
 
         const label = this._MESES[this.mes] + ' ' + this.anio;
         document.getElementById('pgmMesLabel').textContent = label;
         document.getElementById('pgmSub').textContent = 'apilados por tipo de OV · ' + label.toLowerCase();
         document.getElementById('pgmSubEt').textContent = label.toLowerCase();
+        document.getElementById('pgmSubSem').textContent = 'suma y promedio por semana · ' + label.toLowerCase();
 
         const pedidos = this._pedidosMes(this.anio, this.mes);
         this._pintarFiltro();
         this._pintarKpis(pedidos);
         this._pintarLeyenda(pedidos);
         this._pintarStack(pedidos);
+        this._pintarSemanas(pedidos);
         this._pintarComparativo();
         this._pintarEtiquetas(pedidos);
     },
 
-    // ---------------- KPIs del mes ----------------
+    // ---------------- KPIs: 3 bloques de lectura (familia) ----------------
     _pintarKpis(pedidos) {
         const total = pedidos.length;
         const porDia = {};
@@ -152,6 +164,9 @@ App.registerModule('pedidos_grafico_mes', {
         });
         const diasCon = Object.keys(porDia).length;
         const promedio = diasCon > 0 ? Math.round(total / diasCon) : 0;
+        // Promedio por SEMANA (semanas calendario del mes con datos)
+        const semanas = this._semanasMes(pedidos).filter(s => s.suma > 0);
+        const promSemana = semanas.length > 0 ? Math.round(total / semanas.length) : 0;
         let mejorDia = '-', mejorTotal = 0;
         for (const [d, v] of Object.entries(porDia)) { if (v > mejorTotal) { mejorTotal = v; mejorDia = d; } }
 
@@ -165,15 +180,57 @@ App.registerModule('pedidos_grafico_mes', {
             varCls = pct > 0 ? 'pgm-green' : (pct < 0 ? 'pgm-red' : '');
             varSub = this._fmtNum(totalAnt) + ' → ' + this._fmtNum(total) + ' pedidos';
         }
+        const chip = (cls, txt) => '<span class="pgm-chip ' + cls + '">' + txt + '</span>';
 
         document.getElementById('pgmKpis').innerHTML = ''
-            + this._kpi('Total del mes', this._fmtNum(total), 'pedidos ingresados', '')
-            + this._kpi('Promedio diario', this._fmtNum(promedio), 'en ' + diasCon + ' días con ingresos', '')
-            + this._kpi('Mejor día', mejorDia === '-' ? '—' : 'Día ' + mejorDia, mejorTotal > 0 ? this._fmtNum(mejorTotal) + ' pedidos' : 'sin ingresos', '')
-            + this._kpi('Vs. mes anterior', varTxt, varSub, varCls);
+            + '<div class="pgm-block">'
+            + '<div class="k">📊 ¿Cuántos pedidos?</div>'
+            + '<div class="v">' + this._fmtNum(total) + '<small>en ' + this._MESES[this.mes] + '</small></div>'
+            + '<div class="chips">' + chip('', '<b>' + this._fmtNum(promedio) + '</b> promedio/día')
+            + chip('', '<b>' + this._fmtNum(promSemana) + '</b> promedio/semana') + '</div></div>'
+            + '<div class="pgm-block">'
+            + '<div class="k">🏆 Mejor día</div>'
+            + '<div class="v">' + (mejorDia === '-' ? '—' : 'Día ' + mejorDia) + '</div>'
+            + '<div class="chips">' + (mejorTotal > 0 ? chip('g', '<b>' + this._fmtNum(mejorTotal) + '</b> pedidos') : chip('a', 'sin ingresos')) + '</div></div>'
+            + '<div class="pgm-block">'
+            + '<div class="k">📈 Vs. mes anterior</div>'
+            + '<div class="v ' + varCls + '">' + escText(varTxt) + '</div>'
+            + '<div class="chips">' + chip(varCls === 'pgm-green' ? 'g' : varCls === 'pgm-red' ? 'r' : '', escText(varSub)) + '</div></div>';
     },
-    _kpi(k, v, s, cls) {
-        return '<div class="pgm-kpi"><div class="k">' + escText(k) + '</div><div class="v ' + cls + '">' + escText(v) + '</div><div class="s">' + escText(s) + '</div></div>';
+
+    // ---------------- Semanas calendario del mes (dom→sáb, colas inclusivas) ----------------
+    // Suma y promedio por semana — el corte es por DÍA DEL MES (1-7, 8-14, ...),
+    // igual que las bandas bajo las barras, para que ambas vistas cuadren.
+    _semanasMes(pedidos) {
+        const diasEnMes = new Date(this.anio, this.mes + 1, 0).getDate();
+        const hoy = new Date();
+        const esMesActual = this.anio === hoy.getFullYear() && this.mes === hoy.getMonth();
+        const sem = [];
+        for (let ini = 1; ini <= diasEnMes; ini += 7) {
+            const fin = Math.min(ini + 6, diasEnMes);
+            const dias = [];
+            for (let d = ini; d <= fin; d++) dias.push(d);
+            sem.push({ ini, fin, dias, suma: 0, diasCon: 0 });
+        }
+        pedidos.forEach(p => {
+            const d = new Date(p.fecha_subida).getDate();
+            const s = sem.find(x => d >= x.ini && d <= x.fin);
+            if (s) s.suma++;
+        });
+        sem.forEach(s => {
+            // Días con ingresos: hasta hoy si la semana está en curso (si no,
+            // el promedio de la semana en curso saldría inflado)
+            const limite = esMesActual ? Math.min(s.fin, hoy.getDate()) : s.fin;
+            const conDatos = new Set();
+            pedidos.forEach(p => {
+                const d = new Date(p.fecha_subida).getDate();
+                if (d >= s.ini && d <= limite) conDatos.add(d);
+            });
+            s.diasCon = conDatos.size;
+            s.prom = s.diasCon > 0 ? Math.round((s.suma / s.diasCon) * 10) / 10 : 0;
+            s.enCurso = esMesActual && hoy.getDate() >= s.ini && hoy.getDate() <= s.fin;
+        });
+        return sem;
     },
     _mesAnterior() {
         const m = this.mes - 1, a = this.mes === 0 ? this.anio - 1 : this.anio;
@@ -246,6 +303,47 @@ App.registerModule('pedidos_grafico_mes', {
                 + '<div class="d">' + d + '</div></div>';
         }
         document.getElementById('pgmStack').innerHTML = html;
+    },
+
+    // ---------------- Resumen por semana (suma + promedio) ----------------
+    _pintarSemanas(pedidos) {
+        const sem = this._semanasMes(pedidos);
+        const maxSem = Math.max(1, ...sem.map(s => s.suma));
+
+        // Bandas bajo las barras: una por semana, proporcional a sus días
+        document.getElementById('pgmWBands').innerHTML = sem.map(s => {
+            const cur = s.enCurso;
+            return '<div class="pgm-wband' + (cur ? ' cur' : '') + '" style="flex:' + s.dias.length + '">'
+                + 'Sem ' + s.ini + '–' + s.fin + (cur ? ' · en curso' : '')
+                + '<b>' + this._fmtNum(s.suma) + ' pedido' + (s.suma === 1 ? '' : 's') + '</b></div>';
+        }).join('');
+
+        // Filas del panel: suma (héroe), barra comparativa y chips de promedio
+        document.getElementById('pgmSemanas').innerHTML = sem.map((s, i) => {
+            const cls = s.suma === 0 ? 'zero' : (s.enCurso ? 'cur' : '');
+            const w = s.suma > 0 ? Math.max(2, Math.round((s.suma / maxSem) * 100)) : 2;
+            return '<div class="pgm-wk">'
+                + '<div class="top"><span class="n">Semana ' + (i + 1) + ' · ' + s.ini + '–' + s.fin + ' ' + this._MESES_CORTOS[this.mes].toLowerCase()
+                + (s.enCurso ? '<em>en curso</em>' : '') + '</span>'
+                + '<span class="v">' + this._fmtNum(s.suma) + '<small>pedidos</small></span></div>'
+                + '<div class="pgm-track"><div class="pgm-fill ' + cls + '" style="width:' + w + '%"></div></div>'
+                + '<div class="meta">'
+                + '<span class="pgm-chip' + (s.enCurso ? ' a' : '') + '"><b>' + String(s.prom).replace('.', ',') + '</b> prom/día</span>'
+                + '<span class="pgm-chip"><b>' + s.diasCon + '</b> día' + (s.diasCon === 1 ? '' : 's') + ' activo' + (s.diasCon === 1 ? '' : 's') + '</span>'
+                + (s.suma === 0 ? '<span class="pgm-chip">sin datos aún</span>' : '')
+                + '</div></div>';
+        }).join('');
+
+        // Footer: promedio general, mejor semana y semana en curso
+        const conDatos = sem.filter(s => s.suma > 0);
+        const promGen = conDatos.length > 0 ? Math.round(pedidos.length / conDatos.length) : 0;
+        let mejor = null;
+        sem.forEach((s, i) => { if (!mejor || s.suma > mejor.suma) mejor = { ...s, n: i + 1 }; });
+        const enCurso = sem.find(s => s.enCurso);
+        document.getElementById('pgmSemFoot').innerHTML = ''
+            + 'Promedio general: <strong>' + this._fmtNum(promGen) + ' pedidos/semana</strong>'
+            + (mejor && mejor.suma > 0 ? ' · Mejor semana: <strong>' + mejor.n + ' (' + this._fmtNum(mejor.suma) + ' pedidos)</strong>' : '')
+            + (enCurso ? ' · Semana ' + (sem.indexOf(enCurso) + 1) + ' en curso (datos hasta hoy)' : '');
     },
 
     // ---------------- Comparativo de 12 meses ----------------
@@ -379,11 +477,17 @@ App.registerModule('pedidos_grafico_mes', {
             .pgm-fbtn.ghost:hover{background:#f8fafc}
             .pgm-fhint{font-size:11px;color:#8494a8}
             .pgm-fhint strong{color:#0369a1}
-            .pgm-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
-            .pgm-kpi{background:#fff;border:1px solid #e4e9f0;border-radius:12px;padding:15px 18px}
-            .pgm-kpi .k{font-size:10px;font-weight:600;letter-spacing:.7px;text-transform:uppercase;color:#8494a8}
-            .pgm-kpi .v{font-size:20px;font-weight:700;margin-top:5px;color:#0f172a}
-            .pgm-kpi .s{font-size:10px;color:#8494a8;margin-top:2px}
+            .pgm-blocks{display:grid;grid-template-columns:1fr 1fr 1fr;gap:13px;margin-bottom:16px}
+            .pgm-block{background:#fff;border:1px solid #e4e9f0;border-radius:14px;padding:15px 18px}
+            .pgm-block .k{font-size:10px;font-weight:800;letter-spacing:1.1px;text-transform:uppercase;color:#8494a8}
+            .pgm-block .v{font-size:34px;font-weight:800;line-height:1.05;margin-top:3px;letter-spacing:-.5px;color:#0f172a;font-variant-numeric:tabular-nums}
+            .pgm-block .v small{font-size:13px;font-weight:600;color:#8494a8;margin-left:5px;letter-spacing:0}
+            .pgm-block .chips{display:flex;gap:7px;flex-wrap:wrap;margin-top:9px}
+            .pgm-chip{font-size:10.5px;font-weight:700;background:#f1f5f9;color:#475569;padding:3px 10px;border-radius:20px;white-space:nowrap;font-variant-numeric:tabular-nums}
+            .pgm-chip b{color:#0f172a;font-weight:800}
+            .pgm-chip.g{background:#dcfce7;color:#15803d}
+            .pgm-chip.r{background:#fee2e2;color:#b91c1c}
+            .pgm-chip.a{background:#fef3c7;color:#b45309}
             .pgm-green{color:#15803d!important}
             .pgm-red{color:#dc2626!important}
             .pgm-grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
@@ -406,14 +510,34 @@ App.registerModule('pedidos_grafico_mes', {
             .pgm-stack-col.vacio .d{color:#cbd5e1}
             .pgm-cmp-row{display:flex;align-items:flex-end;gap:6px;height:180px;padding-top:14px}
             .pgm-cmp-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;height:100%;justify-content:flex-end}
-            .pgm-cmp-bar{width:100%;max-width:30px;background:#2563eb;border-radius:4px 4px 0 0;position:relative;min-height:2px}
-            .pgm-cmp-bar.gris{background:#94a3b8}
-            .pgm-cmp-bar.actual{background:#1e3a5f}
-            .pgm-cmp-bar .n{position:absolute;top:-15px;left:0;right:0;text-align:center;font-size:10px;font-weight:600;color:#475569}
+            .pgm-cmp-bar{width:100%;max-width:32px;background:linear-gradient(180deg,#3b82f6,#1e40af);border-radius:6px 6px 0 0;position:relative;min-height:3px}
+            .pgm-cmp-bar.gris{background:#cbd5e1}
+            .pgm-cmp-bar.actual{background:linear-gradient(180deg,#f59e0b,#d97706)}
+            .pgm-cmp-bar .n{position:absolute;top:-16px;left:0;right:0;text-align:center;font-size:10.5px;font-weight:800;color:#475569;font-variant-numeric:tabular-nums}
             .pgm-cmp-col .m{font-size:10px;color:#8494a8}
-            .pgm-cmp-col .m.act{color:#0f172a;font-weight:700}
+            .pgm-cmp-col .m.act{color:#b45309;font-weight:800}
             .pgm-et{margin-bottom:13px}
             .pgm-et-top{display:flex;justify-content:space-between;align-items:baseline;font-size:13px;margin-bottom:5px;gap:10px}
+            /* Resumen por semana (familia: fila + barra + chips) */
+            .pgm-weeks{display:flex;flex-direction:column;gap:12px}
+            .pgm-wk .top{display:flex;justify-content:space-between;align-items:baseline;gap:10px;font-size:11.5px;margin-bottom:5px}
+            .pgm-wk .top .n{font-weight:700;color:#334155;display:flex;align-items:center;gap:6px}
+            .pgm-wk .top .n em{font-style:normal;font-size:9px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;color:#b45309;background:#fef3c7;padding:2px 8px;border-radius:20px}
+            .pgm-wk .top .v{font-weight:800;font-size:12.5px;color:#0f172a;font-variant-numeric:tabular-nums}
+            .pgm-wk .top .v small{font-size:9.5px;font-weight:700;color:#8494a8;margin-left:3px}
+            .pgm-wk .meta{display:flex;gap:7px;flex-wrap:wrap;margin-top:6px}
+            .pgm-track{height:8px;border-radius:6px;background:#eef2f7;overflow:hidden}
+            .pgm-fill{height:100%;border-radius:6px;background:linear-gradient(90deg,#3b82f6,#1e40af)}
+            .pgm-fill.cur{background:linear-gradient(90deg,#f59e0b,#d97706)}
+            .pgm-fill.zero{background:#e2e8f0}
+            .pgm-wfoot{margin-top:12px;padding-top:10px;border-top:1px dashed #e4e9f0;font-size:10px;color:#8494a8;line-height:1.5}
+            .pgm-wfoot strong{color:#0f172a;font-weight:800}
+            /* Bandas de semana bajo las barras por día */
+            .pgm-wbands{display:flex;gap:5px;margin-top:8px;min-width:640px}
+            .pgm-wband{background:#f8fafc;border:1px solid #e4e9f0;border-radius:8px;padding:5px 8px;text-align:center;font-size:9px;color:#8494a8;white-space:nowrap;overflow:hidden}
+            .pgm-wband b{display:block;font-size:10.5px;color:#0f172a;font-weight:800;font-variant-numeric:tabular-nums}
+            .pgm-wband.cur{background:#fef3c7;border-color:#fde68a;color:#b45309}
+            .pgm-wband.cur b{color:#b45309}
             .pgm-et-top .nm{display:flex;align-items:center;gap:7px;color:#475569;font-weight:500}
             .pgm-et-top .nm .dot{width:9px;height:9px;border-radius:3px}
             .pgm-et-top .vl{font-weight:700}
@@ -424,9 +548,9 @@ App.registerModule('pedidos_grafico_mes', {
             @media(max-width:768px){
                 .pgm-hero{padding:16px}
                 .pgm-hero h2{font-size:13px}
-                .pgm-kpis{grid-template-columns:1fr 1fr;gap:8px}
-                .pgm-kpi{padding:12px 14px}
-                .pgm-kpi .v{font-size:15px}
+                .pgm-blocks{grid-template-columns:1fr;gap:8px}
+                .pgm-block{padding:12px 14px}
+                .pgm-block .v{font-size:26px}
                 .pgm-grid2{grid-template-columns:1fr}
                 .pgm-stack-row{height:180px}
                 .pgm-cmp-row{height:150px}
