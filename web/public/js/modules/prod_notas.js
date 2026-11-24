@@ -231,10 +231,27 @@ App.registerModule('prod_notas', {
     // Engancha los clics del menú de acciones por addEventListener (funciona
     // aunque los handlers inline no resuelvan en el entorno del SPA).
     _bindAcciones(container) {
+        // DIAGNÓSTICO TEMPORAL: qué elemento recibe realmente el clic
+        container.addEventListener('click', (ev) => {
+            const t = ev.target;
+            const cls = t && t.className ? '.' + String(t.className).split(' ')[0] : '';
+            App.showAlert('DIAG · clic recibido en: ' + (t && t.tagName ? t.tagName : '?') + cls);
+        });
         container.querySelectorAll('.nota-amenu-btn').forEach(btn => {
             btn.addEventListener('click', (ev) => {
                 ev.stopPropagation();
-                this.toggleAcciones(btn);
+                try {
+                    this.toggleAcciones(btn);
+                    const wrap = btn.parentElement;
+                    const menu = wrap && wrap.querySelector('.nota-amenu-drop');
+                    if (menu && menu.style.display === 'block') {
+                        App.showAlert('✅ Diagnóstico: el clic llegó y el menú quedó abierto');
+                    } else {
+                        App.showAlert('⚠ Diagnóstico: el clic llegó pero el menú NO quedó visible', 'danger');
+                    }
+                } catch (e) {
+                    App.showAlert('ERROR en el botón: ' + e.message, 'danger');
+                }
             });
         });
         container.querySelectorAll('.nota-amenu-drop .it').forEach(it => {
