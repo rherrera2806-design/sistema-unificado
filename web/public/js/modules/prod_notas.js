@@ -110,34 +110,40 @@ App.registerModule('prod_notas', {
 
     // ── Menú de acciones (popover fijo, patrón del sistema) ──
     menuAcciones(n) {
-        return `<div class="nota-amenu"><button class="nota-amenu-btn" title="Acciones" onclick="App.modules.prod_notas.toggleAcciones(this)">⋯</button>
+        // Sin onclick inline: las acciones se enganchan por DELEGACIÓN en
+        // renderList (data-act/data-id) — el mecanismo más robusto frente a
+        // contextos donde los handlers inline no resuelven.
+        return `<div class="nota-amenu"><button class="nota-amenu-btn" title="Acciones" data-act="menu">⋯</button>
         <div class="nota-amenu-drop">
             ${n.estado === 'pendiente'
-                ? '<div class="it" onclick="App.modules.prod_notas.marcarRealizado(' + n.id + ')">✅ Marcar como realizado</div>'
-                : '<div class="it" onclick="App.modules.prod_notas.marcarPendiente(' + n.id + ')">↩️ Volver a pendiente</div>'}
-            <div class="it" onclick="App.modules.prod_notas.showForm(${n.id})">✏️ Editar nota</div>
+                ? '<div class="it" data-act="realizado" data-id="' + n.id + '">✅ Marcar como realizado</div>'
+                : '<div class="it" data-act="pendiente" data-id="' + n.id + '">↩️ Volver a pendiente</div>'}
+            <div class="it" data-act="editar" data-id="' + n.id + '">✏️ Editar nota</div>
             <div class="sep"></div>
-            <div class="it danger" onclick="App.modules.prod_notas.delete(${n.id})">🗑 Eliminar nota</div>
+            <div class="it danger" data-act="eliminar" data-id="' + n.id + '">🗑 Eliminar nota</div>
         </div></div>`;
     },
-    // Recibe el BOTÓN (this) — no depende de event/currentTarget, que pueden no
-    // resolver en el contexto del SPA. Abre/cierra el menú de la tarjeta.
+    // Recibe el BOTÓN (this). Con try/catch visible: si algo falla, se ve.
     toggleAcciones(btn) {
-        this._setupMenus();
-        const wrap = btn && btn.parentElement ? btn.parentElement : null;
-        const menu = wrap ? wrap.querySelector('.nota-amenu-drop') : null;
-        if (!menu) return;
-        const wasVisible = menu.style.display === 'block';
-        this._cerrarMenus();
-        if (wasVisible) return;
-        const rect = btn.getBoundingClientRect();
-        menu.style.display = 'block';
-        menu.style.top = '0px';
-        menu.style.left = '0px';
-        const mh = menu.offsetHeight, mw = menu.offsetWidth;
-        const espacioAbajo = window.innerHeight - rect.bottom;
-        menu.style.top = (espacioAbajo < mh + 12 ? Math.max(8, rect.top - mh - 6) : rect.bottom + 6) + 'px';
-        menu.style.left = Math.max(8, Math.min(rect.left, window.innerWidth - mw - 8)) + 'px';
+        try {
+            this._setupMenus();
+            const wrap = btn && btn.parentElement ? btn.parentElement : null;
+            const menu = wrap ? wrap.querySelector('.nota-amenu-drop') : null;
+            if (!menu) { App.showAlert('Menú no encontrado en la tarjeta', 'danger'); return; }
+            const wasVisible = menu.style.display === 'block';
+            this._cerrarMenus();
+            if (wasVisible) return;
+            const rect = btn.getBoundingClientRect();
+            menu.style.display = 'block';
+            menu.style.top = '0px';
+            menu.style.left = '0px';
+            const mh = menu.offsetHeight, mw = menu.offsetWidth;
+            const espacioAbajo = window.innerHeight - rect.bottom;
+            menu.style.top = (espacioAbajo < mh + 12 ? Math.max(8, rect.top - mh - 6) : rect.bottom + 6) + 'px';
+            menu.style.left = Math.max(8, Math.min(rect.left, window.innerWidth - mw - 8)) + 'px';
+        } catch (e) {
+            App.showAlert('Error al abrir acciones: ' + e.message, 'danger');
+        }
     },
     _cerrarMenus() {
         document.querySelectorAll('.nota-amenu-drop').forEach(d => d.style.display = 'none');
@@ -145,14 +151,13 @@ App.registerModule('prod_notas', {
     _setupMenus() {
         if (this._menusBound) return;
         this._menusBound = true;
-        // Cierra con cualquier clic FUERA del menú/botón (sin depender de
-        // stopPropagation en el onclick del botón)
+        // SOLO se cierra con un clic fuera del menú. OJO: NO con scroll/resize
+        // — cualquier micro-scroll (clic que reposiciona, DevTools, reflow)
+        // mataba el menú recién abierto y parecía que "no se abría".
         document.addEventListener('click', (ev) => {
             if (ev.target && ev.target.closest && ev.target.closest('.nota-amenu')) return;
             this._cerrarMenus();
         });
-        window.addEventListener('scroll', () => this._cerrarMenus(), true);
-        window.addEventListener('resize', () => this._cerrarMenus());
     },
 
     renderList(data) {
@@ -219,6 +224,35 @@ App.registerModule('prod_notas', {
         }
         html += '</div>';
         container.innerHTML = html;
+        // Acciones por DELEGACIÓN (sin onclick inline): botón ⋯ y opciones
+        this._bindAcciones(container);
+    },
+
+    // Engancha los clics del menú de acciones por addEventListener (funciona
+    // aunque los handlers inline no resuelvan en el entorno del SPA).
+    _bindAcciones(container) {
+        container.querySelectorAll('.nota-amenu-btn').forEach(btn => {
+            btn.addEventListener('click', (ev) => {
+                ev.stopPropagation();
+                this.toggleAcciones(btn);
+            });
+        });
+        container.querySelectorAll('.nota-amenu-drop .it').forEach(it => {
+            it.addEventListener('click', (ev) => {
+                ev.stopPropagation();
+                this._cerrarMenus();
+                const id = Number(it.getAttribute('data-id'));
+                const act = it.getAttribute('data-act');
+                try {
+                    if (act === 'realizado') this.marcarRealizado(id);
+                    else if (act === 'pendiente') this.marcarPendiente(id);
+                    else if (act === 'editar') this.showForm(id);
+                    else if (act === 'eliminar') this.delete(id);
+                } catch (e) {
+                    App.showAlert('Error en la acción: ' + e.message, 'danger');
+                }
+            });
+        });
     },
 
     async refresh() {
