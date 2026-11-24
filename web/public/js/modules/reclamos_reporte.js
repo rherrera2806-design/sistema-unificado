@@ -38,11 +38,17 @@ App.registerModule('reclamos_reporte', {
                 .rq-anio .val{font-size:20px;font-weight:700;color:#fff}
                 .rq-nav{width:32px;height:32px;border-radius:8px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.1);color:#fff;cursor:pointer;font-size:13px}
                 .rq-nav:hover{background:rgba(255,255,255,.2)}
-                .rq-kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:18px}
-                .rq-kpi{background:#fff;border:1px solid var(--invp-line,#e4e9f0);border-radius:12px;padding:16px 18px}
-                .rq-kpi .k{font-size:10px;font-weight:600;letter-spacing:.7px;text-transform:uppercase;color:var(--invp-muted,#8494a8)}
-                .rq-kpi .v{font-size:20px;font-weight:700;margin-top:6px;color:var(--invp-ink,#0f172a)}
-                .rq-kpi .s{font-size:10px;color:var(--invp-muted,#8494a8);margin-top:3px}
+                .rq-blocks{display:grid;grid-template-columns:1fr 1fr 1fr;gap:13px;margin-bottom:18px}
+                .rq-block{background:#fff;border:1px solid var(--invp-line,#e4e9f0);border-radius:14px;padding:15px 18px}
+                .rq-block .k{font-size:10px;font-weight:800;letter-spacing:1.1px;text-transform:uppercase;color:var(--invp-muted,#8494a8)}
+                .rq-block .v{font-size:40px;font-weight:800;line-height:1.05;margin-top:3px;letter-spacing:-.5px;color:var(--invp-ink,#0f172a)}
+                .rq-block .v small{font-size:14px;font-weight:600;color:var(--invp-muted,#8494a8);margin-left:4px;letter-spacing:0}
+                .rq-block .chips{display:flex;gap:7px;flex-wrap:wrap;margin-top:9px}
+                .rq-chip{font-size:10.5px;font-weight:700;background:#f1f5f9;color:#475569;padding:3px 10px;border-radius:20px;white-space:nowrap;font-variant-numeric:tabular-nums}
+                .rq-chip b{color:#0f172a;font-weight:800}
+                .rq-chip.g{background:#dcfce7;color:#15803d}
+                .rq-chip.r{background:#fee2e2;color:#b91c1c}
+                .rq-chip.a{background:#fef3c7;color:#b45309}
                 .rq-green{color:var(--invp-green,#15803d)!important}
                 .rq-red{color:var(--invp-danger,#dc2626)!important}
                 .rq-grid2{display:grid;grid-template-columns:1.25fr 1fr;gap:14px;margin-bottom:14px}
@@ -63,47 +69,52 @@ App.registerModule('reclamos_reporte', {
                 .rq-chart-body .rq-nota{position:absolute;left:18px;right:18px;bottom:12px;margin:0}
                 .rq-bars{display:flex;align-items:flex-end;gap:8px;height:170px;padding-top:14px;flex:1;min-width:0}
                 .rq-bar-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;justify-content:flex-end}
-                .rq-bar{width:100%;max-width:34px;background:var(--invp-accent,#2563eb);border-radius:5px 5px 0 0;position:relative;min-height:2px}
-                .rq-bar.gris{background:#94a3b8}
-                .rq-bar.oscuro{background:#1e3a5f}
-                .rq-bar .n{position:absolute;top:-17px;left:0;right:0;text-align:center;font-size:10px;font-weight:600;color:var(--invp-slate,#475569)}
+                .rq-bar{width:100%;max-width:38px;background:linear-gradient(180deg,#3b82f6,#1e40af);border-radius:7px 7px 0 0;position:relative;min-height:3px}
+                .rq-bar.gris{background:#cbd5e1}
+                .rq-bar.cero{background:#eef2f7}
+                .rq-bar.oscuro{background:linear-gradient(180deg,#f59e0b,#d97706)}
+                .rq-bar .n{position:absolute;top:-18px;left:0;right:0;text-align:center;font-size:10.5px;font-weight:800;color:#475569;font-variant-numeric:tabular-nums}
                 .rq-bar-col .m{font-size:10px;color:var(--invp-muted,#8494a8)}
                 .rq-bars-row{display:flex;gap:8px}
                 .rq-yaxis{display:flex;flex-direction:column;justify-content:space-between;font-size:10px;color:var(--invp-muted,#8494a8);height:184px;padding-top:14px}
                 .rq-donut-wrap{display:flex;align-items:center;gap:22px;flex-wrap:wrap}
                 .rq-donut{width:150px;height:150px;border-radius:50%;position:relative;flex-shrink:0}
-                .rq-donut::after{content:'';position:absolute;inset:26px;background:#fff;border-radius:50%}
+                .rq-donut::after{content:'';position:absolute;inset:27px;background:#fff;border-radius:50%}
                 .rq-donut .c{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:1}
-                .rq-donut .c .n{font-size:20px;font-weight:700}
-                .rq-donut .c .l{font-size:10px;letter-spacing:.6px;text-transform:uppercase;color:var(--invp-muted,#8494a8)}
+                .rq-donut .c .n{font-size:26px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
+                .rq-donut .c .l{font-size:8.5px;letter-spacing:1px;text-transform:uppercase;color:var(--invp-muted,#8494a8)}
                 .rq-legend{display:flex;flex-direction:column;gap:9px;flex:1;min-width:170px}
-                .rq-lg{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--invp-slate,#475569)}
-                .rq-lg .dot{width:8px;height:8px;border-radius:3px}
-                .rq-lg .n{margin-left:auto;font-weight:600;color:var(--invp-ink,#0f172a)}
+                .rq-lg{display:flex;align-items:center;gap:8px;font-size:11.5px;color:#334155}
+                .rq-lg .dot{width:9px;height:9px;border-radius:50%}
+                .rq-lg .n{margin-left:auto;font-weight:800;color:var(--invp-ink,#0f172a);font-variant-numeric:tabular-nums}
                 .rq-rank{display:flex;flex-direction:column;gap:11px;height:100%;justify-content:space-evenly}
-                .rq-ritem .top{display:flex;justify-content:space-between;gap:10px;font-size:13px;margin-bottom:4px}
-                .rq-ritem .nm{color:var(--invp-slate,#475569)}
-                .rq-ritem .vl{font-weight:600;color:var(--invp-ink,#0f172a)}
-                .rq-track{height:7px;border-radius:6px;background:#f1f5f9;overflow:hidden}
-                .rq-fill{height:100%;border-radius:6px;background:var(--invp-accent,#2563eb)}
-                .rq-fill.green{background:#15803d}.rq-fill.amber{background:#b45309}.rq-fill.red{background:#dc2626}.rq-fill.slate{background:#94a3b8}
+                .rq-ritem .top{display:flex;justify-content:space-between;gap:10px;font-size:11.5px;margin-bottom:4px}
+                .rq-ritem .nm{color:#334155;font-weight:700;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+                .rq-ritem .vl{font-weight:800;font-size:12px;color:var(--invp-ink,#0f172a);font-variant-numeric:tabular-nums}
+                .rq-track{height:8px;border-radius:6px;background:#eef2f7;overflow:hidden}
+                .rq-fill{height:100%;border-radius:6px;background:linear-gradient(90deg,#3b82f6,#1e40af)}
+                .rq-fill.green{background:linear-gradient(90deg,#22c55e,#16a34a)}
+                .rq-fill.amber{background:linear-gradient(90deg,#f59e0b,#d97706)}
+                .rq-fill.red{background:linear-gradient(90deg,#ef4444,#b91c1c)}
+                .rq-fill.slate{background:#94a3b8}
                 .rq-nota{font-size:10px;color:var(--invp-muted,#8494a8);margin-top:10px}
                 .rq-mes{width:100%;border-collapse:collapse}
-                .rq-mes th{font-size:10px;font-weight:600;letter-spacing:.6px;text-transform:uppercase;color:var(--invp-muted,#8494a8);text-align:left;padding:8px 12px;border-bottom:1px solid var(--invp-line,#e4e9f0);background:#fbfcfe}
-                .rq-mes td{font-size:13px;padding:9px 12px;border-bottom:1px solid #eef2f7;color:var(--invp-slate,#475569)}
+                .rq-mes th{position:sticky;top:0;z-index:2;font-size:9px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:var(--invp-muted,#8494a8);text-align:left;padding:9px 12px;border-bottom:1px solid var(--invp-line,#e4e9f0);background:#f8fafc}
+                .rq-mes td{font-size:11.5px;padding:9px 12px;border-bottom:1px solid #f4f7fb;color:#334155}
+                .rq-mes tbody tr:hover{background:#f8fafc}
                 .rq-mes th.num,.rq-mes td.num{text-align:right}
-                .rq-mes td.mes-n{font-weight:600;color:var(--invp-ink,#0f172a)}
-                .rq-mes tfoot td{font-weight:700;color:var(--invp-ink,#0f172a);background:#f8fafc;border-bottom:none}
-                .rq-badge{display:inline-flex;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600}
-                .rq-b-amber{color:#b45309;background:#fdf8f1}
-                .rq-b-blue{color:#2563eb;background:#eff6ff}
-                .rq-b-green{color:#15803d;background:#f0fdf4}
+                .rq-mes td.mes-n{font-weight:700;color:var(--invp-ink,#0f172a)}
+                .rq-mes tfoot td{font-weight:800;color:var(--invp-ink,#0f172a);background:#f8fafc;border-bottom:none}
+                .rq-badge{display:inline-flex;padding:2px 9px;border-radius:20px;font-size:9.5px;font-weight:800;font-variant-numeric:tabular-nums}
+                .rq-b-amber{color:#b45309;background:#fef3c7}
+                .rq-b-blue{color:#1d4ed8;background:#dbeafe}
+                .rq-b-green{color:#15803d;background:#dcfce7}
                 @media(max-width:768px){
                     .rq-hero{padding:16px}
                     .rq-hero h2{font-size:13px}
-                    .rq-kpis{grid-template-columns:1fr 1fr;gap:8px}
-                    .rq-kpi{padding:12px 14px}
-                    .rq-kpi .v{font-size:15px}
+                    .rq-blocks{grid-template-columns:1fr;gap:8px}
+                    .rq-block{padding:12px 14px}
+                    .rq-block .v{font-size:28px}
                     .rq-grid2,.rq-grid3{grid-template-columns:1fr}
                     .rq-p-body.rq-chart-body{min-height:180px}
                     .rq-mes th,.rq-mes td{padding:7px 8px}
@@ -122,7 +133,7 @@ App.registerModule('reclamos_reporte', {
                 </div>
             </div>
 
-            <div class="rq-kpis" id="rrKpis"></div>
+            <div class="rq-blocks" id="rrKpis"></div>
             <div class="rq-grid2">
                 <div class="rq-panel">
                     <div class="rq-p-head"><h3>Reclamos por mes</h3><span class="sub">${this.anio} · conteo de ingresos</span></div>
@@ -189,6 +200,7 @@ App.registerModule('reclamos_reporte', {
     },
 
     // ---------------- KPIs neutros (color solo en el valor con significado) ----------------
+    // ---------------- 3 bloques de lectura (antes 5 KPI cards iguales) ----------------
     renderKpis() {
         const d = this.reportData;
         const total = d.totalGeneral || 0;
@@ -196,15 +208,33 @@ App.registerModule('reclamos_reporte', {
         const tasa = total > 0 ? Math.round((finalizados / total) * 100) : 0;
         const mesesActivos = (d.meses || []).filter(m => m.total > 0).length;
         const promedio = mesesActivos > 0 ? Math.round(total / mesesActivos) : 0;
+        const costo = d.costoTotal || 0;
+        const costoProm = mesesActivos > 0 ? Math.round(costo / mesesActivos) : 0;
+        const sum = (campo) => (d.meses || []).reduce((s, m) => s + (m[campo] || 0), 0);
+        const fabNueva = sum('fab_nueva'), reproceso = sum('reproceso'), rechazadas = sum('rechazadas');
+        const mayorResp = (d.costoPorResponsable || [])[0];
+        const chip = (cls, txt) => '<span class="rq-chip ' + cls + '">' + txt + '</span>';
+
         document.getElementById('rrKpis').innerHTML = ''
-            + this._kpi('Total ' + this.anio, this._fmtNum(total), 'reclamos ingresados', '')
-            + this._kpi('Finalizados', this._fmtNum(finalizados), 'con resolución', 'rq-green')
-            + this._kpi('Tasa de resolución', tasa + '%', 'del total del año', 'rq-green')
-            + this._kpi('Pérdida total', this._fmtCLP(d.costoTotal), 'costo de devoluciones', 'rq-red')
-            + this._kpi('Promedio mensual', this._fmtNum(promedio), 'en meses activos', '');
-    },
-    _kpi(k, v, s, cls) {
-        return '<div class="rq-kpi"><div class="k">' + escText(k) + '</div><div class="v ' + cls + '">' + escText(v) + '</div><div class="s">' + escText(s) + '</div></div>';
+            // ¿Cuántos reclamos?
+            + '<div class="rq-block">'
+            + '<div class="k">📊 ¿Cuántos reclamos?</div>'
+            + '<div class="v">' + this._fmtNum(total) + '<small>en ' + this.anio + '</small></div>'
+            + '<div class="chips">' + chip('', '<b>' + this._fmtNum(promedio) + '</b> promedio/mes')
+            + chip('', '<b>' + mesesActivos + '</b> meses activos') + '</div></div>'
+            // ¿Cuánto cuesta?
+            + '<div class="rq-block">'
+            + '<div class="k">💰 ¿Cuánto cuesta?</div>'
+            + '<div class="v rq-red">' + this._fmtCLP(costo) + '</div>'
+            + '<div class="chips">' + chip('r', '<b>' + this._fmtCLP(costoProm) + '</b> promedio/mes')
+            + (mayorResp ? chip('a', 'Mayor: ' + escText(this._titulo(mayorResp.nombre || 'Sin asignar'))) : '') + '</div></div>'
+            // ¿Cómo se resuelve?
+            + '<div class="rq-block">'
+            + '<div class="k">✅ ¿Cómo se resuelve?</div>'
+            + '<div class="v rq-green">' + tasa + '%<small>resuelto</small></div>'
+            + '<div class="chips">' + chip('g', '<b>' + this._fmtNum(fabNueva) + '</b> fabricación nueva')
+            + chip('g', '<b>' + this._fmtNum(reproceso) + '</b> reproceso')
+            + chip('r', '<b>' + this._fmtNum(rechazadas) + '</b> rechazadas') + '</div></div>';
     },
 
     // ---------------- Gráfico de barras mensual (eje entero) ----------------
@@ -222,9 +252,10 @@ App.registerModule('reclamos_reporte', {
         for (let v = maxEje; v >= 0; v -= paso) axis += '<span>' + v + '</span>';
         const bars = totales.map((t, i) => {
             const h = Math.max(2, Math.round((t / maxEje) * 100));
-            // Mes en curso destacado en azul fuerte; el resto en azul del sistema
+            // Mes en curso en ámbar; meses sin reclamos en gris muy discreto
+            const cls = esMesActual(i) ? ' oscuro' : (t === 0 ? ' cero' : '');
             return '<div class="rq-bar-col">'
-                + '<div class="rq-bar' + (esMesActual(i) ? ' oscuro' : '') + '" style="height:' + h + '%"><div class="n">' + t + '</div></div>'
+                + '<div class="rq-bar' + cls + '" style="height:' + h + '%">' + (t > 0 ? '<div class="n">' + t + '</div>' : '') + '</div>'
                 + '<div class="m">' + mesesCortos[i] + '</div></div>';
         }).join('');
         document.getElementById('rrChartMes').innerHTML = ''
@@ -283,13 +314,14 @@ App.registerModule('reclamos_reporte', {
                 + '<div class="rq-track"><div class="rq-fill ' + color + '" style="width:' + Math.round((r.total / maxResol) * 100) + '%"></div></div></div>';
         }).join('') + '</div>' : this._vacio('Aún no hay resoluciones registradas');
 
-        // Motivos: barras azules (el principal en tinta fuerte)
+        // Motivos: azul degradado por peso (el principal tinta fuerte, resto más claro)
         const motivos = (d.motivos || []).slice(0, 5);
         const maxMot = Math.max(...motivos.map(m => m.total || 0), 1);
+        const tonosAzul = ['', 'o75', 'o55', 'o40', 'o30'];
         document.getElementById('rrMotivos').innerHTML = motivos.length ? '<div class="rq-rank">' + motivos.map((m, i) => {
             const color = /otro/i.test(m.motivo || '') ? 'slate' : '';
             return '<div class="rq-ritem"><div class="top"><span class="nm">' + escText(this._frase(m.motivo || 'Sin motivo')) + '</span><span class="vl">' + this._fmtNum(m.total) + '</span></div>'
-                + '<div class="rq-track"><div class="rq-fill ' + color + '" style="width:' + Math.round((m.total / maxMot) * 100) + '%;' + (i === 0 ? '' : 'opacity:.75') + '"></div></div></div>';
+                + '<div class="rq-track"><div class="rq-fill ' + color + '" style="width:' + Math.round((m.total / maxMot) * 100) + '%;' + (tonosAzul[i] ? 'opacity:.' + tonosAzul[i].replace('o', '') : '') + '"></div></div></div>';
         }).join('') + '</div>' : this._vacio('Sin motivos registrados');
 
         // Clientes
@@ -300,12 +332,14 @@ App.registerModule('reclamos_reporte', {
                 + '<div class="rq-track"><div class="rq-fill" style="width:' + Math.round((c.total / maxCli) * 100) + '%"></div></div></div>';
         }).join('') + '</div>' : this._vacio('Sin clientes con reclamos este año');
 
-        // Pérdida por responsable: rojo el mayor, ámbar medio, gris bajo
+        // Pérdida por responsable: rojo el mayor, ámbar medio, gris bajo (y el
+        // VALOR también se tiñe para que la pérdida "grite" lo que importa)
         const costos = (d.costoPorResponsable || []).slice(0, 6);
         const maxCosto = Math.max(...costos.map(c => c.total || 0), 1);
         document.getElementById('rrCostoResp').innerHTML = costos.length ? '<div class="rq-rank">' + costos.map((c, i) => {
             const color = i === 0 ? 'red' : i < 3 ? 'amber' : 'slate';
-            return '<div class="rq-ritem"><div class="top"><span class="nm">' + escText(this._titulo(c.nombre || 'Sin asignar')) + '</span><span class="vl">' + this._fmtCLP(c.total) + '</span></div>'
+            const vColor = i === 0 ? ' style="color:#b91c1c"' : i < 3 ? ' style="color:#b45309"' : '';
+            return '<div class="rq-ritem"><div class="top"><span class="nm">' + escText(this._titulo(c.nombre || 'Sin asignar')) + '</span><span class="vl"' + vColor + '>' + this._fmtCLP(c.total) + '</span></div>'
                 + '<div class="rq-track"><div class="rq-fill ' + color + '" style="width:' + Math.round((c.total / maxCosto) * 100) + '%"></div></div></div>';
         }).join('') + '</div>' : this._vacio('Sin costos registrados');
 
