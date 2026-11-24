@@ -75,8 +75,8 @@ App.registerModule('prod_notas', {
             + '</div>'
 
             + '<div class="pn-strip">'
-            + '<div class="top"><div class="big">' + this._data.length + ' notas <span>· ' + totalPendientes + ' pendientes · ' + totalRealizadas + ' realizadas</span></div><div class="hint">' + (this._data.length ? Math.round(totalRealizadas / this._data.length * 100) : 0) + '% resuelto</div></div>'
-            + '<div class="pn-pipe">' + (totalRealizadas > 0 ? '<div class="seg" style="flex:' + totalRealizadas + ';background:#22c55e">Realizadas ' + totalRealizadas + '</div>' : '')
+            + '<div class="top"><div class="big">' + this._data.length + ' notas <span>&middot; ' + totalPendientes + ' pendientes &middot; ' + totalRealizados + ' realizadas</span></div><div class="hint">' + (this._data.length ? Math.round(totalRealizados / this._data.length * 100) : 0) + '% resuelto</div></div>'
+            + '<div class="pn-pipe">' + (totalRealizados > 0 ? '<div class="seg" style="flex:' + totalRealizados + ';background:#22c55e">Realizadas ' + totalRealizados + '</div>' : '')
             + (totalPendientes > 0 ? '<div class="seg" style="flex:' + totalPendientes + ';background:#f59e0b">Pendientes ' + totalPendientes + '</div>' : '') + '</div>'
             + '</div>'
 
