@@ -434,12 +434,16 @@ App.registerModule('produccion', {
         const totalSeg = segs.reduce((s, g) => s + g.n, 0) || 1;
         pipe.innerHTML = segs.map(g => {
             const pct = Math.round((g.n / totalSeg) * 100);
-            return g.n
-                ? '<div class="seg" style="flex:' + g.n + ';background:' + g.bg + '"'
-                    + ' onclick="App.modules.produccion.filtrarEstado(\'' + g.e + '\')"'
-                    + ' title="Clic para filtrar por ' + escAttr(g.t) + '">'
-                    + escText(g.t) + ' ' + this._fmt(g.n, 0) + ' <small>' + pct + '%</small></div>'
-                : '<div class="seg z">' + escText(g.t) + ' 0</div>';
+            if (!g.n) return '<div class="seg z">' + escText(g.t) + ' 0</div>';
+            // Segmentos angostos: sin texto dentro (se cortaba el rótulo) — el
+            // dato vive en el tooltip y el conteo completo está en el filtro
+            const label = pct >= 8
+                ? escText(g.t) + ' ' + this._fmt(g.n, 0) + ' <small>' + pct + '%</small>'
+                : '';
+            return '<div class="seg" style="flex:' + g.n + ';background:' + g.bg + '"'
+                + ' onclick="App.modules.produccion.filtrarEstado(\'' + g.e + '\')"'
+                + ' title="' + escAttr(g.t + ': ' + g.n + ' órdenes (' + pct + '%) — clic para filtrar') + '">'
+                + label + '</div>';
         }).join('');
     },
 
@@ -1586,7 +1590,7 @@ App.registerModule('produccion', {
             .po-pipe .seg:hover{filter:brightness(1.12)}
             .po-pipe .seg small{font-weight:600;opacity:.85}
             .po-pipe .seg.z{background:#eef2f7!important;color:#94a3b8;font-weight:600;cursor:default;flex:0.6}
-            .po-dots{display:inline-flex;gap:2.5px;align-items:center;margin-top:3px}
+            .po-dots{display:flex;gap:2.5px;align-items:center;margin-top:5px}
             .po-dots i{width:6px;height:6px;border-radius:50%;background:#e2e8f0;display:inline-block}
             .po-dots i.on{background:#22c55e}
             .po-dots i.cur{background:#8b5cf6}
