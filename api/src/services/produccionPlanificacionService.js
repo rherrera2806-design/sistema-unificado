@@ -47,15 +47,17 @@ const eliminarCapacidadGrupo = async (id) => {
 };
 
 /**
- * Obtiene notas de un usuario.
+ * Bitácora COMPARTIDA entre usuarios: la ven todos (la gobiernan los permisos
+ * del módulo). El autor queda en usuario_email y quien completa en
+ * completado_por.
  */
-const getNotas = async (userEmail) => {
-    const result = await query('SELECT * FROM prod_notas WHERE usuario_email = $1 ORDER BY fecha_creacion DESC', [userEmail]);
+const getNotas = async () => {
+    const result = await query('SELECT * FROM prod_notas ORDER BY fecha_creacion DESC');
     return result.rows;
 };
 
 /**
- * Crea una nota para un usuario.
+ * Crea una nota. El autor es el usuario de la SESIÓN (lo setea la ruta).
  */
 const crearNota = async (userEmail, nota) => {
     const result = await query(
@@ -66,20 +68,36 @@ const crearNota = async (userEmail, nota) => {
 };
 
 /**
- * Actualiza el estado de una nota.
+ * Actualiza texto y/o estado de una nota SIN restricción de dueño (registro
+ * entre usuarios: el supervisor completa la nota del jefe). Al marcar
+ * 'realizado' se registra QUIÉN lo hace; al volver a 'pendiente' se limpia.
  */
-const actualizarNota = async (id, userEmail, estado) => {
-    const result = estado === 'realizado'
-        ? await query('UPDATE prod_notas SET estado = $1, fecha_completado = CURRENT_TIMESTAMP WHERE id = $2 AND usuario_email = $3 RETURNING *', [estado, id, userEmail])
-        : await query('UPDATE prod_notas SET estado = $1, fecha_completado = NULL WHERE id = $2 AND usuario_email = $3 RETURNING *', [estado, id, userEmail]);
+const actualizarNota = async (id, userEmail, { nota, estado } = {}) => {
+    const result = await query(`
+        UPDATE prod_notas SET
+            nota = COALESCE($3, nota),
+            estado = COALESCE($4, estado),
+            fecha_completado = CASE
+                WHEN $4 = 'realizado' AND estado IS DISTINCT FROM 'realizado' THEN CURRENT_TIMESTAMP
+                WHEN $4 = 'pendiente' THEN NULL
+                ELSE fecha_completado END,
+            completado_por = CASE
+                WHEN $4 = 'realizado' THEN $2
+                WHEN $4 = 'pendiente' THEN NULL
+                ELSE completado_por END
+        WHERE id = $1
+        RETURNING *`,
+        [id, userEmail,
+         nota == null ? null : String(nota),
+         estado == null ? null : String(estado)]);
     return result.rows.length > 0 ? result.rows[0] : null;
 };
 
 /**
- * Elimina una nota de un usuario.
+ * Elimina una nota (la gobierna el permiso del módulo, no la autoría).
  */
-const eliminarNota = async (id, userEmail) => {
-    await query('DELETE FROM prod_notas WHERE id = $1 AND usuario_email = $2', [id, userEmail]);
+const eliminarNota = async (id) => {
+    await query('DELETE FROM prod_notas WHERE id = $1', [id]);
 };
 
 /**

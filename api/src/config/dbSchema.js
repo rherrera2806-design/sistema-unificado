@@ -464,6 +464,8 @@ async function faseTablas({ q }) {
         fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         fecha_completado TIMESTAMP, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`);
+    // Bitácora COMPARTIDA entre usuarios: trazabilidad de quién completa la nota
+    await q(`ALTER TABLE prod_notas ADD COLUMN IF NOT EXISTS completado_por VARCHAR(255)`);
 
     // ── Calendario e instalaciones ───────────────────────────────────────────
     await q(`CREATE TABLE IF NOT EXISTS calendario_produccion (

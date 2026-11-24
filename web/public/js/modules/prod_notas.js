@@ -50,6 +50,21 @@ App.registerModule('prod_notas', {
             + '.nota-amenu-drop{display:none;position:fixed;z-index:95;background:#fff;border:1px solid #e4e9f0;border-radius:10px;box-shadow:0 12px 32px rgba(15,23,42,.16);min-width:200px;padding:5px}'
             + '.nota-amenu-drop .it{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:7px;font-size:11px;font-weight:600;color:#475569;cursor:pointer;white-space:nowrap}'
             + '.nota-amenu-drop .it:hover{background:#f8fafc}'
+            + '.pn-strip{background:#fff;border:1px solid #e4e9f0;border-radius:12px;padding:11px 16px;margin-bottom:12px}'
+            + '.pn-strip .top{display:flex;align-items:center;gap:16px;flex-wrap:wrap}'
+            + '.pn-strip .big{font-size:13px;font-weight:700;color:#0f172a}'
+            + '.pn-strip .big span{color:#8494a8;font-weight:500;font-size:11px}'
+            + '.pn-strip .hint{margin-left:auto;font-size:9.5px;color:#94a3b8}'
+            + '.pn-pipe{display:flex;height:22px;border-radius:8px;overflow:hidden;margin-top:9px}'
+            + '.pn-pipe .seg{display:flex;align-items:center;justify-content:center;gap:5px;font-size:10px;font-weight:800;color:#fff;white-space:nowrap;overflow:hidden}'
+            + '.pn-pipe .seg small{font-weight:600;opacity:.85}'
+            + '.pn-chip{font-size:10px;font-weight:700;background:#f1f5f9;color:#475569;padding:2px 9px;border-radius:20px;white-space:nowrap;font-variant-numeric:tabular-nums}'
+            + '.pn-chip.t{background:#fffbeb;color:#b45309}'
+            + '.pn-chip.t2{background:#f0fdf4;color:#15803d}'
+            + '.pn-chip.aut{background:#eff6ff;color:#1d4ed8}'
+            + '.pn-badge{font-size:9.5px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;padding:2px 10px;border-radius:20px}'
+            + '.pn-badge.pend{background:#fef3c7;color:#b45309}'
+            + '.pn-badge.ok{background:#dcfce7;color:#15803d}'
             + '.nota-amenu-drop .it.danger{color:#dc2626}'
             + '.nota-amenu-drop .sep{height:1px;background:#e4e9f0;margin:5px 8px}'
             + '</style>'
@@ -59,10 +74,10 @@ App.registerModule('prod_notas', {
             + '<div class="nota-hero-actions"><button class="nota-hbtn solid" onclick="App.modules.prod_notas.showForm()">＋ Nueva nota</button></div>'
             + '</div>'
 
-            + '<div class="nota-kpis">'
-            + '<div class="nota-kpi"><div class="k">Total notas</div><div class="v" style="color:#0f172a">' + this._data.length + '</div><div class="s">en la bitácora</div></div>'
-            + '<div class="nota-kpi"><div class="k">Pendientes</div><div class="v" style="color:#b45309" id="pnPendientes">' + totalPendientes + '</div><div class="s">por resolver</div></div>'
-            + '<div class="nota-kpi"><div class="k">Realizadas</div><div class="v" style="color:#15803d" id="pnRealizados">' + totalRealizados + '</div><div class="s">ya atendidas</div></div>'
+            + '<div class="pn-strip">'
+            + '<div class="top"><div class="big">' + this._data.length + ' notas <span>· ' + totalPendientes + ' pendientes · ' + totalRealizadas + ' realizadas</span></div><div class="hint">' + (this._data.length ? Math.round(totalRealizadas / this._data.length * 100) : 0) + '% resuelto</div></div>'
+            + '<div class="pn-pipe">' + (totalRealizadas > 0 ? '<div class="seg" style="flex:' + totalRealizadas + ';background:#22c55e">Realizadas ' + totalRealizadas + '</div>' : '')
+            + (totalPendientes > 0 ? '<div class="seg" style="flex:' + totalPendientes + ';background:#f59e0b">Pendientes ' + totalPendientes + '</div>' : '') + '</div>'
             + '</div>'
 
             + '<div class="nota-toolbar">'
@@ -90,14 +105,14 @@ App.registerModule('prod_notas', {
 
     // ── Menú de acciones (popover fijo, patrón del sistema) ──
     menuAcciones(n) {
-        return `<div class="nota-amenu"><button class="nota-amenu-btn" onclick="App.modules.prod_notas.toggleAcciones(event)">Acciones ▾</button>
+        return `<div class="nota-amenu"><button class="nota-amenu-btn" title="Acciones" onclick="App.modules.prod_notas.toggleAcciones(event)">⋯</button>
         <div class="nota-amenu-drop">
             ${n.estado === 'pendiente'
                 ? '<div class="it" onclick="App.modules.prod_notas.marcarRealizado(' + n.id + ')">✅ Marcar como realizado</div>'
                 : '<div class="it" onclick="App.modules.prod_notas.marcarPendiente(' + n.id + ')">↩️ Volver a pendiente</div>'}
-            <div class="it" onclick="App.modules.prod_notas.showForm(' + n.id + ')">✏️ Editar nota</div>
+            <div class="it" onclick="App.modules.prod_notas.showForm(${n.id})">✏️ Editar nota</div>
             <div class="sep"></div>
-            <div class="it danger" onclick="App.modules.prod_notas.delete(' + n.id + ')">🗑 Eliminar nota</div>
+            <div class="it danger" onclick="App.modules.prod_notas.delete(${n.id})">🗑 Eliminar nota</div>
         </div></div>`;
     },
     toggleAcciones(e) {
@@ -171,15 +186,19 @@ App.registerModule('prod_notas', {
             const fechaCreacion = new Date(n.fecha_creacion).toLocaleString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
             const fechaCompletado = n.fecha_completado ? new Date(n.fecha_completado).toLocaleString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
 
-            html += '<div class="pn-card" style="padding:16px 20px;border-radius:12px;display:flex;gap:16px;align-items:flex-start;background:' + bgColor + ';border:1px solid ' + borderColor + '20;border-left:4px solid ' + borderColor + ';animation:pnFadeUp 0.4s ease both" id="prodnota-' + n.id + '">'
+            const autor = String(n.usuario_email || '').split('@')[0];
+            const quienCompleta = String(n.completado_por || '').split('@')[0];
+            html += '<div class="pn-card" style="padding:14px 18px;border-radius:12px;display:flex;gap:12px;align-items:flex-start;background:' + bgColor + ';border:1px solid ' + borderColor + '20;border-left:4px solid ' + borderColor + ';animation:pnFadeUp 0.4s ease both" id="prodnota-' + n.id + '">'
                 + '<div style="flex:1;min-width:0">'
-                + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap">'
+                + '<div style="display:flex;align-items:center;gap:7px;margin-bottom:6px;flex-wrap:wrap">'
                 + (esPendiente
-                    ? '<span style="background:linear-gradient(135deg,#f59e0b,#d97706);color:white;font-size:10px;padding:3px 10px;border-radius:20px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase">Pendiente</span>'
-                    : '<span style="background:linear-gradient(135deg,#22c55e,#16a34a);color:white;font-size:10px;padding:3px 10px;border-radius:20px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase">Realizado</span>')
-                + '<span style="font-size:11px;color:#94a3b8"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-1px;margin-right:3px"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Creado: ' + fechaCreacion + '</span>'
-                + (fechaCompletado ? '<span style="font-size:11px;color:#94a3b8"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-1px;margin-right:3px"><polyline points="20 6 9 17 4 12"/></svg>Completado: ' + fechaCompletado + '</span>' : '')
-                + (tiempoTranscurrido ? '<span style="font-size:11px;color:' + (esPendiente ? '#f59e0b' : '#22c55e') + ';font-weight:700"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-1px;margin-right:3px"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>' + tiempoTranscurrido + '</span>' : '')
+                    ? '<span class="pn-badge pend">● Pendiente</span>'
+                    : '<span class="pn-badge ok">● Realizado</span>')
+                + (autor ? '<span class="pn-chip aut" title="Creada por ' + escAttr(n.usuario_email || '') + '">✍ ' + escText(autor) + '</span>' : '')
+                + (quienCompleta ? '<span class="pn-chip t2" title="Completada por ' + escAttr(n.completado_por || '') + '">✔ por ' + escText(quienCompleta) + '</span>' : '')
+                + '<span class="pn-chip" title="Creada el ' + escAttr(fechaCreacion) + '">📅 ' + fechaCreacion + '</span>'
+                + (fechaCompletado ? '<span class="pn-chip t2" title="Completada el ' + escAttr(fechaCompletado) + '">✔ ' + fechaCompletado + '</span>' : '')
+                + (tiempoTranscurrido ? '<span class="pn-chip ' + (esPendiente ? 't' : '') + '">⏱ ' + tiempoTranscurrido + '</span>' : '')
                 + '</div>'
                 + '<p style="margin:0;color:#1e293b;white-space:pre-wrap;line-height:1.5">' + escapeHtml(n.nota || '') + '</p>'
                 + '</div>'

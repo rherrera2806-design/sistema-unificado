@@ -161,12 +161,11 @@ router.post('/api/produccion/planificacion-grupo/auto-asignar', canCreate, async
     }));
 }));
 
-// El dueno de la nota es el usuario de la SESION (req.user lo setea el middleware),
-// nunca el header 'x-user-email' (controlado por el cliente)
+// Bitácora COMPARTIDA entre usuarios: la ven todos con permiso de vista. El
+// autor se registra desde la SESIÓN (req.user lo setea el middleware), nunca
+// el header 'x-user-email' (controlado por el cliente).
 router.get('/api/produccion/notas', canView, asyncHandler(async (req, res) => {
-    const userEmail = (req.user && req.user.email) || '';
-    if (!userEmail) return res.status(401).json({ error: 'Usuario requerido' });
-    res.json(await planificacionService.getNotas(userEmail));
+    res.json(await planificacionService.getNotas());
 }));
 
 router.post('/api/produccion/notas', canCreate, asyncHandler(async (req, res) => {
@@ -176,18 +175,18 @@ router.post('/api/produccion/notas', canCreate, asyncHandler(async (req, res) =>
     res.json(await planificacionService.crearNota(userEmail, req.body.nota));
 }));
 
+// Actualiza texto y/o estado. El USUARIO DE LA SESIÓN queda registrado como
+// quien completa la nota (trazabilidad entre usuarios).
 router.put('/api/produccion/notas/:id', canUpdate, asyncHandler(async (req, res) => {
     const userEmail = (req.user && req.user.email) || '';
     if (!userEmail) return res.status(401).json({ error: 'Usuario requerido' });
-    const result = await planificacionService.actualizarNota(Number(req.params.id), userEmail, req.body.estado);
+    const result = await planificacionService.actualizarNota(Number(req.params.id), userEmail, req.body || {});
     if (!result) return res.status(404).json({ error: 'Nota no encontrada' });
     res.json(result);
 }));
 
 router.delete('/api/produccion/notas/:id', canDelete, asyncHandler(async (req, res) => {
-    const userEmail = (req.user && req.user.email) || '';
-    if (!userEmail) return res.status(401).json({ error: 'Usuario requerido' });
-    await planificacionService.eliminarNota(Number(req.params.id), userEmail);
+    await planificacionService.eliminarNota(Number(req.params.id));
     res.json({ ok: true });
 }));
 
