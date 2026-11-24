@@ -44,6 +44,25 @@ App.registerModule('bodega', {
         const canDelete = isAdmin || permisos.includes('bodega.eliminar') || permisos.includes('bodega');
 
         el.innerHTML = `
+            <style>
+                .bod-tabs{display:flex;gap:6px;flex-wrap:wrap}
+                .bod-tab{display:inline-flex;align-items:center;gap:6px;border:1px solid #e4e9f0;background:#fff;color:#64748b;font-size:11px;font-weight:700;padding:7px 13px;border-radius:9px;cursor:pointer;white-space:nowrap}
+                .bod-tab.on{background:#1e3a8a;border-color:#1e3a8a;color:#fff}
+                .bod-tab .cnt{font-size:9.5px;font-weight:800;background:#eef2f7;color:#475569;border-radius:20px;padding:1px 8px}
+                .bod-tab.on .cnt{background:rgba(255,255,255,.22);color:#fff}
+                .bod-item{background:#fff;border:1px solid #e4e9f0;border-radius:11px;padding:11px 14px;display:flex;gap:12px;align-items:center;cursor:pointer}
+                .bod-item:hover{border-color:#c7d4e8;background:#fbfdff}
+                .bod-item.sel{border-color:#3b82f6}
+                .bod-item .l1{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px}
+                .bod-item .l1 b{font-size:13px}
+                .bod-item .l1 .cl{font-size:11px;color:#64748b}
+                .bod-item .l2{font-size:11px;color:#64748b;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+                .bod-item .l2 b{color:#0f172a}
+                .bod-chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+                .bchip{font-size:10px;font-weight:700;background:#f1f5f9;color:#475569;padding:2px 9px;border-radius:20px;white-space:nowrap;font-variant-numeric:tabular-nums}
+                .bchip.esp{background:#eff6ff;color:#1d4ed8}
+                .bchip.est{background:#dcfce7;color:#15803d}
+            </style>
             <div class="m-page">
                 <div class="m-hero">
                     <div>
@@ -53,24 +72,24 @@ App.registerModule('bodega', {
                 </div>
 
                 <div class="m-actions">
-                    <div style="display:flex;gap:6px;flex-wrap:wrap">
-                        <button class="btn ${this._vista === 'listos' ? 'btn-primary' : 'btn-outline'}" onclick="App.modules.bodega.switchView('listos')">
+                    <div class="bod-tabs">
+                        <button class="bod-tab ${this._vista === 'listos' ? 'on' : ''}" onclick="App.modules.bodega.switchView('listos')">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><polyline points="20 6 9 17 4 12"/></svg>
-                            Listos <span id="cntListos" class="badge" style="margin-left:6px;background:#22c55e;color:white;border-radius:10px;padding:1px 8px;font-size:11px">0</span>
+                            Listos <span id="cntListos" class="cnt">0</span>
                         </button>
-                        <button class="btn ${this._vista === 'pre-entrega' ? 'btn-primary' : 'btn-outline'}" onclick="App.modules.bodega.switchView('pre-entrega')">
+                        <button class="bod-tab ${this._vista === 'pre-entrega' ? 'on' : ''}" onclick="App.modules.bodega.switchView('pre-entrega')">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/></svg>
-                            Pre-entrega <span id="cntPre" class="badge" style="margin-left:6px;background:#f59e0b;color:white;border-radius:10px;padding:1px 8px;font-size:11px">0</span>
+                            Pre-entrega <span id="cntPre" class="cnt">0</span>
                         </button>
-                        <button class="btn ${this._vista === 'entregas' ? 'btn-primary' : 'btn-outline'}" onclick="App.modules.bodega.switchView('entregas')">
+                        <button class="bod-tab ${this._vista === 'entregas' ? 'on' : ''}" onclick="App.modules.bodega.switchView('entregas')">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                            Entregas <span id="cntEnt" class="badge" style="margin-left:6px;background:#3b82f6;color:white;border-radius:10px;padding:1px 8px;font-size:11px">0</span>
+                            Entregas <span id="cntEnt" class="cnt">0</span>
                         </button>
-                        <button class="btn ${this._vista === 'historial' ? 'btn-primary' : 'btn-outline'}" onclick="App.modules.bodega.switchView('historial')">
+                        <button class="bod-tab ${this._vista === 'historial' ? 'on' : ''}" onclick="App.modules.bodega.switchView('historial')">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                             Historial
                         </button>
-                        <button class="btn ${this._vista === 'carros' ? 'btn-primary' : 'btn-outline'}" onclick="App.modules.bodega.switchView('carros')">
+                        <button class="bod-tab ${this._vista === 'carros' ? 'on' : ''}" onclick="App.modules.bodega.switchView('carros')">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M5 17h14M5 17a2 2 0 1 1-2-2M19 17a2 2 0 1 0 2-2M3 12V8a1 1 0 0 1 1-1h12v9M9 7V4h6v3"/></svg>
                             Carros
                         </button>
@@ -192,24 +211,20 @@ App.registerModule('bodega', {
             <div style="display:flex;flex-direction:column;gap:8px">
                 ${itemsFiltrados.length === 0 ? '<div class="empty-state"><p>No hay coincidencias</p></div>' : ''}
                 ${itemsFiltrados.map(it => `
-                    <div style="background:white;border:1px solid ${this._seleccionados.has(it.paso_id) ? '#3b82f6' : '#e2e8f0'};border-radius:10px;padding:12px;display:flex;gap:12px;align-items:center;cursor:pointer" onclick="App.modules.bodega.toggleItem(${it.paso_id})">
+                    <div class="bod-item ${this._seleccionados.has(it.paso_id) ? 'sel' : ''}" onclick="App.modules.bodega.toggleItem(${it.paso_id})">
                         ${canAdd ? `<input type="checkbox" ${this._seleccionados.has(it.paso_id) ? 'checked' : ''} onclick="event.stopPropagation(); App.modules.bodega.toggleItem(${it.paso_id})">` : ''}
                         <div style="flex:1;min-width:0">
-                            <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:baseline;font-size:13px;font-weight:600">
-                                <span><span style="color:#64748b;font-weight:500">Pedido:</span> <strong>${this._esc(it.pedido_sap_id) || '-'}</strong></span>
-                                <span><span style="color:#64748b;font-weight:500">Item:</span> <strong>${it.item_numero != null ? it.item_numero : '-'}</strong></span>
+                            <div class="l1">
+                                <b>${this._esc(it.pedido_sap_id) || '-'} · It ${it.item_numero != null ? it.item_numero : '-'}</b>
+                                <span class="cl">${this._esc(it.cliente) || ''}</span>
+                                ${it.espesor_mm ? `<span class="bchip esp">${it.espesor_mm} mm</span>` : ''}
+                                ${it.ultima_estacion ? `<span class="bchip est">✔ ${this._esc(it.ultima_estacion)}</span>` : ''}
                             </div>
-                            <div style="font-size:11px;color:#64748b;margin-top:2px">${this._esc(it.cliente) || ''}</div>
-                            <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:baseline;margin-top:6px">
-                                <strong style="font-size:14px">${this._esc(it.codigo_producto) || '-'}</strong>
-                                ${it.descripcion ? `<span style="font-size:12px;color:#64748b">${this._esc(it.descripcion)}</span>` : ''}
-                                ${it.espesor_mm ? `<span style="padding:2px 6px;background:#f1f5f9;border-radius:8px;font-size:11px">${it.espesor_mm}mm</span>` : ''}
-                            </div>
-                            <div style="display:flex;gap:10px;font-size:12px;color:#64748b;margin-top:6px;flex-wrap:wrap">
-                                <span><b>Dimensiones:</b> ${it.ancho}x${it.alto}mm</span>
-                                <span><b>Cant:</b> ${it.cantidad || 1}</span>
-                                <span><b>Kilos:</b> ${it.kilos ? Math.round(it.kilos) : '-'}</span>
-                                ${it.ultima_estacion ? `<span style="color:#16a34a"><b>${this._esc(it.ultima_estacion)}</b></span>` : ''}
+                            <div class="l2"><b>${this._esc(it.codigo_producto) || '-'}</b>${it.descripcion ? ' · ' + this._esc(it.descripcion) : ''}</div>
+                            <div class="bod-chips">
+                                <span class="bchip">${this._esc(it.ancho)} × ${this._esc(it.alto)} mm</span>
+                                <span class="bchip">${it.cantidad || 1} und</span>
+                                <span class="bchip">${it.kilos ? Math.round(it.kilos) : '-'} kg</span>
                             </div>
                         </div>
                     </div>
@@ -235,14 +250,10 @@ App.registerModule('bodega', {
                             <div style="font-weight:800;font-size:18px">${c.codigo}</div>
                             <span style="padding:3px 10px;background:#f59e0b20;color:#f59e0b;border-radius:12px;font-size:11px;font-weight:700">${c.tipo}</span>
                         </div>
-                        <div style="display:flex;justify-content:space-between;padding:6px 0;border-top:1px solid #f1f5f9;font-size:13px">
-                            <span style="color:#64748b">Items</span><strong>${c.total_items}</strong>
-                        </div>
-                        <div style="display:flex;justify-content:space-between;padding:6px 0;border-top:1px solid #f1f5f9;font-size:13px">
-                            <span style="color:#64748b">Kilos</span><strong>${Math.round(c.total_kilos || 0)} kg</strong>
-                        </div>
-                        <div style="display:flex;justify-content:space-between;padding:6px 0;border-top:1px solid #f1f5f9;font-size:13px">
-                            <span style="color:#64748b">M²</span><strong>${Number(c.total_m2 || 0).toFixed(2)}</strong>
+                        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">
+                            <span class="bchip">${c.total_items} items</span>
+                            <span class="bchip">${Math.round(c.total_kilos || 0)} kg</span>
+                            <span class="bchip">${Number(c.total_m2 || 0).toFixed(2)} m²</span>
                         </div>
                         <div style="margin-top:12px;display:flex;gap:6px">
                             <button class="btn btn-outline btn-sm" style="flex:1" onclick="App.modules.bodega.verItemsCarro(${c.carro_id})">Ver items</button>
