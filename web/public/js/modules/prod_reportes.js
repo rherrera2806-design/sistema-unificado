@@ -37,8 +37,12 @@ App.registerModule('prod_reportes', {
                 .pr-table td{padding:4px 7px;border-bottom:1px solid #f1f5f9;color:#334155}
                 .pr-table tbody tr{transition:background .15s}
                 .pr-table tbody tr:hover{background:#f8fafc!important}
-                .pr-date-header{background:linear-gradient(135deg,#0f172a,#1e3a5f);color:white;padding:10px 16px;font-weight:700;font-size:13px;display:flex;justify-content:space-between;align-items:center;border-radius:10px 10px 0 0;margin-top:16px}
+                .pr-date-header{position:sticky;top:0;z-index:5;background:linear-gradient(120deg,#0f172a,#1e3a8a);color:white;padding:10px 16px;font-weight:700;font-size:13px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;border-radius:10px 10px 0 0;margin-top:16px;box-shadow:0 3px 10px rgba(15,23,42,.18)}
                 .pr-date-header:first-child{margin-top:0}
+                .pr-date-header .dow{display:block;font-size:9.5px;font-weight:600;opacity:.65;letter-spacing:.8px;text-transform:uppercase}
+                .pr-date-header .tots{margin-left:auto;display:flex;gap:7px;flex-wrap:wrap}
+                .pr-date-header .chip{font-size:10px;font-weight:700;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.16);padding:3px 10px;border-radius:20px;white-space:nowrap}
+                .pr-date-header .chip b{font-weight:800}
                 .pr-badge{display:inline-block;padding:2px 8px;border-radius:6px;font-size:10px;font-weight:600}
                 .pr-estado-PENDIENTE{background:#fef3c7;color:#92400e}
                 .pr-estado-PROGRAMADO{background:#dbeafe;color:#1e40af}
@@ -53,12 +57,16 @@ App.registerModule('prod_reportes', {
                 .pr-hero-actions{margin-left:auto;display:flex;gap:8px;align-items:center}
                 .pr-hbtn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:8px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.1);color:#fff;cursor:pointer;font-size:11px;font-weight:600;white-space:nowrap}
                 .pr-hbtn:hover{background:rgba(255,255,255,.2)}
-                .pr-kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:14px}
-                .pr-kpi{background:#fff;border:1px solid #e4e9f0;border-radius:12px;padding:13px 16px}
-                /* KPIs NEUTROS: el color solo cuando significa algo (regla del sistema) */
-                .pr-kpi .k{font-size:10px;font-weight:600;letter-spacing:.7px;text-transform:uppercase;color:#64748b}
-                .pr-kpi .v{font-size:24px;font-weight:700;margin-top:2px;color:#0f172a;font-variant-numeric:tabular-nums;letter-spacing:-.3px;line-height:1.15}
-                .pr-kpi .s{font-size:10px;color:#64748b;margin-top:3px}
+                .pr-strip{background:#fff;border:1px solid #e4e9f0;border-radius:12px;padding:11px 16px;margin-bottom:14px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+                .pr-strip .big{font-size:13px;font-weight:700;color:#0f172a;font-variant-numeric:tabular-nums}
+                .pr-strip .big span{color:#64748b;font-weight:500;font-size:11px}
+                .pr-strip .hint{margin-left:auto;font-size:9.5px;color:#94a3b8}
+                .pr-table tbody tr.st-pend{border-left:3px solid #f59e0b}
+                .pr-table tbody tr.st-prog{border-left:3px solid #3b82f6}
+                .pr-table tbody tr.st-proceso{border-left:3px solid #8b5cf6}
+                .pr-table tbody tr.st-term{border-left:3px solid #22c55e}
+                .pr-table tbody tr.st-merm{border-left:3px solid #dc2626}
+                .pr-table tbody tr.st-cerr{border-left:3px solid #64748b}
                 /* Filtros agrupados por tipo: Filtros (selects/fechas) vs Búsqueda (lupa) */
                 .pr-fgrp{font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#64748b;margin-bottom:6px}
                 .pr-busq{position:relative;flex:1;min-width:180px}
@@ -151,7 +159,7 @@ App.registerModule('prod_reportes', {
                 </div>
             </div>
 
-            <div id="prResumen" class="pr-kpis"></div>
+            <div id="prResumen" class="pr-strip"></div>
             <div id="prReporte" style="animation:prFadeUp .5s ease .1s both"></div>
         `;
 
@@ -256,13 +264,14 @@ App.registerModule('prod_reportes', {
             totalKgs += f.totales.kgs;
             totalUnd += f.totales.unidades || 0;
         }
-        el.innerHTML = `
-                <div class="pr-kpi"><div class="k">Fechas</div><div class="v">${fechas.length}</div><div class="s">con órdenes para entregar</div></div>
-                <div class="pr-kpi"><div class="k">Items</div><div class="v">${Number(totalItems).toLocaleString('es-CL')}</div><div class="s">líneas de producción</div></div>
-                <div class="pr-kpi"><div class="k">Unidades</div><div class="v">${Math.round(totalUnd).toLocaleString('es-CL')}</div><div class="s">a fabricar</div></div>
-                <div class="pr-kpi"><div class="k">M² total</div><div class="v">${Number(totalM2).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1})}</div><div class="s">superficie del período</div></div>
-                <div class="pr-kpi"><div class="k">Kgs total</div><div class="v">${Number(totalKgs).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1})}</div><div class="s">peso del período</div></div>
-        `;
+        // Barra única de totales (menos es más): el detalle por fecha vive en la
+        // cabecera sticky de cada bloque.
+        el.innerHTML = ''
+            + '<div class="big">' + fechas.length + ' fechas <span>· ' + Number(totalItems).toLocaleString('es-CL')
+            + ' items · ' + Math.round(totalUnd).toLocaleString('es-CL') + ' und · '
+            + Number(totalM2).toLocaleString('es-CL', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' m² · '
+            + Number(totalKgs).toLocaleString('es-CL', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' kg</span></div>'
+            + '<div class="hint">la cabecera de cada fecha queda fija al hacer scroll</div>';
     },
 
     renderTabla() {
@@ -282,10 +291,16 @@ App.registerModule('prod_reportes', {
         let html = '';
         for (const fecha of fechas) {
             const fechaFmt = this.formatFecha(fecha.fecha);
+            const dow = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'][new Date(fecha.fecha + 'T12:00:00').getDay()] || '';
             html += `
                 <div class="pr-date-header">
-                    <span>FECHA: ${fechaFmt}</span>
-                    <span style="font-size:11px;opacity:.7">${fecha.ordenes.length} items</span>
+                    <span><span class="dow">${dow} · Fecha de entrega</span>📅 ${fechaFmt}</span>
+                    <span class="tots">
+                        <span class="chip"><b>${fecha.totales.items}</b> items</span>
+                        <span class="chip"><b>${Math.round(fecha.totales.unidades || 0).toLocaleString('es-CL')}</b> und</span>
+                        <span class="chip"><b>${Number(fecha.totales.m2).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1})}</b> m²</span>
+                        <span class="chip"><b>${Number(fecha.totales.kgs).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1})}</b> kg</span>
+                    </span>
                 </div>
                 <div style="border:1px solid #e2e8f0;border-top:none;border-radius:0 0 10px 10px;margin-bottom:4px">
                     <div class="m-table-wrap">
@@ -301,7 +316,7 @@ App.registerModule('prod_reportes', {
             let cardsHtml = '';
             for (const o of this._agrupar(fecha.ordenes)) {
                 const estadoClass = 'pr-estado-' + (o.estado || 'PENDIENTE');
-                html += `<tr>
+                html += `<tr class="${this._rowClass(o.estado)}">
                     <td style="font-weight:600">${escText(o.ov || '')}</td>
                     <td>${escText(o.item || '')}</td>
                     <td style="text-align:center">${o.pend ? Number(o.pend).toLocaleString('es-CL') : ''}</td>
@@ -346,12 +361,6 @@ App.registerModule('prod_reportes', {
             }
             html += `</tbody></table></div>
                 <div class="m-cards-mobile" style="display:none;padding:12px">${cardsHtml}</div>
-                </div>
-                <div class="pr-totales">
-                    <div>Items: <span>${fecha.totales.items}</span></div>
-                    <div>Unid: <span>${Math.round(fecha.totales.unidades || 0).toLocaleString('es-CL')}</span></div>
-                    <div>M²: <span>${Number(fecha.totales.m2).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1})}</span></div>
-                    <div>Kgs: <span>${Number(fecha.totales.kgs).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1})}</span></div>
                 </div>`;
         }
         el.innerHTML = html;
@@ -362,6 +371,12 @@ App.registerModule('prod_reportes', {
         const [y, m, d] = fechaStr.split('-');
         const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
         return `${d} de ${meses[parseInt(m) - 1]} de ${y}`;
+    },
+
+    // Borde de color por estado en la fila (mismo lenguaje que Producción)
+    _rowClass(estado) {
+        return { 'PENDIENTE': 'st-pend', 'PROGRAMADO': 'st-prog', 'EN_PROCESO': 'st-proceso',
+            'TERMINADO': 'st-term', 'MERMADO': 'st-merm', 'CERRADO': 'st-cerr' }[estado] || '';
     },
 
     aplicarFiltros() {
