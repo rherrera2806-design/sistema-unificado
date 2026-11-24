@@ -79,14 +79,14 @@ App.registerModule('reclamos_reporte', {
                 .rq-bar-col .m{font-size:10px;color:var(--invp-muted,#8494a8)}
                 .rq-bars-row{display:flex;gap:8px}
                 .rq-yaxis{display:flex;flex-direction:column;justify-content:space-between;font-size:10px;color:var(--invp-muted,#8494a8);height:184px;padding-top:14px;line-height:1}
-                .rq-donut-wrap{display:flex;align-items:center;gap:22px;flex-wrap:wrap}
-                .rq-donut{width:150px;height:150px;border-radius:50%;position:relative;flex-shrink:0}
-                .rq-donut::after{content:'';position:absolute;inset:27px;background:#fff;border-radius:50%}
+                .rq-donut-wrap{display:flex;align-items:center;gap:22px;flex-wrap:wrap;row-gap:14px}
+                .rq-donut{width:126px;height:126px;border-radius:50%;position:relative;flex-shrink:0}
+                .rq-donut::after{content:'';position:absolute;inset:23px;background:#fff;border-radius:50%}
                 .rq-donut .c{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:1}
-                .rq-donut .c .n{font-size:26px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
-                .rq-donut .c .l{font-size:8.5px;letter-spacing:1px;text-transform:uppercase;color:var(--invp-muted,#8494a8)}
-                .rq-legend{display:flex;flex-direction:column;gap:9px;flex:1;min-width:170px}
-                .rq-lg{display:flex;align-items:center;gap:8px;font-size:11.5px;color:#334155}
+                .rq-donut .c .n{font-size:22px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
+                .rq-donut .c .l{font-size:8.5px;letter-spacing:1px;text-transform:uppercase;color:var(--invp-muted,#8494a8);margin-top:2px}
+                .rq-legend{display:flex;flex-direction:column;gap:7px;flex:1;min-width:170px}
+                .rq-lg{display:flex;align-items:center;gap:8px;font-size:11.5px;color:#334155;padding:5px 0}
                 .rq-lg .dot{width:9px;height:9px;border-radius:50%}
                 .rq-lg .n{margin-left:auto;font-weight:800;color:var(--invp-ink,#0f172a);font-variant-numeric:tabular-nums}
                 .rq-rank{display:flex;flex-direction:column;gap:11px;height:100%;justify-content:space-evenly}
@@ -99,7 +99,7 @@ App.registerModule('reclamos_reporte', {
                 .rq-fill.amber{background:linear-gradient(90deg,#f59e0b,#d97706)}
                 .rq-fill.red{background:linear-gradient(90deg,#ef4444,#b91c1c)}
                 .rq-fill.slate{background:#94a3b8}
-                .rq-nota{font-size:10px;color:var(--invp-muted,#8494a8);margin-top:10px}
+                .rq-nota{font-size:10px;color:var(--invp-muted,#8494a8);margin-top:12px;flex-shrink:0;line-height:1.5}
                 .rq-mes{width:100%;border-collapse:collapse}
                 .rq-mes th{position:sticky;top:0;z-index:2;font-size:9px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:var(--invp-muted,#8494a8);text-align:left;padding:9px 12px;border-bottom:1px solid var(--invp-line,#e4e9f0);background:#f8fafc}
                 .rq-mes td{font-size:11.5px;padding:9px 12px;border-bottom:1px solid #f4f7fb;color:#334155}

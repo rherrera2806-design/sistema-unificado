@@ -61,14 +61,14 @@ App.registerModule('pedidos_reporte', {
                 .rq-bar.oscuro{background:linear-gradient(180deg,#f59e0b,#d97706)}
                 .rq-bar .n{position:absolute;top:-18px;left:0;right:0;text-align:center;font-size:10.5px;font-weight:800;color:#475569;font-variant-numeric:tabular-nums}
                 .rq-bar-col .m{font-size:10px;color:#8494a8}
-                .rq-donut-wrap{display:flex;align-items:center;gap:22px;flex-wrap:wrap;height:100%}
-                .rq-donut{width:150px;height:150px;border-radius:50%;position:relative;flex-shrink:0}
-                .rq-donut::after{content:'';position:absolute;inset:27px;background:#fff;border-radius:50%}
+                .rq-donut-wrap{display:flex;align-items:center;gap:22px;flex-wrap:wrap;row-gap:14px;height:100%}
+                .rq-donut{width:126px;height:126px;border-radius:50%;position:relative;flex-shrink:0}
+                .rq-donut::after{content:'';position:absolute;inset:23px;background:#fff;border-radius:50%}
                 .rq-donut .c{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:1}
-                .rq-donut .c .n{font-size:26px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
-                .rq-donut .c .l{font-size:8.5px;letter-spacing:1px;text-transform:uppercase;color:#8494a8}
-                .rq-legend{display:flex;flex-direction:column;gap:9px;flex:1;min-width:170px}
-                .rq-lg{display:flex;align-items:center;gap:8px;font-size:11.5px;color:#334155}
+                .rq-donut .c .n{font-size:22px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
+                .rq-donut .c .l{font-size:8.5px;letter-spacing:1px;text-transform:uppercase;color:#8494a8;margin-top:2px}
+                .rq-legend{display:flex;flex-direction:column;gap:7px;flex:1;min-width:170px}
+                .rq-lg{display:flex;align-items:center;gap:8px;font-size:11.5px;color:#334155;padding:5px 0}
                 .rq-lg .dot{width:9px;height:9px;border-radius:50%}
                 .rq-lg .n{margin-left:auto;font-weight:800;color:#0f172a;font-variant-numeric:tabular-nums}
                 .rq-rank{display:flex;flex-direction:column;gap:11px;height:100%;justify-content:space-evenly}
