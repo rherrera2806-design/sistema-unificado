@@ -111,16 +111,16 @@ App.registerModule('prod_notas', {
     // ── Menú de acciones (popover fijo, patrón del sistema) ──
     menuAcciones(n) {
         // Sin onclick inline: las acciones se enganchan por DELEGACIÓN en
-        // renderList (data-act/data-id) — el mecanismo más robusto frente a
-        // contextos donde los handlers inline no resuelven.
+        // renderList (data-act/data-id). OJO: TODO va con ${} — las líneas
+        // fuera de la interpolación quedaban literales (data-id="' + n.id + '").
         return `<div class="nota-amenu"><button class="nota-amenu-btn" title="Acciones" data-act="menu">⋯</button>
         <div class="nota-amenu-drop">
             ${n.estado === 'pendiente'
-                ? '<div class="it" data-act="realizado" data-id="' + n.id + '">✅ Marcar como realizado</div>'
-                : '<div class="it" data-act="pendiente" data-id="' + n.id + '">↩️ Volver a pendiente</div>'}
-            <div class="it" data-act="editar" data-id="' + n.id + '">✏️ Editar nota</div>
+                ? `<div class="it" data-act="realizado" data-id="${n.id}">✅ Marcar como realizado</div>`
+                : `<div class="it" data-act="pendiente" data-id="${n.id}">↩️ Volver a pendiente</div>`}
+            <div class="it" data-act="editar" data-id="${n.id}">✏️ Editar nota</div>
             <div class="sep"></div>
-            <div class="it danger" data-act="eliminar" data-id="' + n.id + '">🗑 Eliminar nota</div>
+            <div class="it danger" data-act="eliminar" data-id="${n.id}">🗑 Eliminar nota</div>
         </div></div>`;
     },
     // Recibe el BOTÓN (this). Con try/catch visible: si algo falla, se ve.
@@ -241,7 +241,13 @@ App.registerModule('prod_notas', {
             it.addEventListener('click', (ev) => {
                 ev.stopPropagation();
                 this._cerrarMenus();
-                const id = Number(it.getAttribute('data-id'));
+                let id = Number(it.getAttribute('data-id'));
+                if (!Number.isFinite(id)) {
+                    // Red de seguridad: el id también vive en la tarjeta (prodnota-N)
+                    const card = it.closest ? it.closest('[id^="prodnota-"]') : null;
+                    if (card) id = Number(String(card.id).replace('prodnota-', ''));
+                }
+                if (!Number.isFinite(id)) { App.showAlert('Id de nota inválido', 'danger'); return; }
                 const act = it.getAttribute('data-act');
                 try {
                     if (act === 'realizado') this.marcarRealizado(id);
