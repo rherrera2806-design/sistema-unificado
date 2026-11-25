@@ -91,6 +91,10 @@ App.modules.planificacion = {
                     <h2>Planificación</h2>
                     <p>Capacidad por grupo (kg/día) · carga por estación (m²) · programación de pendientes</p>
                 </div>
+                <button class="pln-btn ghost sm" id="plnBtnActualizar" style="margin-left:auto;flex-shrink:0;border-color:rgba(255,255,255,.3);background:rgba(255,255,255,.1);color:#fff" onclick="App.modules.planificacion.actualizarInfo()" title="Recarga los gráficos con los datos más recientes de producción">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M21 12a9 9 0 1 1-6.219-8.56"/><path d="M21 3v5h-5"/></svg>
+                    Actualizar información
+                </button>
             </div>
 
             <div id="plnAvisoIncumplidas"></div>
@@ -205,6 +209,26 @@ App.modules.planificacion = {
     // por estaciones quedaba con datos viejos hasta recorrer los días)
     async refrescarTodo() {
         await Promise.allSettled([this.cargarGrupo(), this.cargarDatos(), this.cargarEstaciones(), this.cargarAvisoIncumplidas()]);
+    },
+
+    // Botón "Actualizar información": recarga los gráficos con datos frescos de
+    // producción (lo registrado en Taller). Mantiene el rango/fecha/vista actual
+    // y da feedback visual mientras carga.
+    async actualizarInfo() {
+        const btn = document.getElementById('plnBtnActualizar');
+        if (btn) { btn.disabled = true; btn.style.opacity = '.6'; btn.innerHTML = 'Actualizando\u2026'; }
+        try {
+            await this.refrescarTodo();
+            if (typeof App.toast === 'function') App.toast('Información actualizada');
+            else App.showAlert('Información actualizada');
+        } catch (e) {
+            App.showAlert('Error al actualizar: ' + e.message, 'danger');
+        }
+        if (btn) {
+            btn.disabled = false;
+            btn.style.opacity = '1';
+            btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M21 12a9 9 0 1 1-6.219-8.56"/><path d="M21 3v5h-5"/></svg> Actualizar información';
+        }
     },
 
     // Aviso VISIBLE de órdenes comprometidas incumplidas (vencidas / por
@@ -1282,7 +1306,7 @@ App.modules.planificacion = {
     // ---------------- Estilos (escala 20/15/13/11/10) ----------------
     _estilos() {
         return `<style>
-            .pln-hero{background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 55%,#1e40af 100%);border-radius:16px;padding:20px 26px;position:relative;overflow:hidden;margin-bottom:14px}
+            .pln-hero{background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 55%,#1e40af 100%);border-radius:16px;padding:20px 26px;position:relative;overflow:hidden;margin-bottom:14px;display:flex;align-items:center;gap:14px}
             .pln-hero::after{content:'';position:absolute;left:0;right:0;bottom:0;height:1px;background:linear-gradient(90deg,transparent,rgba(147,197,253,.55),transparent)}
             .pln-hero h2{color:#fff;font-size:20px;font-weight:700;margin:0}
             .pln-hero p{color:rgba(255,255,255,.62);font-size:11px;margin:4px 0 0}
