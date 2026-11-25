@@ -978,7 +978,11 @@ const Asistencia = {
                         return l.trabajador_id === t.id && ini <= fecha && fin >= fecha;
                     })) { clase = 'licencia'; title = 'Licencia'; }
                     else if (faltas.some(f => f.trabajador_id === t.id && String(f.fecha).split('T')[0] === fechaStr)) { clase = 'falta'; title = 'Falta'; }
-                    else if (d <= hoy.getDate() && mes <= (hoy.getMonth() + 1) && parseInt(anio) <= hoy.getFullYear()) { clase = 'presente'; title = 'Presente'; }
+                    // FIX: comparar la FECHA COMPLETA con hoy (fecha <= hoy).
+                    // Antes se comparaba el dia del mes (26, 27...) contra el dia
+                    // de HOY (p.ej. 25): en cualquier mes anterior solo se marcaban
+                    // los dias 1..25 y los 26-31 salian vacios aunque fueran pasados.
+                    else if (fecha <= hoy) { clase = 'presente'; title = 'Presente'; }
                 }
                 let symbol = '';
                 if (clase === 'presente') symbol = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>';
