@@ -465,17 +465,17 @@ App.registerModule('prod_reportes', {
         let cuerpo = '';
         for (const fc of fechas) {
             cuerpo += `<h3 class="dia">${this.formatFecha(fc.fecha)}<span>${num(fc.totales.items, 0)} items · ${num(fc.totales.unidades || 0, 0)} und · ${num(fc.totales.m2, 1)} m² · ${num(fc.totales.kgs, 1)} kg</span></h3>`;
-            cuerpo += '<table><thead><tr>'
+            cuerpo += '<table><colgroup><col style="width:5%"><col style="width:2.5%"><col style="width:3%"><col style="width:7%"><col style="width:13%"><col style="width:5%"><col style="width:4.5%"><col style="width:15%"><col style="width:4.5%"><col style="width:3.5%"><col style="width:3.5%"><col style="width:3%"><col style="width:3.5%"><col style="width:11%"><col style="width:4.5%"><col style="width:5.5%"><col style="width:5.5%"></colgroup><thead><tr>'
                 + '<th>OV</th><th>Item</th><th>Pend</th><th>Ruta</th><th>Avance por proceso</th><th>Prioridad</th><th>SAP Padre</th><th>Descripción Padre</th><th>Espesor</th><th>Ancho</th><th>Alto</th><th>M²</th><th>Kgs</th><th>Cliente</th><th>Tipo</th><th>Estado</th><th>Grupo</th>'
                 + '</tr></thead><tbody>';
             for (const o of this._agrupar(fc.ordenes)) {
-                const avance = (o.avance || []).map(a => a.letra + ' ' + (a.cant > 0 ? num(a.cant, 0) : '—')).join(' · ');
+                const avance = (o.avance || []).map(a => a.letra + (a.cant > 0 ? num(a.cant, 0) : '-')).join('\u00b7');
                 cuerpo += `<tr>
                     <td class="c"><strong>${escText(o.ov || '')}</strong></td>
                     <td class="c">${escText(o.item || '')}</td>
                     <td class="n">${o.pend ? num(o.pend, 0) : ''}</td>
-                    <td class="c">${escText(o.proceso || o.ruta || '')}</td>
-                    <td>${escText(avance)}</td>
+                    <td class="c nw">${escText(o.proceso || o.ruta || '')}</td>
+                    <td class="nw">${escText(avance)}</td>
                     <td class="c">${escText(({ 1: 'Normal', 2: 'Express', 3: 'Urgencia', 4: 'Reposición' })[o.prioridad] || '—')}</td>
                     <td class="c">${escText(o.codigo_sap_padre || '')}</td>
                     <td>${escText(o.descripcion_padre || '')}</td>
@@ -505,11 +505,12 @@ App.registerModule('prod_reportes', {
             + '.kpi b{font-size:12px}'
             + 'h3.dia{font-size:10px;margin:10px 0 4px;padding:3px 6px;background:#eee;border-left:3px solid #111;display:flex;justify-content:space-between}'
             + 'h3.dia span{font-weight:400;color:#444;font-size:8.5px;align-self:center}'
-            + 'table{width:100%;border-collapse:collapse}'
+            + 'table{width:100%;border-collapse:collapse;table-layout:fixed}'
             + 'th{background:#e8e8e8;border:1px solid #999;padding:2px 4px;font-size:7px;text-transform:uppercase;text-align:left}'
-            + 'td{border:1px solid #bbb;padding:2px 4px;font-size:8px}'
+            + 'td{border:1px solid #bbb;padding:2px 4px;font-size:8px;overflow:hidden;text-overflow:ellipsis}'
             + 'td.n{text-align:right;font-variant-numeric:tabular-nums}'
             + 'td.c{text-align:center}'
+            + 'td.nw{white-space:nowrap}'
             + 'tbody tr:nth-child(even){background:#fafafa}'
             + 'footer{margin-top:10px;padding-top:5px;border-top:1px solid #999;font-size:8px;color:#555;display:flex;justify-content:space-between}'
             + '</style></head><body>'
