@@ -424,6 +424,13 @@ App.registerModule('prod_reportes', {
         return rows;
     },
 
+    // Cliente cortado a 20 palabras con puntos suspensivos: en impresion los
+    // nombres largos expandian el alto de las filas (una sola linea + ellipsis).
+    _clienteCorto(t) {
+        const palabras = String(t || '').trim().split(/\s+/).filter(Boolean);
+        return palabras.length > 20 ? palabras.slice(0, 20).join(' ') + '\u2026' : palabras.join(' ');
+    },
+
     // ── Impresión del informe ─────────────────────────────────────────────
     // Imprime EXACTAMENTE lo que se ve: respeta los filtros activos (los datos
     // ya vienen filtrados del servidor) y el encabezado indica cuáles estaban
@@ -496,7 +503,7 @@ App.registerModule('prod_reportes', {
                     <td class="n">${o.alto ? num(o.alto, 0) : ''}</td>
                     <td class="n">${num(o.m2, 1)}</td>
                     <td class="n">${num(o.kgs, 1)}</td>
-                    <td>${escText(o.cliente || '')}</td>
+                    <td class="nw" title="${escAttr(o.cliente || '')}">${escText(this._clienteCorto(o.cliente))}</td>
                     <td>${escText(o.tipo || '')}</td>
                     <td class="c">${escText(o.estado || '')}</td>
                     <td>${escText(o.grupo || '')}</td>
