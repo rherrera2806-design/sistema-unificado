@@ -364,31 +364,62 @@ async function registroManual({ filas, userEmail, userName, estacionId, maquinaI
             resultados.push({ pedido, item, ok: false, mensaje: 'No hay orden activa con ese pedido/item' });
             continue;
         }
-        const orden = ords.rows[0];
-        if (cant > Number(orden.cantidad)) {
-            resultados.push({ pedido, item, ok: false, mensaje: `La cantidad ${cant} supera la de la orden (${orden.cantidad})` });
-            continue;
-        }
-        const filtros = ['orden_produccion_id = $1', `estado IN ('EN_PROCESO', 'PENDIENTE')`];
-        const params = [orden.id];
+        // Buscar el paso en TODAS las ordenes activas de ese pedido+item: la
+        // explosion BOM crea VARIAS ordenes (una por pieza) con el mismo
+        // pedido+item y antes se tomaba solo la ULTIMA (ORDER BY id DESC LIMIT 1):
+        // si su paso ya estaba terminado, decia "sin pasos pendientes en ESTA
+        // estacion" aunque la OTRA pieza seguia debiendola (si se veia en la cola).
+        // Ademas se acepta PAUSADO (antes solo EN_PROCESO/PENDIENTE).
+        const filtros = [
+            'o.pedido_sap_id = $1',
+            'o.item_numero = $2',
+            `o.estado_programacion NOT IN ('CERRADO', 'TERMINADO', 'MERMADO')`,
+            `p.estado IN ('EN_PROCESO', 'PAUSADO', 'PENDIENTE')`
+        ];
+        const params = [pedido, item];
         if (estacionId) {
-            filtros.push(`estacion_id = $${params.length + 1}`);
+            filtros.push(`p.estacion_id = $${params.length + 1}`);
             params.push(estacionId);
         }
         const pasos = await query(
-            `SELECT id FROM cola_produccion_pasos WHERE ${filtros.join(' AND ')}
-             ORDER BY CASE estado WHEN 'EN_PROCESO' THEN 0 ELSE 1 END, orden_secuencia
+            `SELECT p.id AS paso_id, o.id AS orden_id, o.cantidad
+             FROM cola_produccion_pasos p
+             JOIN produccion_ordenes o ON o.id = p.orden_produccion_id
+             WHERE ${filtros.join(' AND ')}
+             ORDER BY CASE p.estado WHEN 'EN_PROCESO' THEN 0 WHEN 'PAUSADO' THEN 1 ELSE 2 END,
+                      p.orden_secuencia ASC, o.id DESC
              LIMIT 1`, params);
         if (pasos.rows.length === 0) {
+            // Diagnostico: si quedan pasos en OTRA estacion, decirlo
+            let extra = '';
+            if (estacionId) {
+                try {
+                    const otras = await query(
+                        `SELECT DISTINCT e.nombre_estacion
+                         FROM cola_produccion_pasos p
+                         JOIN produccion_ordenes o ON o.id = p.orden_produccion_id
+                         LEFT JOIN estaciones_maestras e ON e.id = p.estacion_id
+                         WHERE o.pedido_sap_id = $1 AND o.item_numero = $2
+                           AND o.estado_programacion NOT IN ('CERRADO', 'TERMINADO', 'MERMADO')
+                           AND p.estado IN ('EN_PROCESO', 'PAUSADO', 'PENDIENTE')
+                         LIMIT 3`, [pedido, item]);
+                    if (otras.rows.length) extra = ' (quedan pasos en: ' + otras.rows.map(r2 => r2.nombre_estacion || '?').join(', ') + ')';
+                } catch (_) { }
+            }
             resultados.push({
                 pedido, item, ok: false,
                 mensaje: estacionId
-                    ? 'La orden no tiene pasos pendientes en ESTA estación'
-                    : 'La orden no tiene pasos pendientes'
+                    ? 'La orden no tiene pasos pendientes en ESTA estación' + extra
+                    : 'La orden no tiene pasos pendientes' + extra
             });
             continue;
         }
-        const r = await finalizarPaso(pasos.rows[0].id, userEmail, userName, cant, turno);
+        const pasoSel = pasos.rows[0];
+        if (cant > Number(pasoSel.cantidad)) {
+            resultados.push({ pedido, item, ok: false, mensaje: `La cantidad ${cant} supera la de la orden (${pasoSel.cantidad})` });
+            continue;
+        }
+        const r = await finalizarPaso(pasoSel.paso_id, userEmail, userName, cant, turno);
         if (!r) {
             resultados.push({ pedido, item, ok: false, mensaje: 'No se pudo registrar la producción' });
             continue;
