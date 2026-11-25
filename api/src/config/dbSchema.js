@@ -1468,12 +1468,17 @@ async function faseDatos({ q, safe }) {
     // existen en el esquema actual (solo en bases muy antiguas). Antes se
     // ejecutaban a secas y abortaban initDB ("column does not exist"); ahora
     // son condicionales.
+    // AHORA ademas son de UNA SOLA VEZ: tras copiar, las columnas legadas se
+    // ELIMINAN para que la migracion nunca vuelva a pisar la configuracion del
+    // usuario (antes, cada arranque re-marcaba los CB viejos sobre los "No").
     await safe(`DO $mig$ BEGIN
             IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='estaciones_maestras' AND column_name='capacidad_max_m2_dia') THEN
                 UPDATE estaciones_maestras SET cap_max = capacidad_max_m2_dia WHERE cap_max IS NULL OR cap_max = 0;
+                ALTER TABLE estaciones_maestras DROP COLUMN capacidad_max_m2_dia;
             END IF;
             IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='estaciones_maestras' AND column_name='es_cuello_botella') THEN
-                UPDATE estaciones_maestras SET cuello_botella = es_cuello_botella WHERE cuello_botella IS NULL OR cuello_botella = FALSE;
+                UPDATE estaciones_maestras SET cuello_botella = es_cuello_botella WHERE cuello_botella IS NULL;
+                ALTER TABLE estaciones_maestras DROP COLUMN es_cuello_botella;
             END IF;
         END $mig$`, 'estaciones_maestras · columnas antiguas');
     // Si cap_max sigue en 0 o NULL, asignar valores por defecto según nombre
@@ -1485,7 +1490,11 @@ async function faseDatos({ q, safe }) {
     await q(`UPDATE estaciones_maestras SET cap_max = 24 WHERE (cap_max IS NULL OR cap_max = 0) AND nombre_estacion = 'Pintado'`);
     await q(`UPDATE estaciones_maestras SET cap_max = 200 WHERE (cap_max IS NULL OR cap_max = 0) AND nombre_estacion = 'Templado'`);
     await q(`UPDATE estaciones_maestras SET cap_max = 24 WHERE (cap_max IS NULL OR cap_max = 0) AND nombre_estacion = 'Armado'`);
-    await q(`UPDATE estaciones_maestras SET cuello_botella = TRUE WHERE orden_secuencia_defecto BETWEEN 4 AND 8 AND (cuello_botella IS NULL OR cuello_botella = FALSE)`);
+    // (ELIMINADO) Antes se ejecutaba en cada arranque y forzaba
+    // cuello_botella = TRUE a las estaciones con orden 4-8 cuando estaban en
+    // FALSE, pisando la configuracion del usuario. El seed inicial (solo cuando
+    // la tabla esta vacia) ya cubre instalaciones nuevas; la config manual es la
+    // unica fuente de verdad.
 
     // ── produccion_ordenes: backfill de espesor_mm desde la receta ───────────
     await q(`
