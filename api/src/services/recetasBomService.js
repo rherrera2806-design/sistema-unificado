@@ -1,5 +1,5 @@
 const { query } = require('../config/database');
-const { findCol } = require('../utils/excelUtils');
+const { findKey } = require('../utils/excelUtils');
 
 /**
  * Service para gestión de recetas BOM (nueva y antigua).
@@ -229,13 +229,14 @@ const previewRecetasBom = async (rows) => {
         headers.forEach(h => { sample[h] = { val: row[h], type: typeof row[h], str: String(row[h]).substring(0, 50) }; });
         console.log('[PREVIEW] Fila ' + (i+1) + ':', JSON.stringify(sample));
     }
-    const colCodigo = findCol(rows[0], ['Codigo SAP', 'CodigoSap', 'Codigo_Padre', 'Codigo Padre', 'codigo_sap_padre', 'SAP', 'CODIGO_SAP', 'codigo sap']);
-    const colMP = findCol(rows[0], ['Codigo MP', 'CodigoMP', 'Codigo_Materia_Prima', 'Codigo Materia Prima', 'codigo_materia_prima', 'MateriaPrima', 'CODIGO_MP', 'Codigo', 'codigo MP']);
-    const colCant = findCol(rows[0], ['Cantidad', 'cantidad', 'Cantdad', 'CANTIDAD']);
-    let colEst = findCol(rows[0], ['Estaciones', 'estaciones', 'Estaciones IDs', 'Ruta', 'procesos_especificos_json', 'ESTACIONES', 'Procesos', 'procesos', 'RUTA']);
+    const colCodigo = findKey(rows[0], ['Codigo SAP', 'CodigoSap', 'Codigo_Padre', 'Codigo Padre', 'codigo_sap_padre', 'SAP', 'CODIGO_SAP', 'codigo sap']);
+    const colMP = findKey(rows[0], ['Codigo MP', 'CodigoMP', 'Codigo_Materia_Prima', 'Codigo Materia Prima', 'codigo_materia_prima', 'MateriaPrima', 'CODIGO_MP', 'Codigo', 'codigo MP']);
+    const colCant = findKey(rows[0], ['Cantidad', 'cantidad', 'Cantdad', 'CANTIDAD']);
+    let colEst = findKey(rows[0], ['Estaciones', 'estaciones', 'Estaciones IDs', 'Ruta', 'procesos_especificos_json', 'ESTACIONES', 'Procesos', 'procesos', 'RUTA']);
     if (!colEst) colEst = findEstacionesCol(rows);
-    let colAncho = findCol(rows[0], ['Ancho', 'ancho', 'Width', 'ANCHO']);
-    let colAlto = findCol(rows[0], ['Alto', 'alto', 'Height', 'ALTO']);
+    let colAncho = findKey(rows[0], ['Ancho', 'ancho', 'Width', 'ANCHO']);
+    let colAlto = findKey(rows[0], ['Alto', 'alto', 'Height', 'ALTO']);
+    const colId = findKey(rows[0], ['ID', 'Id', 'id', 'ID Receta', 'id_receta']);
     if (!colEst || !colAncho || !colAlto) {
         const allKeys = Object.keys(rows[0] || {});
         if (!colEst && allKeys[3]) { colEst = allKeys[3]; console.log('[PREVIEW] Estaciones detectado por posicion (col 4):', colEst); }
@@ -243,6 +244,18 @@ const previewRecetasBom = async (rows) => {
         if (!colAlto && allKeys[5]) { colAlto = allKeys[5]; console.log('[PREVIEW] Alto detectado por posicion (col 6):', colAlto); }
     }
     console.log('[PREVIEW] Columnas:', { colCodigo, colMP, colCant, colEst, colAncho, colAlto });
+
+    // Filas con ID existente = se ACTUALIZAN al importar (ciclo exportar->editar->importar)
+    let aActualizar = 0;
+    if (colId) {
+        try {
+            const idsExistentes = new Set((await query('SELECT id FROM recetas_bom')).rows.map(r => Number(r.id)));
+            aActualizar = rows.filter(r => {
+                const idv = parseInt(String(r[colId] || '').trim(), 10);
+                return Number.isFinite(idv) && idsExistentes.has(idv);
+            }).length;
+        } catch (e) { /* tabla nueva puede no existir aun */ }
+    }
 
     const missing = [];
     if (!colCodigo) missing.push('Codigo SAP');
@@ -290,33 +303,48 @@ const previewRecetasBom = async (rows) => {
         alto: colAlto ? Number(row[colAlto]) || null : null
     }));
 
-    return { total: rows.length, validas, errores, sample, _debug: { colCodigo, colMP, colCant, colEst, colAncho, colAlto, headers: Object.keys(rows[0] || {}), normHeaders: Object.keys(rows[0] || {}).map(h => normalized(h)) } };
+    return { total: rows.length, validas, errores, sample, aActualizar, _debug: { colCodigo, colMP, colCant, colEst, colAncho, colAlto, headers: Object.keys(rows[0] || {}), normHeaders: Object.keys(rows[0] || {}).map(h => normalized(h)) } };
 };
 
 const importarRecetasBom = async (rows) => {
-    const resultados = { importadas: 0, saltadas: 0, errores: [] };
+    const resultados = { importadas: 0, actualizadas: 0, saltadas: 0, errores: [] };
 
     const materias = await query('SELECT id, codigo_mp FROM materias_primas');
     const mpMap = {};
     materias.rows.forEach(m => { mpMap[m.codigo_mp] = m.id; });
 
-    const colCodigo = findCol(rows[0], ['Codigo SAP', 'CodigoSap', 'Codigo_Padre', 'Codigo Padre', 'codigo_sap_padre', 'SAP', 'CODIGO_SAP']);
-    const colMP = findCol(rows[0], ['Codigo MP', 'CodigoMP', 'Codigo_Materia_Prima', 'Codigo Materia Prima', 'codigo_materia_prima', 'MateriaPrima', 'CODIGO_MP', 'Codigo']);
-    const colCant = findCol(rows[0], ['Cantidad', 'cantidad', 'Cantdad', 'CANTIDAD']);
-    let colEst = findCol(rows[0], ['Estaciones', 'estaciones', 'Estaciones IDs', 'Ruta', 'procesos_especificos_json', 'ESTACIONES', 'Procesos', 'procesos', 'RUTA']);
+    // findKey devuelve el NOMBRE de la columna (findCol devuelve el VALOR de la
+    // celda - con findCol row[col] daba undefined y TODA fila fallaba).
+    const colId = findKey(rows[0], ['ID', 'Id', 'id', 'ID Receta', 'id_receta']);
+    const colCodigo = findKey(rows[0], ['Codigo SAP', 'CodigoSap', 'Codigo_Padre', 'Codigo Padre', 'codigo_sap_padre', 'SAP', 'CODIGO_SAP']);
+    const colMP = findKey(rows[0], ['Codigo MP', 'CodigoMP', 'Codigo_Materia_Prima', 'Codigo Materia Prima', 'codigo_materia_prima', 'MateriaPrima', 'CODIGO_MP', 'Codigo']);
+    const colCant = findKey(rows[0], ['Cantidad', 'cantidad', 'Cantdad', 'CANTIDAD']);
+    let colEst = findKey(rows[0], ['Estaciones', 'estaciones', 'Estaciones IDs', 'Ruta', 'procesos_especificos_json', 'ESTACIONES', 'Procesos', 'procesos', 'RUTA']);
     if (!colEst) colEst = findEstacionesCol(rows);
-    let colAncho = findCol(rows[0], ['Ancho', 'ancho', 'Width', 'ANCHO']);
-    let colAlto = findCol(rows[0], ['Alto', 'alto', 'Height', 'ALTO']);
+    let colAncho = findKey(rows[0], ['Ancho', 'ancho', 'Width', 'ANCHO']);
+    let colAlto = findKey(rows[0], ['Alto', 'alto', 'Height', 'ALTO']);
     if (!colEst || !colAncho || !colAlto) {
         const allKeys = Object.keys(rows[0] || {});
-        if (!colEst && allKeys[3]) { colEst = allKeys[3]; console.log('[IMPORT] Estaciones detectado por posicion (col 4):', colEst); }
-        if (!colAncho && allKeys[4]) { colAncho = allKeys[4]; console.log('[IMPORT] Ancho detectado por posicion (col 5):', colAncho); }
-        if (!colAlto && allKeys[5]) { colAlto = allKeys[5]; console.log('[IMPORT] Alto detectado por posicion (col 6):', colAlto); }
+        if (!colEst && allKeys[3]) colEst = allKeys[3];
+        if (!colAncho && allKeys[4]) colAncho = allKeys[4];
+        if (!colAlto && allKeys[5]) colAlto = allKeys[5];
     }
-    console.log('[IMPORT] Headers:', Object.keys(rows[0] || {}));
-    console.log('[IMPORT] Columnas:', { colCodigo, colMP, colCant, colEst, colAncho, colAlto });
+
+    // Estado actual: por ID (para ACTUALIZAR) y por clave sap|mp|ruta (para no
+    // duplicar). El ciclo exportar -> editar en Excel -> importar usa el ID.
+    const existentes = await query(
+        `SELECT id, codigo_sap_padre, materia_prima_id, cantidad, ancho, alto,
+                procesos_especificos_json::text as ruta_text FROM recetas_bom`
+    );
+    const porId = new Map();
+    const existentesSet = new Set();
+    existentes.rows.forEach(r => {
+        porId.set(Number(r.id), r);
+        existentesSet.add(r.codigo_sap_padre + '|' + r.materia_prima_id + '|' + normalizarRuta(r.ruta_text));
+    });
 
     const toInsert = [];
+    const toUpdate = [];
     for (let i = 0; i < rows.length; i++) {
         const row = rows[i];
         const sap = String(row[colCodigo] || '').trim();
@@ -334,62 +362,100 @@ const importarRecetasBom = async (rows) => {
         const procsJson = estacionesArray ? JSON.stringify(estacionesArray) : null;
         const ancho = colAncho ? Number(row[colAncho]) || null : null;
         const alto = colAlto ? Number(row[colAlto]) || null : null;
-        toInsert.push({ sap, mpId, cantidad, procsJson, ancho, alto, fila: i + 1 });
-    }
 
-    if (toInsert.length === 0) return resultados;
-
-    const existentes = await query(
-        `SELECT codigo_sap_padre, materia_prima_id, procesos_especificos_json::text as ruta_text FROM recetas_bom`
-    );
-    const existentesSet = new Set();
-    existentes.rows.forEach(r => {
-        // Clave normalizada: la comparación debe ser independiente del formato
-        // de impresión de jsonb ('[1, 2]') vs JSON.stringify ('[1,2]')
-        existentesSet.add(r.codigo_sap_padre + '|' + r.materia_prima_id + '|' + normalizarRuta(r.ruta_text));
-    });
-
-    const batch = [];
-    const dupesEnExcel = [];
-    for (const item of toInsert) {
-        const rutaKey = normalizarRuta(item.procsJson);
-        const dedupeKey = item.sap + '|' + item.mpId + '|' + rutaKey;
-        if (existentesSet.has(dedupeKey)) {
-            resultados.saltadas++;
-            dupesEnExcel.push({ fila: item.fila, sap: item.sap, mp: item.mpId, ruta: item.procsJson || 'sin ruta' });
-            continue;
+        // CICLO EXPORTAR -> EDITAR -> IMPORTAR: fila con ID existente se
+        // ACTUALIZA (no se inserta ni se salta). Sin ID o ID desconocido -> insert.
+        const idVal = colId ? parseInt(String(row[colId]).trim(), 10) : NaN;
+        const item = { sap, mpId, cantidad, procsJson, ancho, alto, fila: i + 1 };
+        if (Number.isFinite(idVal) && porId.has(idVal)) {
+            const ex = porId.get(idVal);
+            const igual = String(ex.codigo_sap_padre) === sap
+                && Number(ex.materia_prima_id) === mpId
+                && Number(ex.cantidad) === cantidad
+                && normalizarRuta(ex.ruta_text) === normalizarRuta(procsJson)
+                && (Number(ex.ancho) || null) === ancho
+                && (Number(ex.alto) || null) === alto;
+            if (igual) { resultados.saltadas++; continue; }   // sin cambios
+            toUpdate.push({ ...item, id: idVal });
+        } else {
+            toInsert.push(item);
         }
-        existentesSet.add(dedupeKey);
-        batch.push(item);
-    }
-    if (dupesEnExcel.length > 0) {
-        console.log('[IMPORT] Duplicados saltados:', JSON.stringify(dupesEnExcel.slice(0, 20)));
     }
 
+    // ACTUALIZACIONES por id (batch de 200 con VALUES)
     const CHUNK = 200;
-    for (let i = 0; i < batch.length; i += CHUNK) {
-        const chunk = batch.slice(i, i + CHUNK);
+    for (let i = 0; i < toUpdate.length; i += CHUNK) {
+        const chunk = toUpdate.slice(i, i + CHUNK);
         const values = [];
         const params = [];
         let idx = 1;
         chunk.forEach(item => {
-            values.push(`($${idx++}, $${idx++}, $${idx++}, $${idx++}::jsonb, $${idx++}, $${idx++})`);
-            params.push(item.sap, item.mpId, item.cantidad, item.procsJson, item.ancho, item.alto);
+            values.push(`($${idx++}::int, $${idx++}::text, $${idx++}::int, $${idx++}::numeric, $${idx++}::text, $${idx++}::numeric, $${idx++}::numeric)`);
+            params.push(item.id, item.sap, item.mpId, item.cantidad, item.procsJson, item.ancho, item.alto);
         });
         try {
             await query(
-                `INSERT INTO recetas_bom (codigo_sap_padre, materia_prima_id, cantidad, procesos_especificos_json, ancho, alto) VALUES ${values.join(', ')}`,
+                `UPDATE recetas_bom r SET
+                    codigo_sap_padre = v.sap,
+                    materia_prima_id = v.mpid,
+                    cantidad = v.cantidad,
+                    procesos_especificos_json = v.procs::jsonb,
+                    ancho = v.ancho,
+                    alto = v.alto
+                 FROM (VALUES ${values.join(', ')}) AS v(id, sap, mpid, cantidad, procs, ancho, alto)
+                 WHERE r.id = v.id`,
                 params
             );
-            resultados.importadas += chunk.length;
+            resultados.actualizadas += chunk.length;
         } catch (e) {
-            console.error('[IMPORT] Batch error:', e.message);
-            resultados.errores.push({ fila: i + 1, error: 'Error batch: ' + e.message });
+            console.error('[IMPORT] Batch update error:', e.message);
+            resultados.errores.push({ fila: chunk[0].fila, error: 'Error al actualizar: ' + e.message });
         }
     }
 
-    if (dupesEnExcel.length > 0) {
-        resultados.errores.push({ fila: 0, error: dupesEnExcel.length + ' duplicados en Excel (misma SAP+MP+Ruta): ' + dupesEnExcel.slice(0, 10).map(d => 'Fila ' + d.fila + ': ' + d.sap + '+' + d.mp).join(', ') + (dupesEnExcel.length > 10 ? ' ...+' + (dupesEnExcel.length - 10) + ' mas' : '') });
+    if (toInsert.length > 0) {
+        // INSERCIONES: se saltan las que ya existen (misma sap|mp|ruta)
+        const batch = [];
+        const dupesEnExcel = [];
+        for (const item of toInsert) {
+            const rutaKey = normalizarRuta(item.procsJson);
+            const dedupeKey = item.sap + '|' + item.mpId + '|' + rutaKey;
+            if (existentesSet.has(dedupeKey)) {
+                resultados.saltadas++;
+                dupesEnExcel.push({ fila: item.fila, sap: item.sap, mp: item.mpId, ruta: item.procsJson || 'sin ruta' });
+                continue;
+            }
+            existentesSet.add(dedupeKey);
+            batch.push(item);
+        }
+        if (dupesEnExcel.length > 0) {
+            console.log('[IMPORT] Duplicados saltados:', JSON.stringify(dupesEnExcel.slice(0, 20)));
+        }
+
+        for (let i = 0; i < batch.length; i += CHUNK) {
+            const chunk = batch.slice(i, i + CHUNK);
+            const values = [];
+            const params = [];
+            let idx = 1;
+            chunk.forEach(item => {
+                values.push(`($${idx++}, $${idx++}, $${idx++}, $${idx++}::jsonb, $${idx++}, $${idx++})`);
+                params.push(item.sap, item.mpId, item.cantidad, item.procsJson, item.ancho, item.alto);
+            });
+            try {
+                await query(
+                    `INSERT INTO recetas_bom (codigo_sap_padre, materia_prima_id, cantidad, procesos_especificos_json, ancho, alto) VALUES ${values.join(', ')}`,
+                    params
+                );
+                resultados.importadas += chunk.length;
+            } catch (e) {
+                console.error('[IMPORT] Batch error:', e.message);
+                resultados.errores.push({ fila: i + 1, error: 'Error batch: ' + e.message });
+            }
+        }
+
+        if (dupesEnExcel.length > 0) {
+            resultados.errores.push({ fila: 0, error: dupesEnExcel.length + ' duplicados en Excel (misma SAP+MP+Ruta): ' + dupesEnExcel.slice(0, 10).map(d => 'Fila ' + d.fila + ': ' + d.sap + '+' + d.mp).join(', ') + (dupesEnExcel.length > 10 ? ' ...+' + (dupesEnExcel.length - 10) + ' mas' : '') });
+        }
     }
 
     return resultados;

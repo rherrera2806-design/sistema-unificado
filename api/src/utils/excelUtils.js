@@ -21,6 +21,23 @@ function findCol(row, names) {
 }
 
 /**
+ * Busca el NOMBRE de la columna (clave) cuyo header coincide con alguno de los
+ * nombres dados (case-insensitive). A diferencia de findCol (que devuelve el
+ * VALOR de la celda), findKey devuelve la CLAVE para usar row[clave] en cada
+ * fila - es lo que necesitan los importadores que detectan columnas.
+ */
+function findKey(row, names) {
+    const keys = Object.keys(row || {});
+    for (const n of names) {
+        const normalized = n.toLowerCase().trim();
+        for (const k of keys) {
+            if (k.toLowerCase().trim() === normalized) return k;
+        }
+    }
+    return '';
+}
+
+/**
  * Parsea un archivo Excel desde base64 a array de objetos.
  * @param {string} base64 - Datos del archivo en base64
  * @param {Object} options - Opciones adicionales
@@ -89,6 +106,7 @@ function parseExcelSimple(base64) {
 
 module.exports = {
     findCol,
+    findKey,
     parseExcel,
     parseExcelSimple
 };

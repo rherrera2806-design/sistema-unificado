@@ -111,6 +111,10 @@ App.registerModule('prod_recetas', {
                         <p>Materia prima + ruta de procesos opcional para códigos estandarizados (Carroceros)</p>
                     </div>
                     ${perm.crear ? `<div class="rec-hero-actions">
+                        <button class="rec-hbtn" onclick="App.modules.prod_recetas.exportarExcel()" title="Descarga TODAS las recetas en Excel para editarlas en masa y volver a importar">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                            Exportar
+                        </button>
                         <button class="rec-hbtn" onclick="App.modules.prod_recetas.showImportModal()">
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                             Importar
@@ -177,6 +181,7 @@ App.registerModule('prod_recetas', {
                             </div>
                             <p style="margin:0 0 8px;font-size:11px;color:#075985">El archivo Excel debe contener las siguientes columnas:</p>
                             <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">
+                                <span style="background:#64748b;color:white;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600">ID (para actualizar)</span>
                                 <span style="background:#0ea5e9;color:white;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600">Código SAP *</span>
                                 <span style="background:#0ea5e9;color:white;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600">Código MP *</span>
                                 <span style="background:#64748b;color:white;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600">Cantidad</span>
@@ -812,6 +817,7 @@ App.registerModule('prod_recetas', {
 
                 let statsHtml = '<span style="background:#dbeafe;color:#1e40af;padding:4px 12px;border-radius:12px;font-size:11px;font-weight:600">Total: ' + data.total + '</span>';
                 statsHtml += '<span style="background:#dcfce7;color:#166534;padding:4px 12px;border-radius:12px;font-size:11px;font-weight:600">Validas: ' + data.validas + '</span>';
+                if (data.aActualizar > 0) statsHtml += '<span style="background:#fef3c7;color:#92400e;padding:4px 12px;border-radius:12px;font-size:11px;font-weight:600">Se actualizaran: ' + data.aActualizar + ' (con ID existente)</span>';
                 if (data.errores.length > 0) statsHtml += '<span style="background:#fef2f2;color:#991b1b;padding:4px 12px;border-radius:12px;font-size:11px;font-weight:600">Errores: ' + data.errores.length + '</span>';
                 document.getElementById('recImportStats').innerHTML = statsHtml;
 
@@ -860,7 +866,11 @@ App.registerModule('prod_recetas', {
                 clearTimeout(timeoutId);
                 const data = await r.json();
                 if (r.ok) {
-                    App.toast(data.importadas + ' recetas importadas, ' + data.saltadas + ' duplicadas saltadas');
+                    const partes = [];
+                    if (data.importadas) partes.push(data.importadas + ' nuevas');
+                    if (data.actualizadas) partes.push(data.actualizadas + ' actualizadas');
+                    if (data.saltadas) partes.push(data.saltadas + ' sin cambios');
+                    App.toast((partes.length ? partes.join(', ') : 'Sin cambios') + (data.errores.length ? ' - ' + data.errores.length + ' con errores' : ''));
                     if (data.errores.length > 0) {
                         let errMsg = data.errores.slice(0, 5).map(e => 'Fila ' + e.fila + ': ' + e.error).join('\n');
                         if (data.errores.length > 5) errMsg += '\n... +' + (data.errores.length - 5) + ' mas';
@@ -876,6 +886,33 @@ App.registerModule('prod_recetas', {
             if (btn) { btn.disabled = false; btn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> Importar'; }
         };
         reader.readAsDataURL(file);
+    },
+
+    // EXPORTAR a Excel: mismas columnas que el import + ID. El ciclo es
+    // Exportar -> editar en Excel (por lotes) -> Importar: las filas con ID
+    // existente se ACTUALIZAN y las nuevas (sin ID) se insertan.
+    exportarExcel() {
+        const XLSXLib = window.XLSX;
+        if (!XLSXLib) { App.showAlert('Librer�a XLSX no cargada', 'danger'); return; }
+        const items = this.recetas || [];
+        if (!items.length) { App.showAlert('No hay recetas para exportar', 'warning'); return; }
+        const rows = items.map(r => ({
+            'ID': r.id,
+            'Codigo SAP': r.codigo_sap_padre || '',
+            'Codigo MP': r.codigo_mp || '',
+            'Cantidad': Number(r.cantidad) || 1,
+            'Familia': r.nombre_familia || '',
+            'Estaciones': Array.isArray(r.procesos_especificos_json) ? r.procesos_especificos_json.join(',') : '',
+            'Ancho': r.ancho != null ? Number(r.ancho) : '',
+            'Alto': r.alto != null ? Number(r.alto) : ''
+        }));
+        const ws = XLSXLib.utils.json_to_sheet(rows);
+        // Anchos de columna razonables para que Excel abra c�modo de editar
+        ws['!cols'] = [{ wch: 8 }, { wch: 16 }, { wch: 12 }, { wch: 9 }, { wch: 14 }, { wch: 22 }, { wch: 9 }, { wch: 9 }];
+        const wb = XLSXLib.utils.book_new();
+        XLSXLib.utils.book_append_sheet(wb, ws, 'Recetas BOM');
+        XLSXLib.writeFile(wb, 'recetas_bom_' + new Date().toISOString().split('T')[0] + '.xlsx');
+        App.showAlert(rows.length + ' recetas exportadas. Edita en Excel y vuelve a Importar: las filas con ID se actualizan.');
     },
 
     downloadTemplate() {
