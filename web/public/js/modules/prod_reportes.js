@@ -405,11 +405,23 @@ App.registerModule('prod_reportes', {
         // 1+5): espesor = suma de espesores del BOM, kilos = suma de las partes,
         // m2/unidades = los del padre. NO multiplicar por cant_receta ni
         // re-agrupar (eso inflaba los kilos de los compuestos).
-        return (ordenes || []).map(o => ({
+        const rows = (ordenes || []).map(o => ({
             ...o,
             espesor: Number(o.espesor) || 0,
             kgs: Number(o.kgs) || 0
         }));
+        // ORDEN DEL INFORME (pantalla, impresion y Excel): prioridad -> espesor
+        // de menor a mayor -> grupo -> OV -> item. La prioridad usa la jerarquia
+        // del sistema: Reposicion, Express, Urgencia, Normal.
+        const RANGO_PRIO = { 4: 0, 2: 1, 3: 2, 1: 3 };
+        const cmpTxt = (a, b) => String(a || '').localeCompare(String(b || ''), 'es', { numeric: true });
+        rows.sort((a, b) =>
+            (RANGO_PRIO[a.prioridad] ?? 9) - (RANGO_PRIO[b.prioridad] ?? 9)
+            || (a.espesor - b.espesor)
+            || cmpTxt(a.grupo, b.grupo)
+            || cmpTxt(a.ov, b.ov)
+            || cmpTxt(a.item, b.item));
+        return rows;
     },
 
     // ── Impresión del informe ─────────────────────────────────────────────
@@ -504,6 +516,11 @@ App.registerModule('prod_reportes', {
             + '.kpis{display:flex;gap:16px;margin:6px 0 10px;font-size:9px}'
             + '.kpi b{font-size:12px}'
             + 'h3.dia{font-size:10px;margin:10px 0 4px;padding:3px 6px;background:#eee;border-left:3px solid #111;display:flex;justify-content:space-between}'
+            // salto de hoja por cada fecha (la primera fecha NO salta)
+            + 'h3.dia{break-before:page;page-break-before:always}'
+            + 'h3.dia:first-of-type{break-before:auto;page-break-before:auto}'
+            + 'tr{break-inside:avoid;page-break-inside:avoid}'
+            + 'thead{display:table-header-group}'
             + 'h3.dia span{font-weight:400;color:#444;font-size:8.5px;align-self:center}'
             + 'table{width:100%;border-collapse:collapse;table-layout:fixed}'
             + 'th{background:#e8e8e8;border:1px solid #999;padding:2px 4px;font-size:7px;text-transform:uppercase;text-align:left}'
