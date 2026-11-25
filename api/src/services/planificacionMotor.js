@@ -85,7 +85,7 @@ const backfillUnaVez = (fn) => {
  * @param {number} [opts.dias]  horizonte en DÍAS HÁBILES a buscar cupo.
  * @param {boolean} [opts.permitirSplit]  dividir pedidos grandes sin avance.
  */
-async function planificar({ modo = 'pendientes', fechaMinima, turnosHoy, dias = 45, permitirSplit = true } = {}) {
+async function planificar({ modo = 'pendientes', fechaMinima, turnosHoy, dias = 45, permitirSplit = true, tamboresCB = true } = {}) {
     dias = Math.max(Number(dias) || 45, 7);
 
     // ═══ 1. FECHA MÍNIMA ══════════════════════════════════════════════════
@@ -471,11 +471,11 @@ async function planificar({ modo = 'pendientes', fechaMinima, turnosHoy, dias = 
     const cola = [...ordenes.values()].filter(o => o.pasos.some(p => !esHecho(p.estado)));
 
     // ─── CONSTRAINT DINÁMICO (el cuello REAL de ESTE plan) ──────────────────
-    // El flag estático `cuello_botella` marca a Mecanizado (130 m²/día), pero
-    // los cuellos que de verdad saturan son Pintado y Armado (24 m²/día). Para
-    // no depender del dato manual, se calcula la estación con mayor demanda
-    // pendiente / capacidad en el horizonte y ELLA se usa como constraint del
-    // drum: cada orden que pasa por ella se ancla en su primer día con cupo y
+    // El flag `cuello_botella` marca estaciones estructuralmente lentas (su
+    // capacidad baja las hace candidatas a cuello), pero el cuello REAL se
+    // calcula por plan: la estación con mayor demanda pendiente / capacidad en
+    // el horizonte. Si satura (ratio > 1) se usa como constraint del drum:
+    // cada orden que pasa por ella se ancla en su primer día con cupo y
     // el resto de la ruta se amarra en torno a ese ancla (rope).
     const HORIZONTE_DIAS = Math.max(1, Number(dias) || 1);
     const demandaPorEstacion = new Map();   // estId -> m² pendientes en la cola
@@ -500,11 +500,30 @@ async function planificar({ modo = 'pendientes', fechaMinima, turnosHoy, dias = 
     const hayConstraint = !!(constraint && constraint.ratio > 1);
     if (!hayConstraint) constraint = null;
 
+    // ��� TAMBORES (drum) ��������������������������������������������������
+    // Con `tamboresCB` (por defecto activo) las estaciones marcadas
+    // `cuello_botella` (CB) son tambores PERMANENTES: máquinas lentas que hay
+    // que MANTENER LLENAS siempre que haya cola (explotar la restricción, TOC).
+    // Cada orden que pasa por una CB se ancla en su primer turno con cupo ahí.
+    // El cuello dinámico del plan también es tambor. Si `tamboresCB=false` se
+    // vuelve EXACTAMENTE al comportamiento anterior (solo el constraint
+    // dinámico como ancla) — interruptor de respaldo en el modal.
+    const tamboresIds = new Set();
+    if (hayConstraint) tamboresIds.add(constraint.estacion_id);
+    if (tamboresCB) {
+        // estMap se indexa por id (clave numérica)
+        for (const [id, e] of Object.entries(estMap)) {
+            if (e.esCuello && e.cap > 0) tamboresIds.add(Number(id));
+        }
+    }
+    const esTambor = (estId) => tamboresIds.has(estId);
+
     // ¿Esta orden pasa por el constraint (y todavía no está hecha)?
     for (const o of cola) {
         o.tocaConstraint = hayConstraint && o.pasos.some(
             p => p.estacion_id === constraint.estacion_id && !esHecho(p.estado)
         );
+        o.tocaTambor = o.pasos.some(p => esTambor(p.estacion_id) && !esHecho(p.estado));
     }
 
     cola.sort((a, b) => {
@@ -514,7 +533,7 @@ async function planificar({ modo = 'pendientes', fechaMinima, turnosHoy, dias = 
             || ((RANGO_PRIO[a.prioridad] ?? 3) - (RANGO_PRIO[b.prioridad] ?? 3))
             || ((a.enCurso ? 0 : 1) - (b.enCurso ? 0 : 1))
             || ((a.listo ? 0 : 1) - (b.listo ? 0 : 1))
-            || ((a.tocaConstraint ? 0 : 1) - (b.tocaConstraint ? 0 : 1))
+            || ((a.tocaTambor ? 0 : 1) - (b.tocaTambor ? 0 : 1))
             || String(a.fecha_pactada || '9999').localeCompare(String(b.fecha_pactada || '9999'));
     });
 
@@ -543,43 +562,60 @@ async function planificar({ modo = 'pendientes', fechaMinima, turnosHoy, dias = 
      * Programa la ruta pendiente de una orden.
      * @param {Object} o      orden
      * @param {Object|null} anchor  { estId, slot } para hermanos BOM: fija el
-     *        día de Armado y las estaciones previas/posteriores se encadenan.
+     *        dia de Armado y las estaciones previas/posteriores se encadenan.
      * @returns {Object|null} { estFechas, fechaPrimera, fechaUltima } o null si
      *          no cabe (bloqueo de ventana o sin cupo).
      *
-     * SIN ancla BOM: si la orden pasa por el CONSTRAINT real del plan, se
-     * intenta primero anclarla en su primer día con cupo (rope: lo previo
-     * hacia atrás, lo posterior hacia adelante) — así el cuello se LLENA. Si
-     * esa geometría no encaja, se reintenta en cascada normal: el ancla
-     * nunca hace perder una orden que de otro modo cabría.
+     * SIN ancla BOM: la orden se prueba contra TODOS los tambores que toca
+     * (CB permanentes + constraint dinamico del plan) y gana el ancla que la
+     * hace TERMINAR ANTES (menor fecha fin). Cada intento es un dry-run que NO
+     * reserva capacidad; recien el ganador se confirma contra la agenda.
+     * Si ningun tambor encaja, se reintenta en cascada normal: el ancla nunca
+     * hace perder una orden que de otro modo cabria.
      */
     const programarOrden = async (o, anchor = null) => {
-        if (!anchor && hayConstraint) {
-            const ancla = await _anclaConstraint(o);
-            if (ancla) {
-                const rAncla = await _programarRuta(o, ancla);
-                if (rAncla) return rAncla;
+        if (anchor) return _programarRuta(o, anchor);
+        const cand = [];
+        for (const p of o.pasos) {
+            if (esHecho(p.estado)) continue;
+            if (p.estado === 'EN_PROCESO' || p.estado === 'PAUSADO') continue;   // ya esta en maquina
+            if (esTambor(p.estacion_id) && !cand.includes(p.estacion_id)) cand.push(p.estacion_id);
+        }
+        let mejor = null;
+        for (const estId of cand) {
+            const ancla = await _anclaTambor(o, estId);
+            if (!ancla) continue;
+            const r = await _programarRuta(o, ancla, true);   // dry-run
+            if (!r) continue;
+            if (!mejor
+                || r.fechaUltima < mejor.r.fechaUltima
+                || (r.fechaUltima === mejor.r.fechaUltima && r.fechaPrimera < mejor.r.fechaPrimera)) {
+                mejor = { ancla, r };
             }
         }
-        return _programarRuta(o, anchor);
+        if (mejor) {
+            const real = await _programarRuta(o, mejor.ancla);   // confirmar
+            if (real) return real;
+        }
+        return _programarRuta(o, null);
     };
 
     /**
-     * Primer turno con cupo en la estación CONSTRAINT para esta orden.
-     * Respeta la ventana rígida (fechaMax) y no se programa antes que un paso
-     * previo del mismo orden que ya está EN PROCESO.
+     * Primer turno con cupo en la estacion TAMBOR para esta orden.
+     * Respeta la ventana rigida (fechaMax) y no se programa antes que un paso
+     * previo del mismo orden que ya este EN PROCESO.
      * @returns {Object|null} { estId, slot } o null si no hay hueco.
      */
-    const _anclaConstraint = async (o) => {
+    const _anclaTambor = async (o, estId) => {
         const pend = o.pasos.filter(p => !esHecho(p.estado));
-        const idx = pend.findIndex(p => p.estacion_id === constraint.estacion_id);
+        const idx = pend.findIndex(p => p.estacion_id === estId);
         if (idx < 0) return null;
         const pC = pend[idx];
-        // El paso del constraint ya está trabajándose → no tiene sentido anclar.
+        // El paso del tambor ya esta trabajandose -> no tiene sentido anclar.
         if (pC.estado === 'EN_PROCESO' || pC.estado === 'PAUSADO') return null;
         const fechaMax = o.restriccion ? o.fecha_limite : null;
-        // El constraint no puede ir antes que un paso previo ya EN PROCESO
-        // (ese trabajo ocupa hoy y es imposible físicamente ir antes).
+        // El tambor no puede ir antes que un paso previo ya EN PROCESO
+        // (ese trabajo ocupa hoy y es imposible fisicamente ir antes).
         let s = await slotInicial();
         for (let i = 0; i < idx; i++) {
             const pe = pend[i];
@@ -589,15 +625,18 @@ async function planificar({ modo = 'pendientes', fechaMinima, turnosHoy, dias = 
         }
         for (let k = 0; k < dias * 4; k++) {
             if (fechaMax && s.fecha > fechaMax) return null;   // ventana agotada
-            if (cabeSlotGlobal(constraint.estacion_id, s.fecha, s.turno, pC.m2)) {
-                return { estId: constraint.estacion_id, slot: s };
+            if (cabeSlotGlobal(estId, s.fecha, s.turno, pC.m2)) {
+                return { estId, slot: s };
             }
             s = await siguienteSlot(s);
         }
         return null;
     };
 
-    const _programarRuta = async (o, anchor = null) => {
+    // dryRun=true: evalua la geometria SIN reservar capacidad ni mover
+    // contadores (sirve para comparar anclas de tambores). Solo el ganador
+    // se ejecuta con dryRun=false y confirma contra la agenda.
+    const _programarRuta = async (o, anchor = null, dryRun = false) => {
         const pendientes = o.pasos.filter(p => !esHecho(p.estado));
         if (!pendientes.length) return null;
 
@@ -686,14 +725,17 @@ async function planificar({ modo = 'pendientes', fechaMinima, turnosHoy, dias = 
         // Toda la ruta encajó → confirmar las reservas contra los mapas globales
         // y recién entonces contar los pasos fechados (si un paso no cabe, la
         // orden entera se descarta y estos contadores no deben avanzar).
-        for (const [k, m2] of ov.m2) {
-            const [fecha, turno, estId] = k.split('|');
-            agregarCarga(Number(estId), fecha, turno, m2);
-        }
-        pasosFechados += fechadosLocal;
-        pasosEnCurso += enCursoLocal;
-        for (const f of Object.values(estFechas)) {
-            if (!primeraFechaGlobal || f.fecha < primeraFechaGlobal) primeraFechaGlobal = f.fecha;
+        // En dryRun NO se confirma nada: solo se devuelve la geometria.
+        if (!dryRun) {
+            for (const [k, m2] of ov.m2) {
+                const [fecha, turno, estId] = k.split('|');
+                agregarCarga(Number(estId), fecha, turno, m2);
+            }
+            pasosFechados += fechadosLocal;
+            pasosEnCurso += enCursoLocal;
+            for (const f of Object.values(estFechas)) {
+                if (!primeraFechaGlobal || f.fecha < primeraFechaGlobal) primeraFechaGlobal = f.fecha;
+            }
         }
 
         const fechas = Object.values(estFechas).map(f => f.fecha).sort();
@@ -897,6 +939,9 @@ async function planificar({ modo = 'pendientes', fechaMinima, turnosHoy, dias = 
             horizonte_dias: HORIZONTE_DIAS,
             ratio: constraint.ratio
         } : null,
+        // Tambores usados en esta corrida (CB permanentes + constraint dinamico).
+        tambores: [...tamboresIds].map(id => ({ estacion_id: id, nombre: (estMap[id] || {}).nombre || '' })),
+        tambores_cb: !!tamboresCB,
         mensaje: mensaje
             + (rutasActualizadas ? ` · ${rutasActualizadas} rutas sincronizadas` : '')
             + (avanceCerrado ? ` · ${avanceCerrado} pasos cerrados por avance implícito` : '')

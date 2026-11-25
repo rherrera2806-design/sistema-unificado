@@ -597,6 +597,10 @@ App.modules.planificacion = {
             <div id="progTurnos"></div>
             <div style="margin-top:12px"><label style="display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#475569;margin-bottom:5px">Días hábiles a buscar cupo</label>
             <input type="number" id="progDias" value="21" min="7" max="120" style="width:100%;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px"></div>
+            <label style="display:flex;align-items:flex-start;gap:8px;margin-top:12px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:9px 12px;cursor:pointer">
+                <input type="checkbox" id="progTamboresCB" checked style="margin-top:2px">
+                <span style="font-size:11px;color:#78350f"><strong>Llenar CB lo antes posible (tambores):</strong> tus estaciones lentas (cuello de botella) se mantienen <strong>llenas primero</strong> &mdash; toda orden que pasa por una CB se ancla en su primer turno con cupo. <em>Desmarca para volver al metodo anterior.</em></span>
+            </label>
             <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#475569;margin:14px 0 8px">Órdenes comprometidas incumplidas (${vencidas.length} vencidas · ${porVencer.length} por vencer)</div>
             <div style="max-height:28vh;overflow:auto">${lista || '<div class="pln-loading">Sin ordenes incumplidas</div>'}</div>
             <div id="progResultado" style="margin-top:12px"></div>
@@ -704,7 +708,8 @@ App.modules.planificacion = {
                 body: JSON.stringify({
                     inicio: desde || undefined,
                     dias,
-                    turnos_hoy: desde === this._hoyStr() ? (this._turnosHoySel('progTurnos') || undefined) : undefined
+                    turnos_hoy: desde === this._hoyStr() ? (this._turnosHoySel('progTurnos') || undefined) : undefined,
+                    tambores_cb: (document.getElementById('progTamboresCB') || {}).checked !== false
                 })
             });
             const data = await res.json();
@@ -733,6 +738,10 @@ App.modules.planificacion = {
                 if (data.constraint) {
                     const c = data.constraint;
                     html += `<div style="margin-top:8px;text-align:center;font-size:11px;color:#92400e;background:#fef3c7;border:1px solid #fcd34d;border-radius:6px;padding:4px 6px">🎯 Cuello real: <strong>${escText(c.nombre)}</strong> · ${c.demanda_m2} m² demanda vs ${c.cap_dia}×${c.horizonte_dias} d capacidad (${c.ratio}× saturado)</div>`;
+                }
+                if (data.tambores && data.tambores.length) {
+                    const nombres = data.tambores.map(t => escText(t.nombre)).join(' · ');
+                    html += `<div style="margin-top:6px;text-align:center;font-size:10.5px;color:#78350f;background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:4px 6px">🥁 Tambores llenados primero: <strong>${nombres}</strong>${data.tambores_cb ? '' : ' <em>(modo anterior: solo el cuello dinámico)</em>'}</div>`;
                 }
                 if (modo === 'todo') {
                     html += `<div style="margin-top:8px;text-align:center;font-size:11px;color:#64748b">Liberadas: <strong>${data.ordenes_liberadas || 0}</strong> · En curso respetadas: <strong>${data.pasos_en_curso_respetados || 0}</strong></div>`;

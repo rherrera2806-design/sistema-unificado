@@ -157,7 +157,10 @@ router.post('/api/produccion/planificacion-grupo/auto-asignar', canCreate, async
         fechaMinima: req.body.inicio || undefined,
         turnosHoy: req.body.turnos_hoy,
         dias: req.body.dias,
-        permitirSplit: req.body.permitir_split !== false
+        permitirSplit: req.body.permitir_split !== false,
+        // Tambores permanentes (CB siempre llenas). tambores_cb:false = volver
+        // al comportamiento anterior (solo el constraint dinámico como ancla).
+        tamboresCB: req.body.tambores_cb !== false
     }));
 }));
 
@@ -212,7 +215,8 @@ router.post('/api/produccion/reprogramar', canCreate, asyncHandler(async (req, r
         fechaMinima: req.body.inicio || undefined,
         turnosHoy: req.body.turnos_hoy,
         dias: req.body.dias,
-        permitirSplit: req.body.permitir_split !== false
+        permitirSplit: req.body.permitir_split !== false,
+        tamboresCB: req.body.tambores_cb !== false
     }));
 }));
 
@@ -233,7 +237,8 @@ router.post('/api/produccion/reprogramar/avance', canCreate, asyncHandler(async 
         fechaMinima: req.body.fecha_minima || req.body.inicio || undefined,
         turnosHoy: req.body.turnos_hoy,
         dias: req.body.dias,
-        permitirSplit: req.body.permitir_split !== false
+        permitirSplit: req.body.permitir_split !== false,
+        tamboresCB: req.body.tambores_cb !== false
     }));
 }));
 
