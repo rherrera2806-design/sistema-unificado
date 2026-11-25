@@ -423,6 +423,20 @@ async function faseTablas({ q }) {
         hora_inicio TIMESTAMP, hora_fin TIMESTAMP, operario_id INTEGER,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`);
+    // EXCEPCIONES DE CAPACIDAD por dia: mantencion, fallas u otros motivos que
+    // cambian la capacidad de una estacion en una fecha puntual. capacidad_m2_dia
+    // = capacidad ESE dia (0 = estacion fuera de servicio). UNIQUE(estacion,fecha)
+    // permite upsert: guardar dos veces la misma fecha ACTUALIZA, no duplica.
+    await q(`CREATE TABLE IF NOT EXISTS estacion_excepciones (
+        id SERIAL PRIMARY KEY,
+        estacion_id INTEGER NOT NULL REFERENCES estaciones_maestras(id) ON DELETE CASCADE,
+        fecha DATE NOT NULL,
+        capacidad_m2_dia NUMERIC DEFAULT 0,
+        motivo VARCHAR(200) DEFAULT '',
+        created_by VARCHAR(120) DEFAULT '',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(estacion_id, fecha)
+    )`);
     // ── Precios de venta SAP ─────────────────────────────────────────────────
     // Tabla PROPIA que no toca produccion_ordenes. Guarda el precio de venta por
     // (pedido + item) tal como lo trae el Excel exportado de SAP. Sirve para el

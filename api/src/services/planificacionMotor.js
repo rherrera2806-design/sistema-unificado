@@ -181,6 +181,19 @@ async function planificar({ modo = 'pendientes', fechaMinima, turnosHoy, dias = 
         caps.set(e.id, Number(e.cap_max) || 0);
     }
 
+    // EXCEPCIONES de capacidad (mantencion / fallas): capacidad PUNTUAL por
+    // estacion+fecha. En una excepcion, 0 = estacion FUERA DE SERVICIO ese dia
+    // (no cabe nada) - ojo: cap_max=0 significa "sin tope", es distinto.
+    const exceps = new Map();   // 'estId|fecha' -> cap override
+    try {
+        const excRes = await query(
+            `SELECT estacion_id, to_char(fecha, 'YYYY-MM-DD') as fs, capacidad_m2_dia
+             FROM estacion_excepciones WHERE fecha >= $1::date`,
+            [hoyCL]
+        );
+        for (const r of excRes.rows) exceps.set(r.estacion_id + '|' + r.fs, Number(r.capacidad_m2_dia) || 0);
+    } catch (e) { console.error('[MOTOR] Error excepciones:', e.message); }
+
     // (Capacidad por GRUPO kg/día: fuera del motor — solo reporte.)
 
     // ═══ 7. TURNOS DE HOY ═════════════════════════════════════════════════
@@ -332,13 +345,21 @@ async function planificar({ modo = 'pendientes', fechaMinima, turnosHoy, dias = 
      *   ESTACIÓN por TURNO (m²):  pend + curso×fh + nuevo ≤ capTurno×fh
      * (La capacidad por GRUPO kg/día ya no valida fechas: es solo reporte.)
      */
+    // Capacidad del DIA: la excepcion puntual manda sobre cap_max. Devuelve
+    // { cap, limitada }: limitada=false = sin tope (cap_max 0 y sin excepcion).
+    const capDiaDe = (estId, fecha) => {
+        const k = estId + '|' + fecha;
+        if (exceps.has(k)) return { cap: exceps.get(k), limitada: true };
+        const c = caps.get(estId) || 0;
+        return { cap: c, limitada: c > 0 };
+    };
     const cabeSlotGlobal = (estId, fecha, turno, m2) => {
         const fh = factorHoy(fecha, turno);
         if (fh <= 0) return false;   // turno agotado de hoy
-        const capDia = caps.get(estId) || 0;
-        if (capDia > 0) {
+        const cd = capDiaDe(estId, fecha);
+        if (cd.limitada) {
             const k = fecha + '|' + turno + '|' + estId;
-            const capTurno = configTurnos.capacidadTurno(capDia, turno, cfgTurnos);
+            const capTurno = configTurnos.capacidadTurno(cd.cap, turno, cfgTurnos);
             const efectiva = (cargaPend.get(k) || 0) + (cargaCurso.get(k) || 0) * fh;
             if (efectiva + m2 > capTurno * fh) return false;
         }
@@ -363,10 +384,10 @@ async function planificar({ modo = 'pendientes', fechaMinima, turnosHoy, dias = 
     const cabeConOverlay = (estId, fecha, turno, m2, ov) => {
         const fh = factorHoy(fecha, turno);
         if (fh <= 0) return false;
-        const capDia = caps.get(estId) || 0;
-        if (capDia > 0) {
+        const cd = capDiaDe(estId, fecha);
+        if (cd.limitada) {
             const k = fecha + '|' + turno + '|' + estId;
-            const capTurno = configTurnos.capacidadTurno(capDia, turno, cfgTurnos);
+            const capTurno = configTurnos.capacidadTurno(cd.cap, turno, cfgTurnos);
             const efectiva = (cargaPend.get(k) || 0) + (cargaCurso.get(k) || 0) * fh + (ov.m2.get(k) || 0);
             if (efectiva + m2 > capTurno * fh) return false;
         }
@@ -585,12 +606,19 @@ async function planificar({ modo = 'pendientes', fechaMinima, turnosHoy, dias = 
         for (const estId of cand) {
             const ancla = await _anclaTambor(o, estId);
             if (!ancla) continue;
-            const r = await _programarRuta(o, ancla, true);   // dry-run
+            // BUFFER DE ALIMENTACION (TOC): se prefiere dejar un TURNO libre
+            // entre el ultimo paso previo y el tambor (material listo antes de
+            // que la CB lo necesite - protege la CB de retrasos upstream).
+            // Si con buffer no encaja, se reintenta SIN buffer: el buffer
+            // nunca pierde una orden que cabria.
+            const rCon = await _programarRuta(o, { ...ancla, buffer: 1 }, true);
+            const r = rCon || await _programarRuta(o, ancla, true);
             if (!r) continue;
+            const anclaFinal = rCon ? { ...ancla, buffer: 1 } : ancla;
             if (!mejor
                 || r.fechaUltima < mejor.r.fechaUltima
                 || (r.fechaUltima === mejor.r.fechaUltima && r.fechaPrimera < mejor.r.fechaPrimera)) {
-                mejor = { ancla, r };
+                mejor = { ancla: anclaFinal, r };
             }
         }
         if (mejor) {
@@ -660,6 +688,9 @@ async function planificar({ modo = 'pendientes', fechaMinima, turnosHoy, dias = 
         const slotsAtras = new Map();   // paso_id -> slot ya resuelto
         if (anchor && anchorIdx > 0) {
             let cursor = anchor.slot;
+            // BUFFER DE ALIMENTACION: si el ancla lo pide (anchor.buffer),
+            // se deja 1 TURNO libre antes del tambor como colchon.
+            for (let b = 0; b < (anchor.buffer || 0); b++) cursor = await anteriorSlot(cursor);
             for (let i = anchorIdx - 1; i >= 0; i--) {
                 const p = pendientes[i];
                 // EN PROCESO lo fija el bucle principal (hoy); aquí solo sirve

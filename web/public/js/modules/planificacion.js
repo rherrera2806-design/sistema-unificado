@@ -1105,13 +1105,18 @@ App.modules.planificacion = {
         const rango = document.getElementById('plnEstacRango');
         if (rango) rango.textContent = this._fecha(inicio) + ' → ' + this._fecha(fin);
         try {
-            const res = await fetch(`/api/produccion/planificacion/carga-estaciones?inicio=${inicio}&fin=${fin}`, { cache: 'no-store' });
+            const [res, resTermo] = await Promise.all([
+                fetch(`/api/produccion/planificacion/carga-estaciones?inicio=${inicio}&fin=${fin}`, { cache: 'no-store' }),
+                fetch(`/api/produccion/planificacion/termometro?dias=14`, { cache: 'no-store' }).catch(() => null)
+            ]);
             if (!res.ok) {
                 const el = document.getElementById('planEstaciones');
                 if (el) el.innerHTML = '<div class="pln-error">Error ' + res.status + ' al cargar las estaciones</div>';
                 return;
             }
-            this.renderEstaciones(await res.json());
+            let termo = null;
+            try { termo = resTermo && resTermo.ok ? await resTermo.json() : null; } catch (_) { }
+            this.renderEstaciones(await res.json(), termo);
         } catch (e) {
             console.error('cargarEstaciones:', e);
             const el = document.getElementById('planEstaciones');
@@ -1119,11 +1124,11 @@ App.modules.planificacion = {
         }
     },
 
-    renderEstaciones(data) {
+    renderEstaciones(data, termo) {
         const el = document.getElementById('planEstaciones');
         if (!el) return;
         this._estacData = data;
-        const { estaciones, carga, calendario } = data;
+        const { estaciones, carga, calendario, excepciones } = data;
 
         if (!estaciones || estaciones.length === 0) {
             el.innerHTML = '<div class="pln-loading">No hay estaciones configuradas</div>';
@@ -1164,13 +1169,21 @@ App.modules.planificacion = {
             let cells = '';
             todosDias.forEach(f => {
                 const datos = (carga[f] && carga[f][est.id]) || { m2: 0, kg: 0, ordenes: 0 };
-                const p = pct(datos.m2, cap);
+                // Excepción del día (mantención/falla): la capacidad REAL es la
+                // de la excepción, no cap_max. Clic en la pastilla = editarla.
+                const exc = (excepciones && excepciones[est.id + '|' + f]) || null;
+                const capDia = exc ? Number(exc.cap) : cap;
+                const p = pct(datos.m2, capDia);
                 if (p >= 90) tope++;
                 const val = enKg ? this._fmt(datos.kg || 0, 0) : this._fmt(datos.m2, 1);
                 const title = escAttr(est.nombre + ' · ' + this._fechaCorta(f) + '\n'
-                    + this._fmt(datos.m2, 1) + ' de ' + this._fmt(cap, 0) + ' m² (' + p + '%)\n'
-                    + this._fmt(datos.kg || 0, 1) + ' kg · ' + (datos.ordenes || 0) + ' órdenes');
-                cells += '<td' + (f === hoy ? ' class="hoy"' : '') + '><div class="pln-tile ' + clase(p) + '" title="' + title + '">'
+                    + this._fmt(datos.m2, 1) + ' de ' + this._fmt(capDia, 0) + ' m² (' + p + '%)'
+                    + (exc ? '\n⚠ ' + (exc.motivo || 'capacidad excepcional') : '')
+                    + '\n' + this._fmt(datos.kg || 0, 1) + ' kg · ' + (datos.ordenes || 0) + ' órdenes'
+                    + '\n(clic: capacidad del día)');
+                cells += '<td' + (f === hoy ? ' class="hoy"' : '') + '><div class="pln-tile ' + clase(p) + (exc ? ' exc' : '') + '" title="' + title + '"'
+                    + ' onclick="App.modules.planificacion.editarExcepcion(' + est.id + ',\'' + f + '\')" style="cursor:pointer">'
+                    + (exc ? '<span class="ex-mark">⚠</span>' : '')
                     + val + '<span class="pc">' + (p > 0 ? p + '%' : '') + '</span></div></td>';
             });
             html += '<tr' + (tope >= 3 ? ' class="hot"' : '') + '>'
@@ -1194,7 +1207,63 @@ App.modules.planificacion = {
                 + ' <span class="sub2">' + pTot + '%</span></td>';
         });
         html += '<td>' + this._fmt(capTotal, 0) + '<span class="sub2">m²/día</span></td></tr></tfoot></table>';
-        el.innerHTML = html;
+        // TERMÓMETRO plan vs ejecutado (últimos 14 días): valida si las
+        // capacidades configuradas reflejan la realidad.
+        let termoHtml = '';
+        if (termo && termo.m2_plan > 0) {
+            const cls = termo.pct >= 90 ? 'ok' : termo.pct >= 70 ? 'mid' : 'bad';
+            termoHtml = '<div class="pln-termo ' + cls + '">'
+                + '<span class="tt">⏱ Termómetro · plan vs ejecutado (' + termo.dias + ' días)</span>'
+                + '<span class="tv">' + termo.pct + '%</span>'
+                + '<span class="ts">' + this._fmt(termo.m2_ejec, 0) + ' de ' + this._fmt(termo.m2_plan, 0) + ' m² ejecutados de lo programado'
+                + (termo.pct < 80 ? ' · las capacidades configuradas podrían estar infladas' : '') + '</span></div>';
+        }
+        el.innerHTML = termoHtml + html;
+    },
+
+    // ---------------- Excepción de capacidad por día (mantención/falla) ----------------
+    editarExcepcion(estId, fecha) {
+        const est = (this._estacData && this._estacData.estaciones || []).find(e => e.id === estId) || {};
+        const exc = (this._estacData && this._estacData.excepciones || {})[estId + '|' + fecha] || null;
+        const capNormal = Number(est.capacidad_m2_dia) || 0;
+        App.showModalInv('Capacidad del día · ' + escText(est.nombre || ''), `
+            <div style="font-size:12px;color:#475569;margin-bottom:10px">
+                <strong>${escText(est.nombre || '')}</strong> · ${this._fecha(fecha)}<br>
+                Capacidad normal: <strong>${capNormal} m²/día</strong>
+            </div>
+            <label style="display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#475569;margin-bottom:5px">Capacidad ese día (m²) — 0 = fuera de servicio</label>
+            <input type="number" id="excCap" min="0" value="${exc ? exc.cap : capNormal}" style="width:100%;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px">
+            <label style="display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#475569;margin:12px 0 5px">Motivo (opcional)</label>
+            <input type="text" id="excMotivo" maxlength="200" value="${escText(exc ? exc.motivo : '')}" placeholder="Mantención, falla, ..." style="width:100%;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px">
+            <div class="sub2" style="margin-top:10px">Se aplica al planificar: ese día la estación solo acepta esa capacidad. Deja la capacidad normal para quitar la excepción.</div>
+        `, `
+            <button class="pln-btn ghost" onclick="App.hideModal()">Cancelar</button>
+            ${exc ? '<button class="pln-btn danger" onclick="App.modules.planificacion.eliminarExcepcion(' + exc.id + ')">Quitar excepción</button>' : ''}
+            <button class="pln-btn primary" onclick="App.modules.planificacion.guardarExcepcion(${estId},'${fecha}')">Guardar</button>
+        `);
+    },
+    async guardarExcepcion(estId, fecha) {
+        const cap = Number((document.getElementById('excCap') || {}).value) || 0;
+        const motivo = ((document.getElementById('excMotivo') || {}).value || '').trim();
+        try {
+            const res = await fetch('/api/produccion/excepciones', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ estacion_id: estId, fecha, capacidad_m2_dia: cap, motivo })
+            });
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            App.hideModal();
+            App.showAlert('Capacidad del día actualizada: ' + cap + ' m²');
+            this.cargarEstaciones();
+        } catch (e) { App.showAlert('Error al guardar: ' + e.message, 'danger'); }
+    },
+    async eliminarExcepcion(id) {
+        try {
+            const res = await fetch('/api/produccion/excepciones/' + id, { method: 'DELETE', headers: { 'Content-Type': 'application/json' } });
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            App.hideModal();
+            App.showAlert('Excepción eliminada: vuelve la capacidad normal');
+            this.cargarEstaciones();
+        } catch (e) { App.showAlert('Error al eliminar: ' + e.message, 'danger'); }
     },
 
     // Unidad visible del tablero: m² o kg (la saturación siempre se mide en m²
@@ -1329,6 +1398,15 @@ App.modules.planificacion = {
             .pln-tile.t4{background:#fecaca;color:#b91c1c}
             .pln-tile.t5{background:#fca5a5;color:#7f1d1d}
             .pln-tile .pc{display:block;font-size:8.5px;font-weight:600;opacity:.75}
+            .pln-tile.exc{box-shadow:inset 0 0 0 2px #f59e0b}
+            .pln-tile .ex-mark{position:absolute;top:1px;right:2px;font-size:8px;color:#b45309}
+            .pln-tile{position:relative}
+            .pln-termo{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:#f8fafc;border:1px solid #e4e9f0;border-radius:10px;padding:9px 14px;margin:0 0 12px}
+            .pln-termo .tt{font-size:9px;font-weight:800;letter-spacing:.7px;text-transform:uppercase;color:#8494a8}
+            .pln-termo .tv{font-size:16px;font-weight:800;color:#15803d}
+            .pln-termo.mid .tv{color:#b45309}
+            .pln-termo.bad .tv{color:#dc2626}
+            .pln-termo .ts{font-size:10.5px;color:#64748b}
             .pln-matriz td.tope{font-size:11px;font-weight:800;padding:7px 8px}
             .pln-matriz td.tope .sub2{display:block;font-size:8.5px;color:#8494a8;font-weight:500}
             .pln-matriz tfoot td{border-top:2px solid #e4e9f0;padding:8px;text-align:center;font-size:10px;font-weight:700;color:#334155}

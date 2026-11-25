@@ -293,9 +293,38 @@ const eliminarFamilia = async (id) => {
     await query('DELETE FROM familias_producto WHERE id = $1', [id]);
 };
 
+// ---------------- EXCEPCIONES DE CAPACIDAD (mantención / fallas) ----------------
+// Capacidad de una estación en una fecha puntual (0 = fuera de servicio).
+const getExcepciones = async (inicio, fin) => {
+    const result = await query(
+        `SELECT x.*, e.nombre_estacion FROM estacion_excepciones x
+         JOIN estaciones_maestras e ON e.id = x.estacion_id
+         WHERE x.fecha >= $1::date AND x.fecha <= $2::date
+         ORDER BY x.fecha, e.orden_secuencia_defecto`,
+        [inicio, fin]
+    );
+    return result.rows;
+};
+const guardarExcepcion = async ({ estacion_id, fecha, capacidad_m2_dia = 0, motivo = '' }) => {
+    const result = await query(
+        `INSERT INTO estacion_excepciones (estacion_id, fecha, capacidad_m2_dia, motivo)
+         VALUES ($1, $2::date, $3, $4)
+         ON CONFLICT (estacion_id, fecha)
+         DO UPDATE SET capacidad_m2_dia = EXCLUDED.capacidad_m2_dia, motivo = EXCLUDED.motivo
+         RETURNING *`,
+        [estacion_id, fecha, Number(capacidad_m2_dia) || 0, String(motivo || '').slice(0, 200)]
+    );
+    return result.rows[0];
+};
+const eliminarExcepcion = async (id) => {
+    await query('DELETE FROM estacion_excepciones WHERE id = $1', [id]);
+    return { ok: true };
+};
+
 module.exports = {
     getMaquinas, crearMaquina, importarMaquinas, editarMaquina, eliminarMaquina,
     getCodigos, crearCodigo, editarCodigo, eliminarCodigo, eliminarTodosCodigos, importarCodigos, previewCodigos,
     getEstaciones, crearEstacion, editarEstacion, eliminarEstacion,
-    getFamilias, crearFamilia, editarFamilia, eliminarFamilia
+    getFamilias, crearFamilia, editarFamilia, eliminarFamilia,
+    getExcepciones, guardarExcepcion, eliminarExcepcion
 };

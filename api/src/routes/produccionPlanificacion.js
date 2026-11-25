@@ -89,6 +89,12 @@ router.get('/api/produccion/planificacion/carga-estaciones', canView, asyncHandl
     res.json(await planificacion.getCargaEstaciones(inicio, fin));
 }));
 
+// TERMÓMETRO plan vs ejecutado: de lo programado en los últimos N días, cuánto
+// se hizo de verdad. % bajo sostenido = capacidades configuradas irreales.
+router.get('/api/produccion/planificacion/termometro', canView, asyncHandler(async (req, res) => {
+    res.json(await planificacion.getTermometro(Number(req.query.dias) || 14));
+}));
+
 router.get('/api/produccion/planificacion/detalle-grupo-dia', canView, asyncHandler(async (req, res) => {
     const { grupo, fecha } = req.query;
     if (!grupo || !fecha) return res.status(400).json({ error: 'grupo y fecha requeridos' });

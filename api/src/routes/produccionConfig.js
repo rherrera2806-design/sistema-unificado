@@ -78,6 +78,20 @@ router.delete('/api/produccion/codigos/:id', canDelete, asyncHandler(async (req,
 
 router.get('/api/produccion/estaciones', canView, asyncHandler(async (req, res) => { res.json(await config.getEstaciones()); }));
 
+// EXCEPCIONES DE CAPACIDAD (mantención / fallas): cap puntual por estación+fecha.
+router.get('/api/produccion/excepciones', canView, asyncHandler(async (req, res) => {
+    const hoy = new Date().toISOString().split('T')[0];
+    res.json(await config.getExcepciones(req.query.inicio || hoy, req.query.fin || hoy));
+}));
+router.post('/api/produccion/excepciones', canCreate, asyncHandler(async (req, res) => {
+    const { estacion_id, fecha } = req.body;
+    if (!estacion_id || !fecha) return res.status(400).json({ error: 'estacion_id y fecha requeridos' });
+    res.status(201).json(await config.guardarExcepcion(req.body));
+}));
+router.delete('/api/produccion/excepciones/:id', canDelete, asyncHandler(async (req, res) => {
+    res.json(await config.eliminarExcepcion(Number(req.params.id)));
+}));
+
 router.post('/api/produccion/estaciones', canCreate, asyncHandler(async (req, res) => {
     if (!req.body.nombre_estacion || !req.body.orden_secuencia_defecto) return res.status(400).json({ error: 'Nombre y orden requeridos' });
     res.json(await config.crearEstacion(req.body));

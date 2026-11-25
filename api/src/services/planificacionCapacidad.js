@@ -187,6 +187,26 @@ const getCargaEstaciones = async (inicio, fin) => {
 
     const calendarioMap = await getCalendarioMap(inicio, fin);
 
+    // Excepciones de capacidad (mantencion/fallas) del rango: se devuelven para
+    // que el tablero muestre la capacidad REAL de esos dias y no el cap_max.
+    const excMap = {};
+    try {
+        const excRes = await query(
+            `SELECT x.id, x.estacion_id, to_char(x.fecha, 'YYYY-MM-DD') as fs,
+                    x.capacidad_m2_dia, x.motivo
+             FROM estacion_excepciones x
+             WHERE x.fecha >= $1::date AND x.fecha <= $2::date`,
+            [inicio, fin]
+        );
+        excRes.rows.forEach(r => {
+            excMap[r.estacion_id + '|' + r.fs] = {
+                id: r.id,
+                cap: Number(r.capacidad_m2_dia) || 0,
+                motivo: r.motivo || ''
+            };
+        });
+    } catch (e) { /* tabla nueva puede no existir aun */ }
+
     const estaciones = estRes.rows.map(e => ({
         id: e.id,
         nombre: e.nombre_estacion,
@@ -219,7 +239,57 @@ const getCargaEstaciones = async (inicio, fin) => {
         };
     }
 
-    return { estaciones, carga, inicio, fin, calendario };
+    return { estaciones, carga, inicio, fin, calendario, excepciones: excMap };
+};
+
+// ---------------- TERMÓMETRO: PLAN vs EJECUTADO ----------------
+// Últimos N días: de lo que el plan dijo que se haría en esos días (m² con
+// fecha_programada pasada), cuánto se hizo de verdad (TERMINADO/MERMADO).
+// Sirve para validar si las capacidades configuradas reflejan la realidad:
+// % bajo sostenido = el plan promete más de lo que la planta da.
+const getTermometro = async (dias = 14) => {
+    const inicioD = new Date();
+    inicioD.setDate(inicioD.getDate() - (Number(dias) || 14));
+    const inicio = inicioD.toISOString().split('T')[0];
+    const hoy = new Date().toISOString().split('T')[0];
+
+    const result = await query(`
+        SELECT cp.estacion_id, e.nombre_estacion,
+               COALESCE(SUM(cp.m2_asignados), 0) as m2_plan,
+               COALESCE(SUM(CASE WHEN cp.estado IN ('TERMINADO','MERMADO')
+                    THEN COALESCE(NULLIF(cp.m2_real, 0), cp.m2_asignados, 0) ELSE 0 END), 0) as m2_ejec,
+               COUNT(*) as pasos,
+               COUNT(*) FILTER (WHERE cp.estado IN ('TERMINADO','MERMADO')) as pasos_ok
+        FROM cola_produccion_pasos cp
+        JOIN estaciones_maestras e ON e.id = cp.estacion_id
+        WHERE cp.fecha_programada >= $1::date AND cp.fecha_programada < $2::date
+          AND cp.estado NOT IN ('CANCELADO')
+        GROUP BY cp.estacion_id, e.nombre_estacion, e.orden_secuencia_defecto
+        ORDER BY e.orden_secuencia_defecto
+    `, [inicio, hoy]);
+
+    let plan = 0, ejec = 0;
+    const estaciones = result.rows.map(r => {
+        const mp = Number(r.m2_plan) || 0;
+        const me = Number(r.m2_ejec) || 0;
+        plan += mp; ejec += me;
+        return {
+            estacion_id: r.estacion_id,
+            nombre: r.nombre_estacion,
+            m2_plan: Math.round(mp * 10) / 10,
+            m2_ejec: Math.round(me * 10) / 10,
+            pct: mp > 0 ? Math.round((me / mp) * 100) : 100,
+            pasos: Number(r.pasos),
+            pasos_ok: Number(r.pasos_ok)
+        };
+    });
+    return {
+        inicio, fin: hoy, dias: Number(dias) || 14,
+        m2_plan: Math.round(plan * 10) / 10,
+        m2_ejec: Math.round(ejec * 10) / 10,
+        pct: plan > 0 ? Math.round((ejec / plan) * 100) : 100,
+        estaciones
+    };
 };
 
 const getCapacidadGrupo = async () => {
@@ -388,6 +458,7 @@ module.exports = {
     getCargaPorGrupo,
     getCargaPorGrupoFinales,
     getCargaEstaciones,
+    getTermometro,
     getCapacidadGrupo,
     getAllCapacidadGrupo,
     actualizarCapacidadGrupo,
