@@ -295,15 +295,23 @@ App.registerModule('costeo', {
     },
 
     async openConfig() {
+        // Carga la config ANTES de abrir: si falla, NO se abre el editor con
+        // ceros. Antes un fallo de carga + "Guardar" pisaba TODOS los valores
+        // con 0 (el usuario perdia la config "de la nada").
+        let config = null;
         try {
-            const res = await fetch('/api/costeo/config');
-            this._config = await res.json();
+            const res = await fetch('/api/costeo/config', { cache: 'no-store' });
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            config = await res.json();
         } catch (e) {
             console.error('Error loading config:', e);
-            this._config = {};
+            App.showAlert('No se pudo cargar la configuracion de costos - el editor NO se abrio para no pisar tus valores. Intenta de nuevo.', 'danger');
+            return;
         }
+        this._config = config || {};
+        this._configDirty = {};
 
-        const cfg = (key) => this._config[key]?.valor || 0;
+        const cfg = (key) => (this._config[key] ? (this._config[key].valor || 0) : 0);
 
         const procesos = [
             { key: 'crudo_sin_pulir', label: 'Crudo o Laminado sin pulir' },
@@ -313,69 +321,79 @@ App.registerModule('costeo', {
         ];
 
         const otrosParams = [
-            { key: 'costo_pulido_ml', label: 'Costo Pulido', unit: '$/m²' },
-            { key: 'costo_perforacion', label: 'Costo Perforación', unit: '$/ud' },
+            { key: 'costo_pulido_ml', label: 'Costo Pulido', unit: '$/m' },
+            { key: 'costo_perforacion', label: 'Costo Perforacion', unit: '$/ud' },
             { key: 'costo_destaje_kg', label: 'Costo Destaje Normal', unit: '$/kg' },
             { key: 'costo_destaje_complejo_kg', label: 'Costo Destaje Complejo', unit: '$/kg' },
             { key: 'costo_pintura_ml', label: 'Costo Pintura', unit: '$/ml' },
-            { key: 'costo_insumos_pintura', label: 'Insumos de Pintura', unit: '$/m²' },
-            { key: 'costo_otros_m2', label: 'Otros Costos', unit: '$/m²' },
+            { key: 'costo_insumos_pintura', label: 'Insumos de Pintura', unit: '$/m' },
+            { key: 'costo_otros_m2', label: 'Otros Costos', unit: '$/m' },
             { key: 'merma_proceso_pct', label: 'Merma de Proceso', unit: '%' },
             { key: 'merma_aprovechamiento_pct', label: 'Merma de Aprovechamiento', unit: '%' }
         ];
 
+        // Campo con marca de cambio: SOLO lo editado se guarda (nunca se pisan
+        // los demas valores con 0)
         const renderField = (key, label, unit) => `
-            <div class="costeo-config-row">
-                <label>${label}</label>
-                <div class="costeo-config-input-wrap">
-                    <input type="number" id="cfg_${key}" class="costeo-input costeo-input-yellow" value="${cfg(key)}" min="0" step="0.01">
-                    <span class="costeo-config-unit">${unit}</span>
-                </div>
+            <label style="display:block;font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#64748b;margin-bottom:4px">${label}</label>
+            <div style="display:flex;align-items:center;gap:8px">
+                <input type="number" id="cfg_${key}" data-key="${key}" value="${cfg(key)}" min="0" step="0.01"
+                    oninput="App.modules.costeo._markDirty()"
+                    style="flex:1;min-width:0;padding:8px 11px;border:1px solid #e2e8f0;border-radius:9px;font-size:13px;font-weight:600;color:#0f172a;background:#fffbeb;outline:none;font-variant-numeric:tabular-nums">
+                <span style="font-size:10px;color:#94a3b8;font-weight:700;white-space:nowrap">${unit}</span>
+            </div>`;
+
+        const groupCard = (title, inner) => `
+            <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:11px;padding:11px 13px">
+                <div style="font-size:11px;font-weight:800;color:#0f172a;margin-bottom:9px">${title}</div>
+                <div style="display:flex;flex-direction:column;gap:10px">${inner}</div>
+            </div>`;
+
+        const section = (title, inner) => `
+            <div style="margin-bottom:16px">
+                <div style="font-size:9.5px;font-weight:800;letter-spacing:1.1px;text-transform:uppercase;color:#8494a8;margin-bottom:9px">${title}</div>
+                ${inner}
             </div>`;
 
         const modal = document.createElement('div');
         modal.className = 'modal-overlay';
         modal.id = 'costeoConfigModal';
         modal.innerHTML = `
-            <div class="modal" style="max-width:500px">
-                <div class="modal-header">
-                    <h3 style="margin:0;font-size:16px;font-weight:700;color:#0f172a">Configuración de Costos Operativos</h3>
+            <div class="modal" style="max-width:560px">
+                <div class="modal-header" style="padding:16px 18px 12px;border-bottom:1px solid #e2e8f0">
+                    <h3 style="margin:0;font-size:16px;font-weight:800;color:#0f172a">Configuracion de Costos Operativos</h3>
                     <button class="btn btn-sm btn-ghost" onclick="App.modules.costeo.closeConfig()" style="font-size:18px;padding:4px 8px">&times;</button>
                 </div>
-                <div class="modal-body">
-                    <p style="font-size:12px;color:#64748b;margin:0 0 16px">Configure los valores por unidad. Estos se usarán en cada cálculo de costeo.</p>
+                <div class="modal-body" style="padding:14px 18px 6px;max-height:62vh;overflow-y:auto">
+                    <p style="font-size:11px;color:#64748b;margin:0 0 14px;line-height:1.5">
+                        Valores por unidad usados en cada calculo de costeo.
+                        <span style="background:#fef3c7;color:#b45309;font-weight:700;padding:2px 8px;border-radius:12px;font-size:10px">Solo se guardan los campos que edites</span>
+                    </p>
 
-                    <div class="costeo-config-section">
-                        <div class="costeo-config-section-title">HH y Energía por Proceso</div>
-                        <div class="costeo-config-grid">
-                            ${procesos.map(p => `
-                                <div class="costeo-config-group">
-                                    <div class="costeo-config-group-title">${p.label}</div>
-                                    ${renderField('hh_' + p.key, 'HH (Labor)', '$/m²')}
-                                    ${renderField('energia_' + p.key, 'Energía', '$/m²')}
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>
+                    ${section('HH y Energia por Proceso', `
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+                            ${procesos.map(p => groupCard(p.label,
+                                renderField('hh_' + p.key, 'HH (Labor)', '$/m')
+                                + renderField('energia_' + p.key, 'Energia', '$/m'))).join('')}
+                        </div>`)}
 
-                    <div class="costeo-config-section" style="margin-top:16px">
-                        <div class="costeo-config-section-title">Costos Generales</div>
-                        <div class="costeo-config-grid">
+                    ${section('Costos Generales', `
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
                             ${otrosParams.map(p => renderField(p.key, p.label, p.unit)).join('')}
-                        </div>
-                    </div>
+                        </div>`)}
                 </div>
-                <div class="modal-footer">
+                <div class="modal-footer" style="padding:12px 18px 16px;border-top:1px solid #e2e8f0;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
                     <div style="display:flex;gap:6px">
-                        <button class="btn btn-outline btn-sm" onclick="App.modules.costeo.exportConfig()" title="Descargar configuración">Exportar</button>
-                        <label class="btn btn-outline btn-sm" title="Subir configuración" style="cursor:pointer;margin:0">
+                        <button class="btn btn-outline btn-sm" onclick="App.modules.costeo.exportConfig()" title="Descargar configuracion">Exportar</button>
+                        <label class="btn btn-outline btn-sm" title="Subir configuracion" style="cursor:pointer;margin:0">
                             Importar
                             <input type="file" accept=".json" style="display:none" onchange="App.modules.costeo.importConfig(event)">
                         </label>
                     </div>
+                    <span id="cfgDirtyBadge" style="font-size:10.5px;font-weight:700;color:#64748b;flex:1;text-align:center">Sin cambios pendientes</span>
                     <div style="display:flex;gap:6px">
                         <button class="btn btn-outline btn-sm" onclick="App.modules.costeo.closeConfig()">Cancelar</button>
-                        <button class="btn btn-primary btn-sm" onclick="App.modules.costeo.saveConfig()">Guardar Configuración</button>
+                        <button class="btn btn-primary btn-sm" id="cfgSaveBtn" onclick="App.modules.costeo.saveConfig()">Guardar</button>
                     </div>
                 </div>
             </div>`;
@@ -388,33 +406,63 @@ App.registerModule('costeo', {
         if (modal) modal.remove();
     },
 
-    async saveConfig() {
-        const params = [
-            'hh_crudo_sin_pulir', 'energia_crudo_sin_pulir',
-            'hh_crudo_pulido', 'energia_crudo_pulido',
-            'hh_templado_plano', 'energia_templado_plano',
-            'hh_templado_curvo', 'energia_templado_curvo',
-            'costo_pulido_ml', 'costo_perforacion',
-            'costo_destaje_kg', 'costo_destaje_complejo_kg',
-            'costo_pintura_ml', 'costo_insumos_pintura', 'costo_otros_m2',
-            'merma_proceso_pct', 'merma_aprovechamiento_pct'
-        ];
+    // Marca que campo cambio respecto al valor cargado. SOLO lo marcado se
+    // guarda: los campos intactos nunca se sobreescriben (antes guardar escribia
+    // los 17 y convertia en 0 cualquier campo vacio o mal cargado -> borraba la config).
+    _markDirty() {
+        const modal = document.getElementById('costeoConfigModal');
+        if (!modal) return;
+        this._configDirty = {};
+        modal.querySelectorAll('input[data-key]').forEach(inp => {
+            const key = inp.getAttribute('data-key');
+            const original = Number((this._config[key] ? this._config[key].valor : 0) || 0);
+            const actual = parseFloat(inp.value);
+            const changed = Number.isFinite(actual) ? actual !== original : true;
+            if (changed) this._configDirty[key] = true;
+        });
+        const n = Object.keys(this._configDirty).length;
+        const badge = document.getElementById('cfgDirtyBadge');
+        if (badge) {
+            badge.textContent = n > 0
+                ? n + ' cambio' + (n > 1 ? 's' : '') + ' sin guardar'
+                : 'Sin cambios pendientes';
+            badge.style.color = n > 0 ? '#b45309' : '#64748b';
+        }
+    },
 
-        try {
-            for (const clave of params) {
-                const input = document.getElementById('cfg_' + clave);
-                const valor = parseFloat(input?.value) || 0;
-                await fetch('/api/costeo/config', {
+    async saveConfig() {
+        const claves = Object.keys(this._configDirty || {});
+        if (claves.length === 0) {
+            App.showAlert('No hay cambios para guardar');
+            this.closeConfig();
+            return;
+        }
+        const btn = document.getElementById('cfgSaveBtn');
+        if (btn) { btn.disabled = true; btn.textContent = 'Guardando...'; }
+        const errores = [];
+        for (const clave of claves) {
+            const input = document.getElementById('cfg_' + clave);
+            const valor = parseFloat(input ? input.value : '') || 0;
+            try {
+                const res = await fetch('/api/costeo/config', {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ clave, valor })
                 });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                if (this._config[clave]) this._config[clave].valor = valor;
+            } catch (e) {
+                console.error('Error saving ' + clave + ':', e);
+                errores.push(clave);
             }
-            App.showAlert('Configuración guardada correctamente', 'success');
+        }
+        if (btn) { btn.disabled = false; btn.textContent = 'Guardar'; }
+        if (errores.length) {
+            App.showAlert('Guardados ' + (claves.length - errores.length) + ' de ' + claves.length
+                + '. FALLARON: ' + errores.join(', ') + ' - revisa la conexion e intenta de nuevo.', 'danger');
+        } else {
+            App.showAlert('Configuracion guardada correctamente (' + claves.length + ' parametros)');
             this.closeConfig();
-        } catch (e) {
-            console.error('Error saving config:', e);
-            App.showAlert('Error al guardar configuración', 'danger');
         }
     },
 
