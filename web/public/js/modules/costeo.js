@@ -266,10 +266,100 @@ App.registerModule('costeo', {
                 <div class="costeo-row costeo-row-ganancia"><span>GANANCIA</span><span>${fmt(r.ganancia)}</span></div>
                 <div class="costeo-row costeo-row-margen"><span>MARGEN</span><span>${r.margen_esperado}%</span></div>
             </div>
+            ${this._simHtml(r)}
             <div class="costeo-results-footer">
                 <button class="btn btn-outline btn-sm" onclick="App.modules.costeo.limpiar()">Limpiar</button>
                 <button class="btn btn-primary btn-sm" onclick="App.modules.costeo.calcular()">Recalcular</button>
             </div>`;
+    },
+
+    // ---------------- Simulador de precio (aparte del calculo principal) ----------------
+    // El precio del sistema se compone marginando SOBRE A y sumando B:
+    //   venta = A / (1 - margen) + B   ->   margen = 1 - A / (precio - B)
+    // Los dos campos usan exactamente esa formula, asi los numeros cuadran con
+    // el desglose. No modifican nada: solo simulan.
+    _simHtml(r) {
+        const A = Number(r.costo_sin_mermas) || 0;
+        const B = Number(r.costo_mermas) || 0;
+        const fmtS = (v) => '$ ' + Number(Math.round(v || 0)).toLocaleString();
+        const pctS = (v) => Number(v || 0).toLocaleString('es-CL', { maximumFractionDigits: 1 }) + '%';
+        const simM = Number(r.margen_esperado) || 0;
+        const simP = Math.round(Number(r.valor_venta) || 0);
+        const vv = simM < 100 ? (A / (1 - simM / 100) + B) : 0;
+        const mar = simP > B ? ((1 - A / (simP - B)) * 100) : 0;
+        const ganColor = (g) => g >= 0 ? '#bbf7d0' : '#fecaca';
+        return `
+            <div style="margin-top:14px;border:2px dashed #f59e0b;border-radius:12px;padding:13px 15px;background:#fffdf5">
+                <div style="font-size:10px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:#b45309;margin-bottom:3px">✦ Simulador de precio</div>
+                <div style="font-size:9.5px;color:#a1855c;margin-bottom:11px;line-height:1.5">Juega con el precio SIN tocar el calculo principal. Usa (A) y (B) del desglose: el precio se compone <strong>marginando sobre A y sumando B</strong>.</div>
+                <div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:10px">
+                    <span style="font-size:11.5px;font-weight:600;color:#57452c">Si quiero un margen de</span>
+                    <input type="number" id="simMargen" value="${simM}" oninput="App.modules.costeo.calcSim()"
+                        style="width:82px;background:#fff;border:1.5px solid #f59e0b;border-radius:8px;padding:6px 9px;font-size:13px;font-weight:800;color:#92400e;outline:none;text-align:center">
+                    <span style="font-size:11.5px;font-weight:600;color:#57452c">% → vendo a</span>
+                    <div style="background:#14532d;color:#fff;border-radius:8px;padding:6px 13px;font-size:13px;font-weight:800">
+                        <span id="simOutVV">${fmtS(vv)}</span>
+                        <small id="simOutGan1" style="font-size:9.5px;font-weight:600;display:block;color:${ganColor(vv - (A + B))}">ganancia ${fmtS(vv - (A + B))}</small>
+                    </div>
+                </div>
+                <div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:10px">
+                    <span style="font-size:11.5px;font-weight:600;color:#57452c">Si vendo a</span>
+                    <input type="number" id="simPrecio" value="${simP}" oninput="App.modules.costeo.calcSim()"
+                        style="width:100px;background:#fff;border:1.5px solid #f59e0b;border-radius:8px;padding:6px 9px;font-size:13px;font-weight:800;color:#92400e;outline:none;text-align:center">
+                    <span style="font-size:11.5px;font-weight:600;color:#57452c">$ → mi margen es</span>
+                    <div style="background:#0f172a;color:#fff;border-radius:8px;padding:6px 13px;font-size:13px;font-weight:800">
+                        <span id="simOutMar" style="color:${mar >= 0 ? '#bbf7d0' : '#fecaca'}">${pctS(mar)}</span>
+                        <small id="simOutGan2" style="font-size:9.5px;font-weight:600;display:block;color:${ganColor(simP - (A + B))}">ganancia ${fmtS(simP - (A + B))}</small>
+                    </div>
+                </div>
+                <div style="font-size:9px;color:#a1855c">Venta = A / (1 − margen) + B · margen = 1 − A / (precio − B). Los resultados no modifican el calculo principal.</div>
+            </div>`;
+    },
+
+    calcSim() {
+        const r = this._resultado;
+        if (!r) return;
+        const A = Number(r.costo_sin_mermas) || 0;
+        const B = Number(r.costo_mermas) || 0;
+        const fmtS = (v) => '$ ' + Number(Math.round(v || 0)).toLocaleString();
+        const ganColor = (g) => g >= 0 ? '#bbf7d0' : '#fecaca';
+
+        // 1) margen deseado -> valor de venta (formula del sistema)
+        const m = parseFloat((document.getElementById('simMargen') || {}).value);
+        const outVV = document.getElementById('simOutVV');
+        const outG1 = document.getElementById('simOutGan1');
+        if (outVV) {
+            if (isFinite(m) && m < 100) {
+                const vv = A / (1 - m / 100) + B;
+                const g = vv - (A + B);
+                outVV.textContent = fmtS(vv);
+                outG1.textContent = 'ganancia ' + fmtS(g);
+                outG1.style.color = ganColor(g);
+            } else {
+                outVV.textContent = '\u2014';
+                outG1.textContent = isFinite(m) && m >= 100 ? 'el margen debe ser menor a 100%' : '\u2014';
+                outG1.style.color = '#fecaca';
+            }
+        }
+
+        // 2) precio deseado -> margen resultante (formula inversa exacta)
+        const P = parseFloat((document.getElementById('simPrecio') || {}).value);
+        const outMar = document.getElementById('simOutMar');
+        const outG2 = document.getElementById('simOutGan2');
+        if (outMar) {
+            if (isFinite(P) && P > B) {
+                const mar = (1 - A / (P - B)) * 100;
+                const g = P - (A + B);
+                outMar.textContent = mar.toLocaleString('es-CL', { maximumFractionDigits: 1 }) + '%';
+                outMar.style.color = mar >= 0 ? '#bbf7d0' : '#fecaca';
+                outG2.textContent = 'ganancia ' + fmtS(g);
+                outG2.style.color = ganColor(g);
+            } else {
+                outMar.textContent = '\u2014';
+                outG2.textContent = isFinite(P) && P <= B ? 'el precio debe superar las mermas' : '\u2014';
+                outG2.style.color = '#fecaca';
+            }
+        }
     },
 
     limpiar() {
