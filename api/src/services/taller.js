@@ -355,13 +355,18 @@ async function registroManual({ filas, userEmail, userName, estacionId, maquinaI
             resultados.push({ pedido, item, ok: false, mensaje: 'Datos inválidos (pedido, item y cantidad requeridos)' });
             continue;
         }
+        // MP (codigo_producto) = la PIEZA dentro de un BOM: mismo pedido+item
+        // puede tener varias ordenes (una por materia prima). Con MP se registra
+        // contra ESA pieza; sin MP se mantiene el comportamiento actual.
+        const mp = String(f.mp || f.codigo_producto || '').trim();
+        const ordsFiltro = ['pedido_sap_id = $1', 'item_numero = $2', `estado_programacion NOT IN ('CERRADO', 'TERMINADO', 'MERMADO')`];
+        const ordsParams = [pedido, item];
+        if (mp) { ordsFiltro.push(`LOWER(TRIM(codigo_producto)) = LOWER(TRIM($${ordsParams.length + 1}))`); ordsParams.push(mp); }
         const ords = await query(
-            `SELECT id, cantidad FROM produccion_ordenes
-             WHERE pedido_sap_id = $1 AND item_numero = $2
-               AND estado_programacion NOT IN ('CERRADO', 'TERMINADO', 'MERMADO')
-             ORDER BY id DESC LIMIT 1`, [pedido, item]);
+            `SELECT id, cantidad FROM produccion_ordenes WHERE ${ordsFiltro.join(' AND ')}
+             ORDER BY id DESC LIMIT 1`, ordsParams);
         if (ords.rows.length === 0) {
-            resultados.push({ pedido, item, ok: false, mensaje: 'No hay orden activa con ese pedido/item' });
+            resultados.push({ pedido, item, ok: false, mensaje: 'No hay orden activa con ese pedido/item' + (mp ? ' y MP ' + mp : '') });
             continue;
         }
         // Buscar el paso en TODAS las ordenes activas de ese pedido+item: la
@@ -377,6 +382,10 @@ async function registroManual({ filas, userEmail, userName, estacionId, maquinaI
             `p.estado IN ('EN_PROCESO', 'PAUSADO', 'PENDIENTE')`
         ];
         const params = [pedido, item];
+        if (mp) {
+            filtros.push(`LOWER(TRIM(o.codigo_producto)) = LOWER(TRIM($${params.length + 1}))`);
+            params.push(mp);
+        }
         if (estacionId) {
             filtros.push(`p.estacion_id = $${params.length + 1}`);
             params.push(estacionId);

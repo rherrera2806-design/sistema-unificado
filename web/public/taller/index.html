@@ -1192,7 +1192,8 @@
                 prefill = {
                     pedido: prefill.pedido,
                     item: Number(prefill.item) || 1,
-                    cantidad: Number.isFinite(cant) && cant > 0 ? cant : 1
+                    cantidad: Number.isFinite(cant) && cant > 0 ? cant : 1,
+                    mp: prefill.mp ? String(prefill.mp).trim() : ''
                 };
             }
             registroFilas = prefill ? [prefill] : [];
@@ -1203,13 +1204,15 @@
                         <input id="rmPedido" style="width:100%;padding:10px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px" placeholder="111805"></div>
                     <div><label style="font-size:10px;font-weight:700;color:#64748b;display:block;margin-bottom:4px">ITEM</label>
                         <input id="rmItem" type="number" min="1" value="1" style="width:100%;padding:10px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px"></div>
+                    <div><label style="font-size:10px;font-weight:700;color:#64748b;display:block;margin-bottom:4px">MATERIA PRIMA <span style="font-weight:400;color:#94a3b8">(si es BOM)</span></label>
+                        <input id="rmMP" style="width:100%;padding:10px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px" placeholder="Ej: 1022"></div>
                     <div><label style="font-size:10px;font-weight:700;color:#64748b;display:block;margin-bottom:4px">CANTIDAD</label>
                         <input id="rmCantidad" type="number" min="1" style="width:100%;padding:10px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px" placeholder="5"></div>
                     <button class="btn btn-primary" style="padding:10px 14px" onclick="rmAgregarManual()">＋ Agregar</button>
                 </div>
                 <div style="margin-top:12px">
                     <label style="font-size:10px;font-weight:700;color:#64748b;display:block;margin-bottom:4px">PEGAR DESDE EXCEL</label>
-                    <textarea id="rmPegado" rows="4" placeholder="111805&#9;1&#9;5&#10;111807&#9;3&#9;10" style="width:100%;padding:10px;border:1px solid #e2e8f0;border-radius:8px;font-size:12px;font-family:monospace"></textarea>
+                    <textarea id="rmPegado" rows="4" placeholder="111805&#9;1&#9;1022&#9;5&#10;111807&#9;3&#9;729&#9;10" style="width:100%;padding:10px;border:1px solid #e2e8f0;border-radius:8px;font-size:12px;font-family:monospace"></textarea>
                     <button class="btn btn-outline" style="margin-top:6px;padding:8px 14px" onclick="rmCargarPegado()">Cargar filas del portapapeles</button>
                 </div>
                 <div id="rmLista" style="margin-top:12px"></div>
@@ -1230,6 +1233,7 @@
                 + registroFilas.map((f, i) => `<div style="display:flex;align-items:center;gap:10px;padding:7px 10px;border:1px solid #e4e9f0;border-radius:8px;margin-bottom:5px;font-size:13px">
                     <strong style="min-width:80px">${String(f.pedido)}</strong>
                     <span style="color:#64748b">Item ${f.item}</span>
+                    ${f.mp ? '<span style="background:#e0e7ff;color:#3730a3;font-size:11px;font-weight:700;padding:2px 9px;border-radius:10px">MP ' + String(f.mp).replace(/[<>&"]/g, '') + '</span>' : ''}
                     <span style="display:flex;align-items:center;gap:4px"><input type="number" min="1" step="1" inputmode="numeric" value="${Number(f.cantidad) || 1}" oninput="rmCambiarCantidad(${i}, this.value)" onchange="rmRenderLista()" style="width:64px;padding:6px;border:1px solid #e2e8f0;border-radius:6px;font-size:13px;font-weight:700"> und</span>
                     <button onclick="rmQuitar(${i})" style="margin-left:auto;background:#fee2e2;color:#dc2626;border:none;border-radius:6px;padding:4px 9px;cursor:pointer;font-size:11px">✕</button>
                 </div>`).join('');
@@ -1243,14 +1247,17 @@
         function rmAgregarManual() {
             const pedido = document.getElementById('rmPedido')?.value?.trim();
             const item = Number(document.getElementById('rmItem')?.value) || 1;
+            const mp = (document.getElementById('rmMP')?.value || '').trim();
             const cantidad = Number(document.getElementById('rmCantidad')?.value);
             if (!pedido || !Number.isFinite(cantidad) || cantidad <= 0) {
                 showToast('Completa pedido y cantidad', 'error');
                 return;
             }
-            registroFilas.push({ pedido, item, cantidad });
+            registroFilas.push({ pedido, item, mp, cantidad });
             document.getElementById('rmPedido').value = '';
             document.getElementById('rmCantidad').value = '';
+            const mpInp = document.getElementById('rmMP');
+            if (mpInp) mpInp.value = '';
             rmRenderLista();
         }
 
@@ -1262,12 +1269,15 @@
                 const partes = linea.split(/[\t;,\|]+/).map(s => s.trim());
                 if (partes.length < 2) continue;
                 const pedido = partes[0];
-                // Formato corto: pedido, cantidad | formato largo: pedido, item, cantidad
-                let item = 1, cantidad = 0;
-                if (partes.length >= 3) { item = Number(partes[1]) || 1; cantidad = Number(partes[2]); }
+                // Formatos: pedido, cantidad | pedido, item, cantidad |
+                // pedido, item, MP, cantidad (el 3ro es la materia prima cuando
+                // el pedido es BOM y varias piezas comparten pedido+item)
+                let item = 1, cantidad = 0, mp = '';
+                if (partes.length >= 4) { item = Number(partes[1]) || 1; mp = partes[2]; cantidad = Number(partes[3]); }
+                else if (partes.length >= 3) { item = Number(partes[1]) || 1; cantidad = Number(partes[2]); }
                 else { cantidad = Number(partes[1]); }
                 if (!pedido || !Number.isFinite(cantidad) || cantidad <= 0) continue;
-                registroFilas.push({ pedido, item, cantidad });
+                registroFilas.push({ pedido, item, mp, cantidad });
                 cargadas++;
             }
             rmRenderLista();
@@ -1326,17 +1336,20 @@
             if (mUrl) {
                 try { return parseQR(decodeURIComponent(mUrl[1])); } catch (_) { }
             }
-            let m = t.match(/^VF:([^|]+)\|(\d+)$/i);
-            if (m) return { pedido: m[1].trim(), item: Number(m[2]) || 1 };
+            let m = t.match(/^VF:([^|]+)\|(\d+)(?:\|([^|]*))?$/i);
+            if (m) return { pedido: m[1].trim(), item: Number(m[2]) || 1, mp: (m[3] || '').trim() || undefined };
             const partes = t.split('|');
             if (partes.length >= 3) {
                 // Optiway: campo 3 = "OV-10ITEM". Se tolera un prefijo literal
                 // "OV-" / "OV" si la etiqueta lo trae impreso.
+                // Campo 5 (opcional) = codigo de MATERIA PRIMA: discrimina la
+                // pieza cuando un BOM crea varias ordenes con el mismo pedido+item.
+                const mpOpt = partes.length >= 5 ? String(partes[4] || '').trim() : '';
                 const campo = (partes[2] || '').trim().replace(/^OV[-_]?/i, '');
                 m = campo.match(/^(\d+)-10(\d+)$/);
-                if (m) return { pedido: m[1], item: Number(m[2]) || 1 };
+                if (m) return { pedido: m[1], item: Number(m[2]) || 1, mp: mpOpt || undefined };
                 m = campo.match(/^(\d+)-(\d+)$/);
-                if (m) return { pedido: m[1], item: Number(m[2]) || 1 };
+                if (m) return { pedido: m[1], item: Number(m[2]) || 1, mp: mpOpt || undefined };
             }
             if (/^\d{4,}$/.test(t)) return { pedido: t, item: 1 };
             return null;

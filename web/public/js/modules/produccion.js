@@ -1823,7 +1823,9 @@ App.registerModule('produccion', {
     _nota9(o) {
         const f = o.fecha_entrega_pactada ? new Date(o.fecha_entrega_pactada) : new Date();
         const ff = String(f.getDate()).padStart(2, '0') + '-' + String(f.getMonth() + 1).padStart(2, '0') + '-' + f.getFullYear();
-        return (o.codigo_padre || o.codigo_producto || '') + '|' + ff + '|' + (o.pedido_sap_id || '') + '-' + String(o.item_numero || 1) + '|' + Number(o.metros_cuadrados || 0).toFixed(3);
+        // Campo 5 = codigo de MATERIA PRIMA (codigo_producto): con un BOM, el
+        // mismo pedido+item tiene una orden por pieza y el QR debe decir cual es.
+        return (o.codigo_padre || o.codigo_producto || '') + '|' + ff + '|' + (o.pedido_sap_id || '') + '-' + String(o.item_numero || 1) + '|' + Number(o.metros_cuadrados || 0).toFixed(3) + '|' + (o.codigo_producto || '');
     },
 
     _etiquetaHtml(o, escala) {
