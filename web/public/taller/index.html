@@ -1201,14 +1201,21 @@
                 <p style="font-size:12px;color:#64748b;margin:0 0 12px">${registroOrigen === 'qr' ? 'Etiqueta escaneada. Revisa la cantidad (por defecto <strong>1 vidrio</strong>) y registra.' : 'Digitación directa o pegado desde Excel (una fila por línea: <strong>pedido · item · cantidad</strong>, separados por tabulador, coma o punto y coma).'}</p>
                 <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;align-items:end">
                     <div><label style="font-size:10px;font-weight:700;color:#64748b;display:block;margin-bottom:4px">PEDIDO</label>
-                        <input id="rmPedido" style="width:100%;padding:10px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px" placeholder="111805"></div>
+                        <input id="rmPedido" oninput="rmSugerencias()" onkeydown="if(event.key==='Enter'){event.preventDefault();rmAgregarManual();}" style="width:100%;padding:10px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px" placeholder="111805"></div>
                     <div><label style="font-size:10px;font-weight:700;color:#64748b;display:block;margin-bottom:4px">ITEM</label>
-                        <input id="rmItem" type="number" min="1" value="1" style="width:100%;padding:10px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px"></div>
+                        <input id="rmItem" type="number" min="1" value="1" oninput="rmSugerencias()" onkeydown="if(event.key==='Enter'){event.preventDefault();rmAgregarManual();}" style="width:100%;padding:10px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px"></div>
                     <div><label style="font-size:10px;font-weight:700;color:#64748b;display:block;margin-bottom:4px">MATERIA PRIMA <span style="font-weight:400;color:#94a3b8">(si es BOM)</span></label>
-                        <input id="rmMP" style="width:100%;padding:10px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px" placeholder="Ej: 1022"></div>
+                        <input id="rmMP" onkeydown="if(event.key==='Enter'){event.preventDefault();rmAgregarManual();}" style="width:100%;padding:10px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px" placeholder="Ej: 1022"></div>
                     <div><label style="font-size:10px;font-weight:700;color:#64748b;display:block;margin-bottom:4px">CANTIDAD</label>
-                        <input id="rmCantidad" type="number" min="1" style="width:100%;padding:10px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px" placeholder="5"></div>
-                    <button class="btn btn-primary" style="padding:10px 14px" onclick="rmAgregarManual()">＋ Agregar</button>
+                        <input id="rmCantidad" type="number" min="1" onkeydown="if(event.key==='Enter'){event.preventDefault();rmAgregarManual();}" style="width:100%;padding:10px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px" placeholder="5"></div>
+                    <button class="btn btn-primary" style="padding:10px 14px" onclick="rmAgregarManual()">＋ Agregar <span style="font-weight:400;opacity:.7">(Enter)</span></button>
+                </div>
+                <div id="rmSugerencias" style="margin-top:10px"></div>
+                <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px">
+                    <span style="font-size:9.5px;font-weight:700;color:#64748b;background:#f1f5f9;padding:3px 9px;border-radius:12px">PEGADO: pedido · item · <b>MP</b> · cantidad</span>
+                    <span style="font-size:9.5px;font-weight:700;color:#64748b;background:#f1f5f9;padding:3px 9px;border-radius:12px">pedido · item · cantidad</span>
+                    <span style="font-size:9.5px;font-weight:700;color:#64748b;background:#f1f5f9;padding:3px 9px;border-radius:12px">pedido · cantidad</span>
+                    <span style="font-size:9.5px;font-weight:700;color:#64748b;background:#f1f5f9;padding:3px 9px;border-radius:12px">QR: <b>VF:pedido|item|MP</b></span>
                 </div>
                 <div style="margin-top:12px">
                     <label style="font-size:10px;font-weight:700;color:#64748b;display:block;margin-bottom:4px">PEGAR DESDE EXCEL</label>
@@ -1233,7 +1240,7 @@
                 + registroFilas.map((f, i) => `<div style="display:flex;align-items:center;gap:10px;padding:7px 10px;border:1px solid #e4e9f0;border-radius:8px;margin-bottom:5px;font-size:13px">
                     <strong style="min-width:80px">${String(f.pedido)}</strong>
                     <span style="color:#64748b">Item ${f.item}</span>
-                    ${f.mp ? '<span style="background:#e0e7ff;color:#3730a3;font-size:11px;font-weight:700;padding:2px 9px;border-radius:10px">MP ' + String(f.mp).replace(/[<>&"]/g, '') + '</span>' : ''}
+                    ${f.mp ? '<span style="background:#e0e7ff;color:#3730a3;font-size:11px;font-weight:700;padding:2px 9px;border-radius:10px">MP ' + escHtml(f.mp) + (rmNombreMP(f.mp) ? ' <span style="font-weight:500;color:#6366f1">· ' + escHtml(rmNombreMP(f.mp)) + '</span>' : '') + '</span>' : ''}
                     <span style="display:flex;align-items:center;gap:4px"><input type="number" min="1" step="1" inputmode="numeric" value="${Number(f.cantidad) || 1}" oninput="rmCambiarCantidad(${i}, this.value)" onchange="rmRenderLista()" style="width:64px;padding:6px;border:1px solid #e2e8f0;border-radius:6px;font-size:13px;font-weight:700"> und</span>
                     <button onclick="rmQuitar(${i})" style="margin-left:auto;background:#fee2e2;color:#dc2626;border:none;border-radius:6px;padding:4px 9px;cursor:pointer;font-size:11px">✕</button>
                 </div>`).join('');
@@ -1242,6 +1249,85 @@
         function rmCambiarCantidad(i, valor) {
             const n = Number(valor);
             if (registroFilas[i] && Number.isFinite(n) && n >= 1) registroFilas[i].cantidad = n;
+        }
+
+        function rmNombreMP(mp) {
+            if (!mp || typeof colaActual === 'undefined') return '';
+            const it = colaActual.find(x => String(x.codigo_producto || '').trim().toLowerCase() === String(mp).trim().toLowerCase());
+            return it ? String(it.descripcion || '') : '';
+        }
+
+        // Piezas PENDIENTES del pedido+item en esta estacion (salen de la cola
+        // ya cargada - sin ir a la API): clic elige la materia prima.
+        function rmSugerencias() {
+            const el = document.getElementById('rmSugerencias');
+            if (!el) return;
+            const pedido = (document.getElementById('rmPedido')?.value || '').trim().toLowerCase();
+            const item = Number(document.getElementById('rmItem')?.value) || 1;
+            if (!pedido || typeof colaActual === 'undefined') { el.innerHTML = ''; return; }
+            const piezas = {};
+            for (const it of colaActual) {
+                if (String(it.pedido_sap_id || '').trim().toLowerCase() !== pedido) continue;
+                if (Number(it.item_numero || 1) !== item) continue;
+                const mp = String(it.codigo_producto || '').trim();
+                if (!piezas[mp]) piezas[mp] = { mp, desc: String(it.descripcion || ''), quedan: 0 };
+                piezas[mp].quedan += Number(it.cantidad_paso || it.cantidad || 0) || 0;
+            }
+            const lista = Object.values(piezas);
+            if (!lista.length) { el.innerHTML = ''; return; }
+            el.innerHTML = '<div style="background:#f8fafc;border:1px dashed #cbd5e1;border-radius:10px;padding:10px 12px">'
+                + '<div style="font-size:9.5px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:#64748b;margin-bottom:7px">✦ Piezas pendientes de este pedido/item — clic para elegir la MP</div>'
+                + lista.map(p => '<button type="button" onclick="rmElegirMP(\'' + String(p.mp).replace(/'/g, '') + '\')" style="display:inline-flex;align-items:center;gap:7px;background:#fff;border:1.5px solid #e2e8f0;border-radius:10px;padding:7px 12px;margin:0 7px 7px 0;cursor:pointer;font-size:11.5px">'
+                    + '<b>' + escHtml(p.mp) + '</b> · ' + escHtml(p.desc || 'sin descripcion')
+                    + (p.quedan > 0 ? '<span style="background:#f1f5f9;border-radius:10px;padding:1px 8px;font-size:10px;font-weight:800;color:#475569">quedan ' + p.quedan + '</span>' : '')
+                    + '</button>').join('')
+                + '</div>';
+        }
+
+        function rmElegirMP(mp) {
+            const inp = document.getElementById('rmMP');
+            if (inp) { inp.value = mp; inp.focus(); }
+            const cant = document.getElementById('rmCantidad');
+            if (cant && !cant.value) {
+                // Si hay un solo dato de "quedan", precargar la cantidad
+                const pedido = (document.getElementById('rmPedido')?.value || '').trim().toLowerCase();
+                const item = Number(document.getElementById('rmItem')?.value) || 1;
+                let quedan = 0;
+                for (const it of (typeof colaActual !== 'undefined' ? colaActual : [])) {
+                    if (String(it.pedido_sap_id || '').trim().toLowerCase() !== pedido) continue;
+                    if (Number(it.item_numero || 1) !== item) continue;
+                    if (String(it.codigo_producto || '').trim().toLowerCase() === String(mp).trim().toLowerCase()) quedan += Number(it.cantidad_paso || it.cantidad || 0) || 0;
+                }
+                if (quedan > 0) cant.value = quedan;
+            }
+        }
+
+        function escHtml(s) { return String(s == null ? '' : s).replace(/[<>&"]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c])); }
+
+        // Contexto de la pieza para los modales de Procesar/Merma: SIEMPRE se ve
+        // a que pedido/item/MP se le esta registrando (clave con BOM).
+        function rmCtxHtml(pasoId) {
+            const it = (typeof colaActual !== 'undefined' ? colaActual : []).find(x => x.id === pasoId);
+            if (!it) return '';
+            return '<div style="background:#f8fafc;border:1px solid #e4e9f0;border-radius:9px;padding:8px 12px;font-size:11.5px;color:#334155;margin-bottom:11px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">'
+                + 'Pedido <b>' + escHtml(it.pedido_sap_id || '') + '</b> · Item <b>' + escHtml(String(it.item_numero || 1)) + '</b>'
+                + (it.codigo_producto ? ' <span style="background:#e0e7ff;color:#3730a3;font-size:11px;font-weight:700;padding:2px 9px;border-radius:10px">MP ' + escHtml(it.codigo_producto) + '</span>' : '')
+                + (it.descripcion ? ' <span style="color:#64748b">' + escHtml(it.descripcion) + '</span>' : '')
+                + '</div>';
+        }
+
+        // Cuanto queda por procesar en ESTE paso (para validar la merma)
+        function rmQuedaPaso(pasoId) {
+            const it = (typeof colaActual !== 'undefined' ? colaActual : []).find(x => x.id === pasoId);
+            return it ? Number(it.cantidad_paso || it.cantidad || 0) : 0;
+        }
+
+        function mermaEnviar(pasoId) {
+            const cant = Number(document.getElementById('mermaCantidad')?.value);
+            const max = rmQuedaPaso(pasoId);
+            if (!Number.isFinite(cant) || cant <= 0) { showToast('Ingresa la cantidad de la merma', 'error'); return; }
+            if (max > 0 && cant > max) { showToast('La cantidad supera lo que queda en el paso (' + max + ' und)', 'error'); return; }
+            registrarMerma(pasoId, document.getElementById('mermaCausa').value, cant, document.getElementById('mermaObservacion').value);
         }
 
         function rmAgregarManual() {
@@ -1444,7 +1530,7 @@
                                 showToast(`QR leído: pedido ${leido.pedido} · item ${leido.item}`, 'success');
                                 showRegistroManual(leido);
                             } else {
-                                tModal('QR no reconocido', `<p style="font-size:13px;color:#475569">Contenido: <strong>${String(crudo).slice(0, 120)}</strong></p><p style="font-size:12px;color:#8494a8;margin-top:8px">Formatos aceptados: QR del programa (VF:...) o etiqueta Optiway (SAP|fecha|OV-10item|m2). Si tu etiqueta trae otro formato, pásame un ejemplo y lo agrego.</p>`, `<button class="btn btn-primary" onclick="tModalCerrar()">Entendido</button>`);
+                                tModal('QR no reconocido', `<p style="font-size:13px;color:#475569">Contenido: <strong>${String(crudo).slice(0, 120)}</strong></p><p style="font-size:12px;color:#8494a8;margin-top:8px">Formatos aceptados: QR del programa (VF:pedido|item|MP), etiqueta Optiway (SAP|fecha|OV-10item|m2|MP) o pedido simple. La MP (materia prima) es opcional pero identifica la pieza cuando un BOM crea varias ordenes con el mismo pedido+item. Si tu etiqueta trae otro formato, pásame un ejemplo y lo agrego.</p>`, `<button class="btn btn-primary" onclick="tModalCerrar()">Entendido</button>`);
                             }
                             return;
                         }
@@ -1589,9 +1675,13 @@
             const modal = document.getElementById('pasoModal');
             document.getElementById('pasoModalTitle').textContent = 'Procesar Cantidad';
             document.getElementById('pasoModalBody').innerHTML = `
+                ${rmCtxHtml(pasoId)}
                 <div class="form-group">
                     <label>Cantidad a procesar</label>
-                    <input type="number" class="form-control" id="procesarCantidad" value="${cantidadMax}" min="1" max="${cantidadMax}">
+                    <div style="display:flex;gap:8px;align-items:center">
+                        <input type="number" class="form-control" id="procesarCantidad" value="${cantidadMax}" min="1" max="${cantidadMax}" style="flex:1">
+                        <button type="button" class="btn btn-outline" onclick="document.getElementById('procesarCantidad').value=${cantidadMax}">Todo (${cantidadMax})</button>
+                    </div>
                     <p style="font-size:11px;color:var(--text-muted);margin-top:4px">Máximo: ${cantidadMax} unidades</p>
                 </div>
                 <div style="display:flex;gap:10px;justify-content:flex-end">
@@ -1606,6 +1696,7 @@
             const modal = document.getElementById('pasoModal');
             document.getElementById('pasoModalTitle').textContent = 'Registrar Merma';
             document.getElementById('pasoModalBody').innerHTML = `
+                ${rmCtxHtml(pasoId)}
                 <div class="form-group">
                     <label>Causa de la merma</label>
                     <select class="form-control" id="mermaCausa">
@@ -1620,6 +1711,7 @@
                 <div class="form-group">
                     <label>Cantidad</label>
                     <input type="number" class="form-control" id="mermaCantidad" value="1" min="1">
+                    <p style="font-size:11px;color:var(--text-muted);margin-top:4px">Maximo: ${rmQuedaPaso(pasoId) || '?'} unidades (lo que queda del paso)</p>
                 </div>
                 <div class="form-group">
                     <label>Observación</label>
@@ -1627,7 +1719,7 @@
                 </div>
                 <div style="display:flex;gap:10px;justify-content:flex-end">
                     <button class="btn btn-outline" onclick="closePasoModal()">Cancelar</button>
-                    <button class="btn btn-danger" onclick="registrarMerma(${pasoId}, document.getElementById('mermaCausa').value, document.getElementById('mermaCantidad').value, document.getElementById('mermaObservacion').value)">Registrar Merma</button>
+                    <button class="btn btn-danger" onclick="mermaEnviar(${pasoId})">Registrar Merma</button>
                 </div>
             `;
             modal.classList.add('active');
