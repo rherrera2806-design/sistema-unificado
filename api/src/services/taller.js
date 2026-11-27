@@ -71,7 +71,7 @@ async function getColaPorEstacion(estacionId) {
     const result = await query(`
         SELECT p.id, p.estado, p.orden_secuencia, p.hora_inicio, p.hora_fin, p.m2_asignados, p.fecha_programada, p.maquina_id, p.turno,
                o.id as orden_id, o.pedido_sap_id, o.item_numero, o.cliente, o.codigo_producto, o.descripcion,
-               o.ancho, o.alto, o.cantidad, o.espesor_mm, o.kilos, o.pintado, o.perforaciones,
+               o.ancho, o.alto, o.cantidad, o.espesor_mm, o.kilos, o.pintado, o.perforaciones, o.es_compuesto,
                o.nota, o.grupo, o.es_reposicion, o.familia_id, o.mecanizado_operaciones, o.nivel_prioridad,
                o.codigo_padre,
                -- Descripción del código padre (catálogo de códigos): se muestra

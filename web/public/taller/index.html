@@ -780,6 +780,20 @@
             </div>`;
         }
 
+        // Chip BOM: pieza de un compuesto. "pieza N de M" cuenta las piezas del
+        // mismo pedido+item visibles en esta estacion (por codigo de MP, orden
+        // alfabetico) - suficiente para distinguirlas en la cola.
+        function bomChip(it) {
+            if (!it || !it.es_compuesto) return '';
+            const mpSet = [...new Set((typeof colaActual !== 'undefined' ? colaActual : [])
+                .filter(x => String(x.pedido_sap_id) === String(it.pedido_sap_id) && Number(x.item_numero || 1) === Number(it.item_numero || 1))
+                .map(x => String(x.codigo_producto || '')))].sort();
+            const idx = mpSet.indexOf(String(it.codigo_producto || ''));
+            const total = mpSet.length;
+            return '<span style="font-size:9.5px;font-weight:800;background:#dcfce7;color:#15803d;padding:3px 10px;border-radius:12px;white-space:nowrap">\uD83E\uDDE9 BOM'
+                + (total > 1 ? ' · pieza ' + (idx >= 0 ? idx + 1 : 1) + ' de ' + total : '') + '</span>';
+        }
+
         function renderCola() {
             const app = document.getElementById('app');
             const maquina = currentEstacion.maquina;
@@ -912,10 +926,14 @@
                                     <span class="status-badge status-${item.estado.toLowerCase().replace('_', '-')}">${item.estado}</span>
                                 </div>
                             </div>
-                            <div style="font-size:15px;font-weight:700;margin:8px 0 4px;display:flex;gap:8px;flex-wrap:wrap;align-items:baseline">
-                                <span>${item.codigo_producto || '-'}${item.descripcion_padre ? ' <span style="font-size:12px;font-weight:600;color:var(--text-muted)">· ' + item.descripcion_padre + '</span>' : ''}</span>
-                                <span style="font-size:13px;font-weight:500;color:var(--text-muted)">${item.descripcion || ''}${item.espesor_mm ? ' • ' + item.espesor_mm + 'mm' : ''}</span>
+                            <div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin:9px 0 3px">
+                                <span style="background:#e0e7ff;color:#3730a3;font-size:12px;font-weight:800;padding:4px 11px;border-radius:11px">MP ${escHtml(item.codigo_producto || '-')}</span>
+                                <span style="font-size:14px;font-weight:800">${escHtml(item.descripcion || '')}</span>
+                                ${item.espesor_mm ? `<span style="font-size:10.5px;font-weight:700;color:#475569;background:#f1f5f9;padding:2px 9px;border-radius:10px">${Number(item.espesor_mm).toLocaleString('es-CL')} mm</span>` : ''}
+                                ${bomChip(item)}
+                                ${(item.cantidad_paso && item.cantidad && item.cantidad_paso < item.cantidad) ? `<span style="font-size:10.5px;font-weight:700;color:#b45309;background:#fef3c7;padding:2px 9px;border-radius:10px;white-space:nowrap">quedan ${item.cantidad_paso} de ${item.cantidad}</span>` : ''}
                             </div>
+                            ${item.descripcion_padre ? `<div style="font-size:10px;color:#94a3b8;margin:0 0 8px">${escHtml(item.codigo_producto || '')} · ${escHtml(item.descripcion_padre)}</div>` : '<div style="height:8px"></div>'}
                             <div class="item-details">
                                 <div class="detail">
                                     <span class="detail-label">Cantidad:</span>
@@ -923,7 +941,7 @@
                                 </div>
                                 <div class="detail">
                                     <span class="detail-label">Dimensiones:</span>
-                                    <span class="detail-value">${item.ancho}x${item.alto}mm</span>
+                                    <span class="detail-value" style="font-size:15px;font-weight:800">${item.ancho}x${item.alto}mm</span>
                                 </div>
                                 <div class="detail">
                                     <span class="detail-label">Kilos:</span>
