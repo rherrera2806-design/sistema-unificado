@@ -48,8 +48,22 @@
         }
         .container {
             padding: 16px;
-            max-width: 600px;
+            max-width: 1120px;
             margin: 0 auto;
+        }
+        /* Seleccion de estaciones: cuadricula que aprovecha todo el ancho
+           (antes 600px en columna = scroll largo). 3-4 columnas en pantalla
+           ancha, 2 en tablet, 1 en movil. */
+        .station-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+            gap: 12px;
+            max-width: 1120px;
+            margin: 0 auto;
+        }
+        .station-grid .station-card {
+            margin-bottom: 0;
+            padding: 13px 14px;
         }
         .station-card {
             background: var(--card);
@@ -84,12 +98,12 @@
         }
         .station-card .station-stats {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 8px;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 6px;
         }
         .station-card .stat {
             text-align: center;
-            padding: 8px;
+            padding: 7px 4px;
             background: var(--bg);
             border-radius: 10px;
         }
@@ -106,7 +120,8 @@
             margin-top: 2px;
         }
         .queue-list {
-            margin-top: 16px;
+            margin: 16px auto 0;
+            max-width: 780px;
         }
         .queue-item {
             background: var(--card);
@@ -580,7 +595,7 @@
                 const res = await fetch(`${API}/estaciones`, { headers: getHeaders() });
                 const estaciones = await res.json();
 
-                let html = '<div style="margin-bottom:16px"><h2 style="font-size:16px;font-weight:700;color:var(--text)">Selecciona una Estación</h2><p style="font-size:12px;color:var(--text-muted)">Elige la estación donde vas a trabajar</p></div>';
+                let html = '<div class="station-grid"><div style="grid-column:1/-1;margin-bottom:4px"><h2 style="font-size:16px;font-weight:700;color:var(--text)">Selecciona una Estación</h2><p style="font-size:12px;color:var(--text-muted)">Elige la estación donde vas a trabajar</p></div>';
 
                 estaciones.forEach(e => {
                     // Number(): la base devuelve los conteos como texto y sin
@@ -611,7 +626,7 @@
                     `;
                 });
 
-                app.innerHTML = html;
+                app.innerHTML = html + '</div>';
             } catch (err) {
                 app.innerHTML = '<div class="empty-state"><p>Error al cargar estaciones</p></div>';
             }
